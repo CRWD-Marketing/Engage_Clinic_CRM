@@ -12,10 +12,10 @@
             <div style="font: 600 11px 'Nunito Sans'; color: #98897A;">10 active enquiries · AED 105,600 est. monthly value</div>
         </div>
         <button style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 8px; padding: 8px 14px; font: 800 12px 'Nunito Sans'; cursor: pointer; white-space: nowrap;">Filter: All sources</button>
-        <button style="background: #C8355F; color: white; border: none; border-radius: 8px; padding: 8px 16px; font: 800 12px 'Nunito Sans'; cursor: pointer; white-space: nowrap;">+ New Lead</button>
+        <button onclick="openLeadModal()" style="background: #C8355F; color: white; border: none; border-radius: 8px; padding: 8px 16px; font: 800 12px 'Nunito Sans'; cursor: pointer; white-space: nowrap;">+ New Lead</button>
     </div>
 
-    <!-- Kanban Board - Scrollable horizontally -->
+    <!-- Kanban Board -->
     <div style="flex: 1; overflow-x: auto; overflow-y: auto; padding: 12px 0 20px 0; display: flex; gap: 12px; align-items: flex-start; min-height: calc(100vh - 200px);">
         
         <!-- New Stage -->
@@ -214,4 +214,176 @@
         </div>
         
     </div>
+
+    <!-- New Lead Modal -->
+    <div id="leadModal" style="display: none; position: fixed; inset: 0; background: rgba(22, 42, 60, 0.45); display: none; align-items: center; justify-content: center; z-index: 9999;">
+        <div style="width: 520px; max-height: 88vh; overflow-y: auto; background: #FFFDFA; border-radius: 18px; padding: 26px 28px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 20px 60px rgba(22,42,60,0.3);">
+            
+            <!-- Header -->
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="flex: 1;">
+                    <div style="font: 600 20px 'Baloo 2'; color: #16436E;">New lead — manual entry</div>
+                    <div style="font: 600 12px 'Nunito Sans'; color: #98897A;">Walk-in, phone call, or event enquiry</div>
+                </div>
+                <button onclick="closeLeadModal()" style="width: 32px; height: 32px; border-radius: 9px; border: 1px solid #E2DACE; background: #FFFFFF; color: #5A6B7E; font: 800 15px/1 'Nunito Sans'; cursor: pointer; display: flex; align-items: center; justify-content: center;">✕</button>
+            </div>
+            
+            <!-- Form -->
+            <form id="leadForm" onsubmit="saveLead(event)">
+                <!-- Child Name & Age -->
+                <div style="display: grid; grid-template-columns: 1fr 110px; gap: 12px;">
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Child's name *</div>
+                        <input id="childName" type="text" placeholder="e.g. Hamad" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                    </div>
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Age</div>
+                        <input id="childAge" type="text" placeholder="5" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                    </div>
+                </div>
+                
+                <!-- Parent & Phone -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Parent / guardian *</div>
+                        <input id="parentName" type="text" placeholder="e.g. Mrs. Shamma Al Qubaisi" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                    </div>
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Phone (WhatsApp)</div>
+                        <input id="phoneNumber" type="tel" placeholder="+971 5x xxx xxxx" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                    </div>
+                </div>
+                
+                <!-- Source & Interested In -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Source</div>
+                        <select id="leadSource" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                            <option>Walk-in</option>
+                            <option>Phone call</option>
+                            <option>WhatsApp</option>
+                            <option>Website</option>
+                            <option>Instagram</option>
+                            <option>Referral</option>
+                            <option>Google</option>
+                            <option>Event</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Interested in</div>
+                        <select id="leadInterest" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                            <option>ABA therapy</option>
+                            <option>Speech therapy</option>
+                            <option>Occupational therapy</option>
+                            <option>Diagnostic assessment</option>
+                            <option>Early intervention</option>
+                            <option>Combined program</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Insurance & Est. Value -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px;">
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Insurance</div>
+                        <select id="leadInsurance" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                            <option>Not sure yet</option>
+                            <option>Daman</option>
+                            <option>Daman Enhanced</option>
+                            <option>Thiqa</option>
+                            <option>ADNIC</option>
+                            <option>AXA / GIG</option>
+                            <option>Self-pay</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Est. monthly value (AED)</div>
+                        <input id="leadValue" type="text" placeholder="12,800" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                    </div>
+                </div>
+                
+                <!-- Notes -->
+                <div style="margin-top: 12px;">
+                    <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px;">Notes</div>
+                    <input id="leadNote" type="text" placeholder="e.g. asked about fees and Daman coverage" style="width: 100%; padding: 10px 13px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 700 13px 'Nunito Sans'; color: #2B3A4C; outline: none;">
+                </div>
+                
+                <!-- Buttons -->
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                    <button type="submit" style="flex: 1; background: #C8355F; color: white; border: none; border-radius: 10px; padding: 12px 0; font: 800 13.5px 'Nunito Sans'; cursor: pointer;">Save lead</button>
+                    <button type="button" onclick="closeLeadModal()" style="width: 120px; background: #FFFFFF; color: #5A6B7E; border: 1px solid #E2DACE; border-radius: 10px; padding: 12px 0; font: 800 13.5px 'Nunito Sans'; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection
+
+<script>
+    // Open modal
+    function openLeadModal() {
+        document.getElementById('leadModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Close modal
+    function closeLeadModal() {
+        document.getElementById('leadModal').style.display = 'none';
+        document.body.style.overflow = '';
+        document.getElementById('leadForm').reset();
+    }
+    
+    // Save lead
+    function saveLead(event) {
+        event.preventDefault();
+        
+        // Get form values
+        const childName = document.getElementById('childName').value;
+        const childAge = document.getElementById('childAge').value;
+        const parentName = document.getElementById('parentName').value;
+        const phoneNumber = document.getElementById('phoneNumber').value;
+        const leadSource = document.getElementById('leadSource').value;
+        const leadInterest = document.getElementById('leadInterest').value;
+        const leadInsurance = document.getElementById('leadInsurance').value;
+        const leadValue = document.getElementById('leadValue').value;
+        const leadNote = document.getElementById('leadNote').value;
+        
+        // Basic validation
+        if (!childName || !parentName) {
+            alert('Please fill in Child\'s name and Parent/guardian fields.');
+            return;
+        }
+        
+        // Here you would typically send this data to your backend
+        console.log({
+            childName,
+            childAge,
+            parentName,
+            phoneNumber,
+            leadSource,
+            leadInterest,
+            leadInsurance,
+            leadValue,
+            leadNote
+        });
+        
+        // Show success message
+        alert('Lead saved successfully!');
+        
+        // Close modal
+        closeLeadModal();
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('leadModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeLeadModal();
+        }
+    });
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeLeadModal();
+        }
+    });
+</script>
