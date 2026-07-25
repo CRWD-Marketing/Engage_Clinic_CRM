@@ -16,8 +16,8 @@
     --border:#E4E4E7;
     --text:#0A0A0A;
     --text-secondary:#71717A;
-    --accent:#00B8CC;      /* readable cyan for text/solid fills on white */
-    --accent-bright:#00E5FF; /* glow / highlight only */
+    --accent:#00B8CC;
+    --accent-bright:#00E5FF;
     --accent-hover:#00A3B5;
     --accent-soft:#ECFEFF;
     --radius:14px;
@@ -66,8 +66,6 @@
     border:1px solid rgba(228,228,231,.8);
   }
 
-  .divider{height:1px;background:var(--border);border:none;}
-
   .glow{
     position:absolute;border-radius:999px;filter:blur(90px);
     background:radial-gradient(circle,rgba(0,229,255,.35),rgba(0,229,255,0) 70%);
@@ -94,8 +92,6 @@
 
   ::selection{background:var(--accent-bright);color:#00272B;}
 
-  /* Hard fallback for nav visibility — does not depend on Tailwind CDN's
-     runtime class generation, so it can never flash/fail on slow loads */
   @media (max-width: 767.98px){
     #desktop-nav-links, #desktop-book-btn { display: none !important; }
     #mobile-menu-btn { display: inline-flex !important; }
@@ -105,6 +101,77 @@
   }
   #mobile-menu a{border-bottom:1px solid var(--border);}
   #mobile-menu a:last-of-type{border-bottom:none;}
+
+  /* CRM-style form */
+  .crm-input{
+    width:100%;
+    background:var(--bg-secondary);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:13px;
+    color:var(--text);
+    transition:all .15s;
+    outline:none;
+  }
+  .crm-input:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,184,204,.1);
+  }
+  .crm-select{
+    width:100%;
+    background:var(--bg-secondary);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:13px;
+    color:var(--text);
+    outline:none;
+    transition:all .15s;
+  }
+  .crm-select:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(0,184,204,.1);
+  }
+  .crm-label{
+    font-size:11px;
+    font-weight:700;
+    color:var(--text-secondary);
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    margin-bottom:4px;
+    display:block;
+  }
+
+  /* Lead form specific */
+  .lead-form-title{
+    display:flex;align-items:center;gap:12px;
+  }
+  .lead-form-title h3{
+    font-size:20px;font-weight:600;color:#16436E;
+  }
+  .lead-form-title p{
+    font-size:12px;color:#98897A;font-weight:600;
+  }
+  .lead-form-close{
+    width:32px;height:32px;border-radius:9px;
+    border:1px solid #E2DACE;background:#fff;
+    color:#5A6B7E;font-size:15px;font-weight:800;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .lead-form-close:hover{background:#f5f5f5;}
+  .btn-save{
+    flex:1;background:#C8355F;color:#fff;
+    border:none;border-radius:10px;padding:12px 0;
+    font-size:13.5px;font-weight:800;cursor:pointer;
+  }
+  .btn-save:hover{background:#A82348;}
+  .btn-cancel{
+    width:120px;background:#fff;color:#5A6B7E;
+    border:1px solid #E2DACE;border-radius:10px;padding:12px 0;
+    font-size:13.5px;font-weight:800;cursor:pointer;
+  }
+  .btn-cancel:hover{background:#f5f5f5;}
 </style>
 </head>
 <body class="antialiased">
@@ -114,12 +181,8 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div id="navInner" class="flex items-center justify-between h-14 sm:h-16 mt-2 sm:mt-3 rounded-2xl px-3 sm:px-4">
       <a href="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
-    <img
-        src="/uploads/engage.png"
-        alt="Engage Clinic logo"
-        class="h-14 w-auto object-contain"
-    >
-</a>
+        <img src="/uploads/engage.png" alt="Engage Clinic logo" class="h-14 w-auto object-contain">
+      </a>
       <div id="desktop-nav-links" class="hidden md:flex items-center gap-8">
         <a href="#services" class="nav-link">Services</a>
         <a href="#showcase" class="nav-link">How it works</a>
@@ -168,13 +231,11 @@
       </div>
     </div>
 
-    <!-- Floating dashboard-style mockup -->
     <div class="relative mt-16 max-w-4xl mx-auto">
       <div class="card p-3 md:p-4 rounded-2xl relative">
         <div class="photo-wrap rounded-xl overflow-hidden aspect-[16/8]">
-          <img src="https://images.unsplash.com/photo-1758273240631-59d44c8f5b66?fm=jpg&q=80&w=1600&auto=format&fit=crop" alt="Therapist listening attentively to a client during a counseling session" class="w-full h-full object-cover muted-photo">
+          <img src="https://images.unsplash.com/photo-1758273240631-59d44c8f5b66?fm=jpg&q=80&w=1600&auto=format&fit=crop" alt="Therapist listening attentively" class="w-full h-full object-cover muted-photo">
         </div>
-        <!-- floating glass card 1 -->
         <div class="glass hidden lg:flex absolute -left-8 top-10 rounded-2xl px-5 py-4 items-center gap-3 shadow-xl">
           <div class="icon-box">✓</div>
           <div>
@@ -182,7 +243,6 @@
             <p class="text-xs text-[var(--text-secondary)] mt-1">Tue, 4:00 PM · Dr. Zahra</p>
           </div>
         </div>
-        <!-- floating glass card 2 -->
         <div class="glass hidden lg:block absolute -right-6 bottom-10 rounded-2xl px-5 py-4 shadow-xl">
           <p class="text-xs text-[var(--text-secondary)] mb-1">Satisfaction rate</p>
           <div class="flex items-end gap-2">
@@ -209,7 +269,7 @@
   </div>
 </section>
 
-<!-- Services / Features -->
+<!-- Services -->
 <section id="services" class="py-16 md:py-24">
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div class="max-w-2xl mx-auto text-center mb-16">
@@ -218,41 +278,17 @@
       <p class="mt-4 text-[var(--text-secondary)] text-lg">Six focused programs, one integrated clinical team.</p>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <div class="card p-7">
-        <div class="icon-box">🧑‍⚕️</div>
-        <h4 class="font-bold text-lg mt-5 mb-1.5">Individual Therapy</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">One-on-one sessions using CBT, DBT, and mindfulness — tailored to your goals.</p>
-      </div>
-      <div class="card p-7">
-        <div class="icon-box">👨‍👩‍👧</div>
-        <h4 class="font-bold text-lg mt-5 mb-1.5">Family Therapy</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Rebuild communication and strengthen the relationships that matter most.</p>
-      </div>
-      <div class="card p-7">
-        <div class="icon-box">💑</div>
-        <h4 class="font-bold text-lg mt-5 mb-1.5">Couples Counseling</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Evidence-based approaches to deepen connection and resolve conflict.</p>
-      </div>
-      <div class="card p-7">
-        <div class="icon-box">🧩</div>
-        <h4 class="font-bold text-lg mt-5 mb-1.5">ABA Therapy</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">1:1 programs from 10–30 hrs/week, supervised by certified BCBAs.</p>
-      </div>
-      <div class="card p-7">
-        <div class="icon-box">🌱</div>
-        <h4 class="font-bold text-lg mt-5 mb-1.5">Speech & OT</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Supporting communication, sensory processing, and motor development.</p>
-      </div>
-      <div class="card p-7">
-        <div class="icon-box">📋</div>
-        <h4 class="font-bold text-lg mt-5 mb-1.5">Diagnostic Assessment</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Comprehensive ADOS-2, cognitive, and behavioral evaluations.</p>
-      </div>
+      <div class="card p-7"><div class="icon-box">🧑‍⚕️</div><h4 class="font-bold text-lg mt-5 mb-1.5">Individual Therapy</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">One-on-one sessions using CBT, DBT, and mindfulness — tailored to your goals.</p></div>
+      <div class="card p-7"><div class="icon-box">👨‍👩‍👧</div><h4 class="font-bold text-lg mt-5 mb-1.5">Family Therapy</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Rebuild communication and strengthen the relationships that matter most.</p></div>
+      <div class="card p-7"><div class="icon-box">💑</div><h4 class="font-bold text-lg mt-5 mb-1.5">Couples Counseling</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Evidence-based approaches to deepen connection and resolve conflict.</p></div>
+      <div class="card p-7"><div class="icon-box">🧩</div><h4 class="font-bold text-lg mt-5 mb-1.5">ABA Therapy</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">1:1 programs from 10–30 hrs/week, supervised by certified BCBAs.</p></div>
+      <div class="card p-7"><div class="icon-box">🌱</div><h4 class="font-bold text-lg mt-5 mb-1.5">Speech & OT</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Supporting communication, sensory processing, and motor development.</p></div>
+      <div class="card p-7"><div class="icon-box">📋</div><h4 class="font-bold text-lg mt-5 mb-1.5">Diagnostic Assessment</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Comprehensive ADOS-2, cognitive, and behavioral evaluations.</p></div>
     </div>
   </div>
 </section>
 
-<!-- Product showcase / how it works -->
+<!-- How it works -->
 <section id="showcase" class="py-16 md:py-24 bg-[var(--bg-secondary)] border-y border-[var(--border)]">
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div class="max-w-2xl mx-auto text-center mb-16">
@@ -262,21 +298,9 @@
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative">
       <div class="hidden lg:block absolute top-6 left-[16.6%] right-[16.6%] h-px bg-[var(--border)]"></div>
-      <div class="card p-8 relative bg-white">
-        <div class="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm mb-5">1</div>
-        <h4 class="font-bold text-lg mb-2">Pick your specialist</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Browse therapist profiles and match by specialty, language, or availability.</p>
-      </div>
-      <div class="card p-8 relative bg-white">
-        <div class="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm mb-5">2</div>
-        <h4 class="font-bold text-lg mb-2">Book instantly</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Choose a slot that works, confirm insurance coverage, and get instant confirmation.</p>
-      </div>
-      <div class="card p-8 relative bg-white">
-        <div class="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm mb-5">3</div>
-        <h4 class="font-bold text-lg mb-2">Start your sessions</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Meet in-clinic or via telehealth — track progress with your therapist over time.</p>
-      </div>
+      <div class="card p-8 relative bg-white"><div class="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm mb-5">1</div><h4 class="font-bold text-lg mb-2">Pick your specialist</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Browse therapist profiles and match by specialty, language, or availability.</p></div>
+      <div class="card p-8 relative bg-white"><div class="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm mb-5">2</div><h4 class="font-bold text-lg mb-2">Book instantly</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Choose a slot that works, confirm insurance coverage, and get instant confirmation.</p></div>
+      <div class="card p-8 relative bg-white"><div class="w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm mb-5">3</div><h4 class="font-bold text-lg mb-2">Start your sessions</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Meet in-clinic or via telehealth — track progress with your therapist over time.</p></div>
     </div>
   </div>
 </section>
@@ -289,26 +313,10 @@
       <h2 class="mt-5 text-4xl md:text-5xl font-extrabold tracking-tight">Care that's actually accessible</h2>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-      <div class="card p-6">
-        <div class="icon-box">🧠</div>
-        <h4 class="font-semibold mt-5 mb-1.5">Experienced team</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Licensed, evidence-based clinicians across every discipline.</p>
-      </div>
-      <div class="card p-6">
-        <div class="icon-box">🛡️</div>
-        <h4 class="font-semibold mt-5 mb-1.5">Fully confidential</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Private rooms, secure records, strict clinical confidentiality.</p>
-      </div>
-      <div class="card p-6">
-        <div class="icon-box">💳</div>
-        <h4 class="font-semibold mt-5 mb-1.5">Insurance-friendly</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Direct billing with Daman, Thiqa, ADNIC, AXA, and more.</p>
-      </div>
-      <div class="card p-6">
-        <div class="icon-box">🕊️</div>
-        <h4 class="font-semibold mt-5 mb-1.5">Calm environment</h4>
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">A relaxed, welcoming clinic designed for real comfort.</p>
-      </div>
+      <div class="card p-6"><div class="icon-box">🧠</div><h4 class="font-semibold mt-5 mb-1.5">Experienced team</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Licensed, evidence-based clinicians across every discipline.</p></div>
+      <div class="card p-6"><div class="icon-box">🛡️</div><h4 class="font-semibold mt-5 mb-1.5">Fully confidential</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Private rooms, secure records, strict clinical confidentiality.</p></div>
+      <div class="card p-6"><div class="icon-box">💳</div><h4 class="font-semibold mt-5 mb-1.5">Insurance-friendly</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">Direct billing with Daman, Thiqa, ADNIC, AXA, and more.</p></div>
+      <div class="card p-6"><div class="icon-box">🕊️</div><h4 class="font-semibold mt-5 mb-1.5">Calm environment</h4><p class="text-[var(--text-secondary)] text-sm leading-relaxed">A relaxed, welcoming clinic designed for real comfort.</p></div>
     </div>
   </div>
 </section>
@@ -317,22 +325,10 @@
 <section class="py-12 md:py-16 border-y border-[var(--border)] bg-[var(--bg-secondary)]">
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-      <div class="text-center">
-        <div class="stat-number">200+</div>
-        <div class="stat-label mt-1">Happy families</div>
-      </div>
-      <div class="text-center">
-        <div class="stat-number">5</div>
-        <div class="stat-label mt-1">Expert therapists</div>
-      </div>
-      <div class="text-center">
-        <div class="stat-number">95%</div>
-        <div class="stat-label mt-1">Satisfaction rate</div>
-      </div>
-      <div class="text-center">
-        <div class="stat-number">8</div>
-        <div class="stat-label mt-1">Service types</div>
-      </div>
+      <div class="text-center"><div class="stat-number">200+</div><div class="stat-label mt-1">Happy families</div></div>
+      <div class="text-center"><div class="stat-number">5</div><div class="stat-label mt-1">Expert therapists</div></div>
+      <div class="text-center"><div class="stat-number">95%</div><div class="stat-label mt-1">Satisfaction rate</div></div>
+      <div class="text-center"><div class="stat-number">8</div><div class="stat-label mt-1">Service types</div></div>
     </div>
   </div>
 </section>
@@ -345,21 +341,9 @@
       <h2 class="mt-5 text-4xl md:text-5xl font-extrabold tracking-tight">What clients tell us</h2>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      <div class="card p-7">
-        <div class="flex text-[var(--accent)] text-sm mb-4">★★★★★</div>
-        <p class="text-[var(--text)] text-sm leading-relaxed">"Engage Clinic gave me the tools to manage my anxiety. I feel like myself again."</p>
-        <p class="font-semibold mt-5 text-sm text-[var(--text-secondary)]">Noora, Umm Rashid</p>
-      </div>
-      <div class="card p-7">
-        <div class="flex text-[var(--accent)] text-sm mb-4">★★★★★</div>
-        <p class="text-[var(--text)] text-sm leading-relaxed">"Warm, professional, and truly life-changing. Highly recommend their therapy."</p>
-        <p class="font-semibold mt-5 text-sm text-[var(--text-secondary)]">Fatima Al Shamsi</p>
-      </div>
-      <div class="card p-7">
-        <div class="flex text-[var(--accent)] text-sm mb-4">★★★★★</div>
-        <p class="text-[var(--text)] text-sm leading-relaxed">"Our son has made incredible progress since starting ABA therapy. The team is amazing!"</p>
-        <p class="font-semibold mt-5 text-sm text-[var(--text-secondary)]">Reem Al Falasi</p>
-      </div>
+      <div class="card p-7"><div class="flex text-[var(--accent)] text-sm mb-4">★★★★★</div><p class="text-[var(--text)] text-sm leading-relaxed">"Engage Clinic gave me the tools to manage my anxiety. I feel like myself again."</p><p class="font-semibold mt-5 text-sm text-[var(--text-secondary)]">Noora, Umm Rashid</p></div>
+      <div class="card p-7"><div class="flex text-[var(--accent)] text-sm mb-4">★★★★★</div><p class="text-[var(--text)] text-sm leading-relaxed">"Warm, professional, and truly life-changing. Highly recommend their therapy."</p><p class="font-semibold mt-5 text-sm text-[var(--text-secondary)]">Fatima Al Shamsi</p></div>
+      <div class="card p-7"><div class="flex text-[var(--accent)] text-sm mb-4">★★★★★</div><p class="text-[var(--text)] text-sm leading-relaxed">"Our son has made incredible progress since starting ABA therapy. The team is amazing!"</p><p class="font-semibold mt-5 text-sm text-[var(--text-secondary)]">Reem Al Falasi</p></div>
     </div>
   </div>
 </section>
@@ -400,7 +384,7 @@
   </div>
 </section>
 
-<!-- FAQ Accordion -->
+<!-- FAQ -->
 <section id="faq" class="py-16 md:py-24">
   <div class="max-w-3xl mx-auto px-6 lg:px-8">
     <div class="text-center mb-14">
@@ -409,31 +393,19 @@
     </div>
     <div class="space-y-3">
       <details class="faq-item card p-6" open>
-        <summary class="flex items-center justify-between font-semibold text-base">
-          Do you accept insurance?
-          <span class="icon-box w-8 h-8 text-base">+</span>
-        </summary>
+        <summary class="flex items-center justify-between font-semibold text-base">Do you accept insurance?<span class="icon-box w-8 h-8 text-base">+</span></summary>
         <p class="text-[var(--text-secondary)] text-sm mt-4 leading-relaxed">Yes — we bill directly with Daman, Thiqa, ADNIC, AXA, and NextCare. Bring your insurance card to your first visit, or send it ahead when booking.</p>
       </details>
       <details class="faq-item card p-6">
-        <summary class="flex items-center justify-between font-semibold text-base">
-          How do I choose the right therapist?
-          <span class="icon-box w-8 h-8 text-base">+</span>
-        </summary>
+        <summary class="flex items-center justify-between font-semibold text-base">How do I choose the right therapist?<span class="icon-box w-8 h-8 text-base">+</span></summary>
         <p class="text-[var(--text-secondary)] text-sm mt-4 leading-relaxed">Tell us what you're looking for when you book and we'll match you based on specialty, language, and availability. You can switch therapists at any time.</p>
       </details>
       <details class="faq-item card p-6">
-        <summary class="flex items-center justify-between font-semibold text-base">
-          Is telehealth available?
-          <span class="icon-box w-8 h-8 text-base">+</span>
-        </summary>
+        <summary class="flex items-center justify-between font-semibold text-base">Is telehealth available?<span class="icon-box w-8 h-8 text-base">+</span></summary>
         <p class="text-[var(--text-secondary)] text-sm mt-4 leading-relaxed">Most services are available both in-clinic and via secure video sessions — pick whichever fits your week when you book.</p>
       </details>
       <details class="faq-item card p-6">
-        <summary class="flex items-center justify-between font-semibold text-base">
-          What's your cancellation policy?
-          <span class="icon-box w-8 h-8 text-base">+</span>
-        </summary>
+        <summary class="flex items-center justify-between font-semibold text-base">What's your cancellation policy?<span class="icon-box w-8 h-8 text-base">+</span></summary>
         <p class="text-[var(--text-secondary)] text-sm mt-4 leading-relaxed">You can reschedule or cancel free of charge up to 24 hours before your session. Later changes may incur a small fee.</p>
       </details>
     </div>
@@ -454,36 +426,126 @@
   </div>
 </section>
 
-<!-- Appointment + Contact -->
+<!-- Appointment + Contact - New Lead Style -->
 <section id="appointment" class="py-16 md:py-24">
   <div class="max-w-6xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12">
-    <div class="card p-8">
-      <h2 class="text-2xl font-extrabold tracking-tight">Book a session</h2>
-      <p class="text-[var(--text-secondary)] text-sm mt-1.5 mb-7">Fill in the details and we'll confirm your appointment.</p>
-      <form class="space-y-4">
-        <input type="text" placeholder="Full name" class="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input type="email" placeholder="Email" class="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]">
-          <input type="tel" placeholder="Phone" class="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]">
+    <!-- Booking Form - Lead Style -->
+    <div class="card p-8" style="background:#FFFDFA;border-radius:18px;border:1px solid #EBE4DA;">
+      <!-- Header -->
+      <div class="flex items-center gap-3 mb-6">
+        <div style="flex:1;">
+          <div style="font:600 20px 'Baloo 2';color:#16436E;">New lead — manual entry</div>
+          <div style="font:600 12px 'Nunito Sans';color:#98897A;">Walk-in, phone call, or event enquiry</div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input type="date" class="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]">
-          <input type="time" class="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]">
+        <button type="button" onclick="resetForm()" style="width:32px;height:32px;border-radius:9px;border:1px solid #E2DACE;background:#fff;color:#5A6B7E;font:800 15px/1 'Nunito Sans';cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <!-- Success Message -->
+      <div id="successMessage" style="display:none;background:#d4edda;color:#155724;padding:12px;border-radius:9px;margin-bottom:15px;font-size:14px;font-weight:600;">
+        ✅ Lead saved successfully!
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" style="display:none;background:#f8d7da;color:#721c24;padding:12px;border-radius:9px;margin-bottom:15px;font-size:14px;font-weight:600;">
+        ❌ Please fill in all required fields.
+      </div>
+
+      <!-- Form -->
+      <form id="leadForm" class="space-y-4" onsubmit="submitLead(event)">
+        <!-- CSRF Token for Laravel -->
+        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+
+        <!-- Child Name & Age -->
+        <div class="grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-3">
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Child's name *</label>
+            <input type="text" id="child_name" name="child_name" placeholder="e.g. Hamad" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;" required>
+          </div>
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Age</label>
+            <input type="text" id="child_age" name="child_age" placeholder="5" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+          </div>
         </div>
-        <select class="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]">
-          <option>Individual Therapy</option>
-          <option>Family Therapy</option>
-          <option>Couples Counseling</option>
-          <option>ABA Therapy</option>
-          <option>Speech & OT</option>
-          <option>Trauma Therapy</option>
-          <option>Child & Adolescent</option>
-          <option>Diagnostic Assessment</option>
-        </select>
-        <textarea rows="3" placeholder="Message (optional)" class="w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]"></textarea>
-        <button type="submit" class="btn-primary w-full py-3.5 text-base">Book now</button>
+
+        <!-- Parent & Phone -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Parent / guardian *</label>
+            <input type="text" id="parent_guardian_name" name="parent_guardian_name" placeholder="e.g. Mrs. Shamma Al Qubaisi" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;" required>
+          </div>
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Phone (WhatsApp)</label>
+            <input type="tel" id="phone" name="phone" placeholder="+971 5x xxx xxxx" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+          </div>
+        </div>
+
+        <!-- Source & Interested In -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Source</label>
+            <select id="source" name="source" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+              <option value="Walk-in">Walk-in</option>
+              <option value="Phone call">Phone call</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Website">Website</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Referral">Referral</option>
+              <option value="Google">Google</option>
+              <option value="Event">Event</option>
+            </select>
+          </div>
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Interested in</label>
+            <select id="interested_in" name="interested_in" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+              <option value="ABA therapy">ABA therapy</option>
+              <option value="Speech therapy">Speech therapy</option>
+              <option value="Occupational therapy">Occupational therapy</option>
+              <option value="Diagnostic assessment">Diagnostic assessment</option>
+              <option value="Early intervention">Early intervention</option>
+              <option value="Combined program">Combined program</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Insurance & Est. Value -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Insurance</label>
+            <select id="insurance" name="insurance" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+              <option value="Not sure yet">Not sure yet</option>
+              <option value="Daman">Daman</option>
+              <option value="Daman Enhanced">Daman Enhanced</option>
+              <option value="Thiqa">Thiqa</option>
+              <option value="ADNIC">ADNIC</option>
+              <option value="AXA / GIG">AXA / GIG</option>
+              <option value="Self-pay">Self-pay</option>
+            </select>
+          </div>
+          <div>
+            <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Est. monthly value (AED)</label>
+            <input type="text" id="estimated_value" name="estimated_value" placeholder="12,800" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div>
+          <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Notes</label>
+          <input type="text" id="notes" name="notes" placeholder="e.g. asked about fees and Daman coverage" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button type="submit" style="flex:1;background:#C8355F;color:#fff;border:none;border-radius:10px;padding:12px 0;font:800 13.5px 'Nunito Sans';cursor:pointer;">
+            Save lead
+          </button>
+          <button type="button" onclick="resetForm()" style="width:120px;background:#fff;color:#5A6B7E;border:1px solid #E2DACE;border-radius:10px;padding:12px 0;font:800 13.5px 'Nunito Sans';cursor:pointer;">
+            Cancel
+          </button>
+        </div>
       </form>
     </div>
+
+    <!-- Contact Side -->
     <div id="contact" class="space-y-6">
       <h2 class="text-2xl font-extrabold tracking-tight">Get in touch</h2>
       <div class="space-y-4 text-sm">
@@ -510,29 +572,9 @@
       </a>
       <p class="text-xs text-[var(--text-secondary)] mt-3">Therapy · Growth · Well-being</p>
     </div>
-    <div>
-      <h6 class="font-semibold mb-3 text-sm">Quick links</h6>
-      <ul class="text-sm space-y-2 text-[var(--text-secondary)]">
-        <li><a href="#services">Services</a></li>
-        <li><a href="#showcase">How it works</a></li>
-        <li><a href="#team">Therapists</a></li>
-        <li><a href="#faq">FAQ</a></li>
-      </ul>
-    </div>
-    <div>
-      <h6 class="font-semibold mb-3 text-sm">Services</h6>
-      <ul class="text-sm space-y-2 text-[var(--text-secondary)]">
-        <li>Individual Therapy</li>
-        <li>Family Therapy</li>
-        <li>ABA Therapy</li>
-        <li>Speech & OT</li>
-      </ul>
-    </div>
-    <div>
-      <h6 class="font-semibold mb-3 text-sm">Contact</h6>
-      <p class="text-sm text-[var(--text-secondary)]">hello@engageclinic.ae</p>
-      <p class="text-sm text-[var(--text-secondary)] mt-1">(971) 50 123 4567</p>
-    </div>
+    <div><h6 class="font-semibold mb-3 text-sm">Quick links</h6><ul class="text-sm space-y-2 text-[var(--text-secondary)]"><li><a href="#services">Services</a></li><li><a href="#showcase">How it works</a></li><li><a href="#team">Therapists</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+    <div><h6 class="font-semibold mb-3 text-sm">Services</h6><ul class="text-sm space-y-2 text-[var(--text-secondary)]"><li>Individual Therapy</li><li>Family Therapy</li><li>ABA Therapy</li><li>Speech & OT</li></ul></div>
+    <div><h6 class="font-semibold mb-3 text-sm">Contact</h6><p class="text-sm text-[var(--text-secondary)]">hello@engageclinic.ae</p><p class="text-sm text-[var(--text-secondary)] mt-1">(971) 50 123 4567</p></div>
   </div>
   <div class="max-w-7xl mx-auto px-6 lg:px-8 border-t border-[var(--border)] mt-10 pt-6 text-xs text-[var(--text-secondary)] flex flex-col md:flex-row justify-between gap-2">
     <span>© 2026 Engage Clinic. All rights reserved.</span>
@@ -541,17 +583,115 @@
 </footer>
 
 <script>
-  // mobile menu
+  // Mobile menu toggle
   const menuBtn = document.getElementById('mobile-menu-btn');
   const mobileMenu = document.getElementById('mobile-menu');
-  menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
-  document.querySelectorAll('#mobile-menu a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+  if (menuBtn && mobileMenu) {
+    menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+    document.querySelectorAll('#mobile-menu a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+  }
 
-  // close other FAQ items when one opens
+  // FAQ accordion - only one open at a time
   document.querySelectorAll('.faq-item').forEach(item => {
     item.addEventListener('toggle', () => {
       if (item.open) {
-        document.querySelectorAll('.faq-item').forEach(other => { if (other !== item) other.open = false; });
+        document.querySelectorAll('.faq-item').forEach(other => { 
+          if (other !== item) other.open = false; 
+        });
+      }
+    });
+  });
+
+  // Submit lead form
+  function submitLead(event) {
+    event.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(document.getElementById('leadForm'));
+    
+    // Show loading state on button
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+    
+    // Hide previous messages
+    document.getElementById('successMessage').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // Send to Laravel API
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+        'Accept': 'application/json',
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Show success message
+        document.getElementById('successMessage').style.display = 'block';
+        document.getElementById('successMessage').textContent = '✅ ' + data.message;
+        
+        // Reset form after successful save
+        setTimeout(() => {
+          resetForm();
+          // Hide success message after 5 seconds
+          setTimeout(() => {
+            document.getElementById('successMessage').style.display = 'none';
+          }, 5000);
+        }, 1000);
+      } else {
+        // Show error message
+        document.getElementById('errorMessage').style.display = 'block';
+        if (data.errors) {
+          const errors = Object.values(data.errors).flat().join(', ');
+          document.getElementById('errorMessage').textContent = '❌ ' + errors;
+        } else {
+          document.getElementById('errorMessage').textContent = '❌ ' + (data.message || 'Something went wrong. Please try again.');
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('errorMessage').textContent = '❌ Network error. Please check your connection and try again.';
+    })
+    .finally(() => {
+      // Restore button state
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    });
+  }
+
+  // Reset form function
+  function resetForm() {
+    document.getElementById('leadForm').reset();
+    document.getElementById('successMessage').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // Reset any validation states
+    const inputs = document.querySelectorAll('#leadForm input, #leadForm select');
+    inputs.forEach(input => {
+      input.style.borderColor = '#E2DACE';
+    });
+  }
+
+  // Real-time validation on input
+  document.querySelectorAll('#leadForm input, #leadForm select').forEach(input => {
+    input.addEventListener('blur', function() {
+      if (this.hasAttribute('required') && !this.value.trim()) {
+        this.style.borderColor = '#dc3545';
+      } else {
+        this.style.borderColor = '#E2DACE';
+      }
+    });
+    
+    input.addEventListener('input', function() {
+      if (this.style.borderColor === '#dc3545' && this.value.trim()) {
+        this.style.borderColor = '#28a745';
       }
     });
   });
