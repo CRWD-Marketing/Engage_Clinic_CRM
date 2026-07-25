@@ -437,20 +437,33 @@
           <div style="font:600 20px 'Baloo 2';color:#16436E;">New lead — manual entry</div>
           <div style="font:600 12px 'Nunito Sans';color:#98897A;">Walk-in, phone call, or event enquiry</div>
         </div>
-        <button style="width:32px;height:32px;border-radius:9px;border:1px solid #E2DACE;background:#fff;color:#5A6B7E;font:800 15px/1 'Nunito Sans';cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        <button type="button" onclick="resetForm()" style="width:32px;height:32px;border-radius:9px;border:1px solid #E2DACE;background:#fff;color:#5A6B7E;font:800 15px/1 'Nunito Sans';cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+
+      <!-- Success Message -->
+      <div id="successMessage" style="display:none;background:#d4edda;color:#155724;padding:12px;border-radius:9px;margin-bottom:15px;font-size:14px;font-weight:600;">
+        ✅ Lead saved successfully!
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorMessage" style="display:none;background:#f8d7da;color:#721c24;padding:12px;border-radius:9px;margin-bottom:15px;font-size:14px;font-weight:600;">
+        ❌ Please fill in all required fields.
       </div>
 
       <!-- Form -->
-      <form class="space-y-4">
+      <form id="leadForm" class="space-y-4" onsubmit="submitLead(event)">
+        <!-- CSRF Token for Laravel -->
+        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+
         <!-- Child Name & Age -->
         <div class="grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-3">
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Child's name *</label>
-            <input type="text" placeholder="e.g. Hamad" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+            <input type="text" id="child_name" name="child_name" placeholder="e.g. Hamad" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;" required>
           </div>
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Age</label>
-            <input type="text" placeholder="5" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+            <input type="text" id="child_age" name="child_age" placeholder="5" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
           </div>
         </div>
 
@@ -458,11 +471,11 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Parent / guardian *</label>
-            <input type="text" placeholder="e.g. Mrs. Shamma Al Qubaisi" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+            <input type="text" id="parent_guardian_name" name="parent_guardian_name" placeholder="e.g. Mrs. Shamma Al Qubaisi" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;" required>
           </div>
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Phone (WhatsApp)</label>
-            <input type="tel" placeholder="+971 5x xxx xxxx" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+            <input type="tel" id="phone" name="phone" placeholder="+971 5x xxx xxxx" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
           </div>
         </div>
 
@@ -470,26 +483,26 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Source</label>
-            <select style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
-              <option>Walk-in</option>
-              <option>Phone call</option>
-              <option>WhatsApp</option>
-              <option>Website</option>
-              <option>Instagram</option>
-              <option>Referral</option>
-              <option>Google</option>
-              <option>Event</option>
+            <select id="source" name="source" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+              <option value="Walk-in">Walk-in</option>
+              <option value="Phone call">Phone call</option>
+              <option value="WhatsApp">WhatsApp</option>
+              <option value="Website">Website</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Referral">Referral</option>
+              <option value="Google">Google</option>
+              <option value="Event">Event</option>
             </select>
           </div>
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Interested in</label>
-            <select style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
-              <option>ABA therapy</option>
-              <option>Speech therapy</option>
-              <option>Occupational therapy</option>
-              <option>Diagnostic assessment</option>
-              <option>Early intervention</option>
-              <option>Combined program</option>
+            <select id="interested_in" name="interested_in" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+              <option value="ABA therapy">ABA therapy</option>
+              <option value="Speech therapy">Speech therapy</option>
+              <option value="Occupational therapy">Occupational therapy</option>
+              <option value="Diagnostic assessment">Diagnostic assessment</option>
+              <option value="Early intervention">Early intervention</option>
+              <option value="Combined program">Combined program</option>
             </select>
           </div>
         </div>
@@ -498,32 +511,36 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Insurance</label>
-            <select style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
-              <option>Not sure yet</option>
-              <option>Daman</option>
-              <option>Daman Enhanced</option>
-              <option>Thiqa</option>
-              <option>ADNIC</option>
-              <option>AXA / GIG</option>
-              <option>Self-pay</option>
+            <select id="insurance" name="insurance" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+              <option value="Not sure yet">Not sure yet</option>
+              <option value="Daman">Daman</option>
+              <option value="Daman Enhanced">Daman Enhanced</option>
+              <option value="Thiqa">Thiqa</option>
+              <option value="ADNIC">ADNIC</option>
+              <option value="AXA / GIG">AXA / GIG</option>
+              <option value="Self-pay">Self-pay</option>
             </select>
           </div>
           <div>
             <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Est. monthly value (AED)</label>
-            <input type="text" placeholder="12,800" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+            <input type="text" id="estimated_value" name="estimated_value" placeholder="12,800" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
           </div>
         </div>
 
         <!-- Notes -->
         <div>
           <label style="font:700 10.5px 'Nunito Sans';color:#98897A;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:5px;">Notes</label>
-          <input type="text" placeholder="e.g. asked about fees and Daman coverage" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
+          <input type="text" id="notes" name="notes" placeholder="e.g. asked about fees and Daman coverage" style="width:100%;padding:10px 13px;border:1px solid #E2DACE;border-radius:9px;background:#F6F3EE;font:700 13px 'Nunito Sans';color:#2B3A4C;outline:none;">
         </div>
 
         <!-- Buttons -->
         <div style="display:flex;gap:10px;margin-top:8px;">
-          <button type="submit" style="flex:1;background:#C8355F;color:#fff;border:none;border-radius:10px;padding:12px 0;font:800 13.5px 'Nunito Sans';cursor:pointer;">Save lead</button>
-          <button type="reset" style="width:120px;background:#fff;color:#5A6B7E;border:1px solid #E2DACE;border-radius:10px;padding:12px 0;font:800 13.5px 'Nunito Sans';cursor:pointer;">Cancel</button>
+          <button type="submit" style="flex:1;background:#C8355F;color:#fff;border:none;border-radius:10px;padding:12px 0;font:800 13.5px 'Nunito Sans';cursor:pointer;">
+            Save lead
+          </button>
+          <button type="button" onclick="resetForm()" style="width:120px;background:#fff;color:#5A6B7E;border:1px solid #E2DACE;border-radius:10px;padding:12px 0;font:800 13.5px 'Nunito Sans';cursor:pointer;">
+            Cancel
+          </button>
         </div>
       </form>
     </div>
@@ -566,15 +583,115 @@
 </footer>
 
 <script>
+  // Mobile menu toggle
   const menuBtn = document.getElementById('mobile-menu-btn');
   const mobileMenu = document.getElementById('mobile-menu');
-  menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
-  document.querySelectorAll('#mobile-menu a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+  if (menuBtn && mobileMenu) {
+    menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+    document.querySelectorAll('#mobile-menu a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.add('hidden')));
+  }
 
+  // FAQ accordion - only one open at a time
   document.querySelectorAll('.faq-item').forEach(item => {
     item.addEventListener('toggle', () => {
       if (item.open) {
-        document.querySelectorAll('.faq-item').forEach(other => { if (other !== item) other.open = false; });
+        document.querySelectorAll('.faq-item').forEach(other => { 
+          if (other !== item) other.open = false; 
+        });
+      }
+    });
+  });
+
+  // Submit lead form
+  function submitLead(event) {
+    event.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(document.getElementById('leadForm'));
+    
+    // Show loading state on button
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Saving...';
+    submitBtn.disabled = true;
+    
+    // Hide previous messages
+    document.getElementById('successMessage').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // Send to Laravel API
+    fetch('/api/leads', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+        'Accept': 'application/json',
+      },
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Show success message
+        document.getElementById('successMessage').style.display = 'block';
+        document.getElementById('successMessage').textContent = '✅ ' + data.message;
+        
+        // Reset form after successful save
+        setTimeout(() => {
+          resetForm();
+          // Hide success message after 5 seconds
+          setTimeout(() => {
+            document.getElementById('successMessage').style.display = 'none';
+          }, 5000);
+        }, 1000);
+      } else {
+        // Show error message
+        document.getElementById('errorMessage').style.display = 'block';
+        if (data.errors) {
+          const errors = Object.values(data.errors).flat().join(', ');
+          document.getElementById('errorMessage').textContent = '❌ ' + errors;
+        } else {
+          document.getElementById('errorMessage').textContent = '❌ ' + (data.message || 'Something went wrong. Please try again.');
+        }
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      document.getElementById('errorMessage').style.display = 'block';
+      document.getElementById('errorMessage').textContent = '❌ Network error. Please check your connection and try again.';
+    })
+    .finally(() => {
+      // Restore button state
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    });
+  }
+
+  // Reset form function
+  function resetForm() {
+    document.getElementById('leadForm').reset();
+    document.getElementById('successMessage').style.display = 'none';
+    document.getElementById('errorMessage').style.display = 'none';
+    
+    // Reset any validation states
+    const inputs = document.querySelectorAll('#leadForm input, #leadForm select');
+    inputs.forEach(input => {
+      input.style.borderColor = '#E2DACE';
+    });
+  }
+
+  // Real-time validation on input
+  document.querySelectorAll('#leadForm input, #leadForm select').forEach(input => {
+    input.addEventListener('blur', function() {
+      if (this.hasAttribute('required') && !this.value.trim()) {
+        this.style.borderColor = '#dc3545';
+      } else {
+        this.style.borderColor = '#E2DACE';
+      }
+    });
+    
+    input.addEventListener('input', function() {
+      if (this.style.borderColor === '#dc3545' && this.value.trim()) {
+        this.style.borderColor = '#28a745';
       }
     });
   });
