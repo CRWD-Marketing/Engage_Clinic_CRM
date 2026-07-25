@@ -114,10 +114,12 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div id="navInner" class="flex items-center justify-between h-14 sm:h-16 mt-2 sm:mt-3 rounded-2xl px-3 sm:px-4">
       <a href="/" class="flex items-center gap-2 font-bold text-lg tracking-tight">
-        <span class="bg-white rounded-lg p-1.5 flex items-center justify-center">
-          <img src="/uploads/engage.png" alt="Engage Clinic logo" class="h-9 w-auto object-contain">
-        </span>
-      </a>
+    <img
+        src="/uploads/engage.png"
+        alt="Engage Clinic logo"
+        class="h-14 w-auto object-contain"
+    >
+</a>
       <div id="desktop-nav-links" class="hidden md:flex items-center gap-8">
         <a href="#services" class="nav-link">Services</a>
         <a href="#showcase" class="nav-link">How it works</a>
