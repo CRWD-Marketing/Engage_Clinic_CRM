@@ -714,7 +714,7 @@
       if (this.hasAttribute('required') && !this.value.trim()) {
         this.style.borderColor = '#dc3545';
       } else {
-        this.style.borderColor = '#E2DACE';
+        this.style.borderColor = '#E2DACEB';
       }
     });
     
