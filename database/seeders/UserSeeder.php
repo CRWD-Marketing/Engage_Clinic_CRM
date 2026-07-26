@@ -15,9 +15,9 @@ class UserSeeder extends Seeder
             'first_name' => 'Hong',
             'middle_name' => null,
             'last_name' => 'Tan',
-            'email' => 'hong@engagebehavior.com',
+            'email' => 'admin@gmail.com',
             'phone_number' => '0588556108',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('admin123'),
 
             'department' => 'EXECUTIVE',
             'role' => 'FULL_ADMIN',
