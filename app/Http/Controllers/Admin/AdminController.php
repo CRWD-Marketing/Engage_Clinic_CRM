@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class AdminController extends Controller
 {
@@ -38,6 +40,50 @@ class AdminController extends Controller
         }
 
         return view('admin.dashboard.dashboard');
+    }
+
+    public function profile()
+    {
+        if (!Auth::check()) {
+            return redirect()->route('admin.login');
+        }
+
+        $user = Auth::user();
+        return view('admin.profile.profile', compact('user'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'phone_number' => ['nullable', 'string', 'max:20'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $user->update($validated);
+
+        return back()->with('success', 'Profile updated successfully!');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return back()->with('success', 'Password updated successfully!');
     }
 
     public function leads()
@@ -100,7 +146,7 @@ class AdminController extends Controller
         $this->authorizeRoles([
             'FULL_ADMIN',
             'FINANCE',
-            'CUSTOM', // Example: Invoice & Quotation only
+            'OTHER_STAFF', // For Invoice and Quotation Only
         ]);
 
         return view('admin.billing.billing');
@@ -134,7 +180,10 @@ class AdminController extends Controller
             redirect()->route('admin.login')->send();
         }
 
-        if (!in_array(Auth::user()->role, $roles)) {
+        $userRole = Auth::user()->role;
+        
+        // Check if user's role matches any allowed role
+        if (!in_array($userRole, $roles)) {
             abort(403, 'You do not have permission to access this page.');
         }
     }

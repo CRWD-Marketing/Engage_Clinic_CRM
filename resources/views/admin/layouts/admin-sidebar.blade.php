@@ -321,6 +321,66 @@
             padding: 16px 18px 12px;
             text-align: center;
         }
+
+
+        /* Top Bar - Full width style */
+        .topbar-full {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 28px;
+            border-bottom: 1px solid #EBE4DA;
+            background: #FFFDFA;
+            flex-shrink: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        /* Top Bar - Fixed width with max-width */
+        .topbar-fixed {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 28px;
+            border-bottom: 1px solid #EBE4DA;
+            background: #FFFDFA;
+            flex-shrink: 0;
+            width: 1670px;
+            max-width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        
+        /* Top Bar - Dashboard style (negative margin) */
+        .topbar-dashboard {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 28px;
+            border-bottom: 1px solid #EBE4DA;
+            background: #FFFDFA;
+            margin: -22px -28px 18px -28px;
+        }
+        
+        /* Responsive fix for mobile */
+        @media (max-width: 768px) {
+            .topbar-fixed {
+                max-width: 100%;
+                padding: 12px 16px;
+                flex-wrap: wrap;
+            }
+            
+            .topbar-dashboard {
+                margin: -16px -16px 12px -16px;
+                padding: 12px 16px;
+                flex-wrap: wrap;
+            }
+            
+            .topbar-full {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+            }
+        }
     </style>
     
     @stack('styles')
@@ -344,10 +404,12 @@
         </div>
         
         <div class="flex items-center gap-3 p-3 rounded-xl bg-[#F8F5F0] mb-6">
-            <div class="user-avatar">{{ strtoupper(substr(Auth::user()->name ?? 'Admin', 0, 1)) }}</div>
+            <div class="user-avatar">
+                {{ Auth::user()->first_name ? strtoupper(substr(Auth::user()->first_name, 0, 1)) : (Auth::user()->name ? strtoupper(substr(Auth::user()->name, 0, 1)) : 'U') }}
+            </div>
             <div class="user-info">
-                <div class="name">{{ Auth::user()->name ?? 'Admin' }}</div>
-                <div class="role">Administrator</div>
+                <div class="name">{{ Auth::user()->full_name ?? Auth::user()->name ?? 'Admin' }}</div>
+                <div class="role">{{ Auth::user()->role ?? 'Staff' }}</div>
             </div>
         </div>
         
@@ -389,16 +451,22 @@
         <div class="absolute bottom-6 left-6 right-6">
             <div class="profile-dropdown" style="width: 100%;">
                 <div onclick="toggleDropdown()" class="dropdown-trigger">
-                    <div class="user-avatar" style="width: 32px; height: 32px; font-size: 11px;">{{ strtoupper(substr(Auth::user()->name ?? 'Admin', 0, 1)) }}</div>
+                    <div class="user-avatar" style="width: 32px; height: 32px; font-size: 11px;">
+                        {{ Auth::user()->first_name ? strtoupper(substr(Auth::user()->first_name, 0, 1)) : (Auth::user()->name ? strtoupper(substr(Auth::user()->name, 0, 1)) : 'U') }}
+                    </div>
                     <div style="flex: 1; min-width: 0;">
-                        <div style="color: #2B3A4C; font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->name ?? 'Admin' }}</div>
-                        <div style="color: #98897A; font-size: 10px;">Administrator</div>
+                        <div style="color: #2B3A4C; font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ Auth::user()->full_name ?? Auth::user()->name ?? 'Admin' }}
+                        </div>
+                        <div style="color: #98897A; font-size: 10px;">
+                            {{ Auth::user()->role ?? 'Staff' }}
+                        </div>
                     </div>
                     <i class="fas fa-chevron-down" style="color: #98897A; font-size: 11px;"></i>
                 </div>
                 
                 <div id="dropdownMenu" class="dropdown-menu">
-                    <a href="#" class="dropdown-item">
+                    <a href="{{ route('admin.profile') }}" class="dropdown-item">
                         <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
                     </a>
                     <a href="#" class="dropdown-item">
@@ -466,16 +534,22 @@
                 <!-- Profile Dropdown -->
                 <div class="profile-dropdown" style="width: 100%;">
                     <div onclick="toggleDropdown()" class="dropdown-trigger">
-                        <div class="user-avatar" style="width: 32px; height: 32px; font-size: 11px;">{{ strtoupper(substr(Auth::user()->name ?? 'Admin', 0, 1)) }}</div>
+                        <div class="user-avatar" style="width: 32px; height: 32px; font-size: 11px;">
+                            {{ Auth::user()->first_name ? strtoupper(substr(Auth::user()->first_name, 0, 1)) : (Auth::user()->name ? strtoupper(substr(Auth::user()->name, 0, 1)) : 'U') }}
+                        </div>
                         <div style="flex: 1; min-width: 0;">
-                            <div style="color: #2B3A4C; font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ Auth::user()->name ?? 'Admin' }}</div>
-                            <div style="color: #98897A; font-size: 10px;">Administrator</div>
+                            <div style="color: #2B3A4C; font-weight: 700; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {{ Auth::user()->full_name ?? Auth::user()->name ?? 'Admin' }}
+                            </div>
+                            <div style="color: #98897A; font-size: 10px;">
+                                {{ Auth::user()->role ?? 'Staff' }}
+                            </div>
                         </div>
                         <i class="fas fa-chevron-down" style="color: #98897A; font-size: 11px;"></i>
                     </div>
                     
                     <div id="desktopDropdownMenu" class="dropdown-menu">
-                        <a href="#" class="dropdown-item">
+                        <a href="{{ route('admin.profile') }}" class="dropdown-item">
                             <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
                         </a>
                         <a href="#" class="dropdown-item">

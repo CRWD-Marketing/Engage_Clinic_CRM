@@ -21,13 +21,16 @@ Route::view('/login', 'login.login')->name('login');
 | Admin Routes (Engage-Clinic prefix)
 |--------------------------------------------------------------------------
 */
-Route::prefix('Engage-Clinic')->name('admin.')->group(function () {
+Route::prefix('admin')->name('admin.')->group(function () {
     // Authentication routes (public)
     Route::get('/login', [AdminController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AdminController::class, 'login']);
     Route::post('/logout', [AdminController::class, 'logout'])->name('logout');
 
     //profile area
+    Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
+    Route::put('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile/password', [AdminController::class, 'updatePassword'])->name('profile.password');
     
     // Protected admin routes (requires authentication)
     Route::middleware(['auth'])->group(function () {
