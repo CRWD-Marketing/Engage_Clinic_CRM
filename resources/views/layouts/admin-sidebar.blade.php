@@ -466,7 +466,7 @@
                 </div>
                 
                 <div id="dropdownMenu" class="dropdown-menu">
-                    <a href="{{ route('admin.profile') }}" class="dropdown-item">
+                    <a href="{{ route('profile.index') }}" class="dropdown-item">
                         <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
                     </a>
                     <a href="#" class="dropdown-item">
@@ -549,7 +549,7 @@
                     </div>
                     
                     <div id="desktopDropdownMenu" class="dropdown-menu">
-                        <a href="{{ route('admin.profile') }}" class="dropdown-item">
+                        <a href="{{ route('profile.index') }}" class="dropdown-item">
                             <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
                         </a>
                         <a href="#" class="dropdown-item">

@@ -26,3 +26,4 @@ require __DIR__.'/billing.php';
 require __DIR__.'/user.php';
 require __DIR__.'/report.php';
 require __DIR__.'/settings.php';
+require __DIR__ . '/profile.php';

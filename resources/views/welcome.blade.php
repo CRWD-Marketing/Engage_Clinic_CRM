@@ -172,37 +172,6 @@
     font-size:13.5px;font-weight:800;cursor:pointer;
   }
   .btn-cancel:hover{background:#f5f5f5;}
-<<<<<<< HEAD
-
-  /* Get in touch - contact rows */
-  .contact-row{
-    text-decoration:none;color:inherit;
-    transition:border-color .15s, box-shadow .15s, transform .15s;
-  }
-  .contact-row:hover{
-    border-color:var(--accent);
-    box-shadow:0 4px 14px rgba(0,184,204,.12);
-    transform:translateY(-1px);
-  }
-  .contact-arrow{
-    color:var(--text-secondary);
-    opacity:0;transform:translate(-2px,2px);
-    transition:opacity .15s, transform .15s, color .15s;
-  }
-  .contact-row:hover .contact-arrow{
-    opacity:1;transform:translate(0,0);color:var(--accent);
-  }
-  .social-btn{
-    width:32px;height:32px;border-radius:9px;
-    display:flex;align-items:center;justify-content:center;
-    background:var(--accent-soft);color:var(--accent-hover);
-    border:1px solid #D7F6FB;font-size:14px;font-weight:700;
-    text-decoration:none;
-    transition:background .15s, color .15s, transform .15s;
-  }
-  .social-btn:hover{
-    background:var(--accent);color:#fff;transform:translateY(-1px);
-=======
   
   /* Map container */
   .map-container {
@@ -220,7 +189,6 @@
     width: 100%;
     height: 100%;
     border: 0;
->>>>>>> 563f7d8c29d1d47a0aa0b3d01725b3ff917d2ee5
   }
 </style>
 </head>
@@ -600,73 +568,6 @@
         <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">Get in touch</h2>
         <p class="text-[var(--text-secondary)] mt-2 text-sm leading-relaxed max-w-sm">Prefer to talk it through first? Reach us directly — we usually reply within the hour during clinic hours.</p>
       </div>
-<<<<<<< HEAD
-
-      <div class="space-y-3">
-        <a href="https://maps.google.com/?q=Khalifa+City+Abu+Dhabi+Engage+Clinic" target="_blank" rel="noopener" class="contact-row card flex items-center gap-4 p-4">
-          <span class="icon-box shrink-0">📍</span>
-          <div class="min-w-0">
-            <p class="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Location</p>
-            <p class="text-sm font-semibold mt-0.5 truncate">Khalifa City, Abu Dhabi</p>
-          </div>
-          <svg class="contact-arrow ml-auto shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-        </a>
-        <a href="tel:+971501234567" class="contact-row card flex items-center gap-4 p-4">
-          <span class="icon-box shrink-0">📞</span>
-          <div class="min-w-0">
-            <p class="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Call or WhatsApp</p>
-            <p class="text-sm font-semibold mt-0.5">(971) 50 123 4567</p>
-          </div>
-          <svg class="contact-arrow ml-auto shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-        </a>
-        <a href="mailto:hello@engageclinic.ae" class="contact-row card flex items-center gap-4 p-4">
-          <span class="icon-box shrink-0">✉️</span>
-          <div class="min-w-0">
-            <p class="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Email</p>
-            <p class="text-sm font-semibold mt-0.5 truncate">hello@engageclinic.ae</p>
-          </div>
-          <svg class="contact-arrow ml-auto shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-        </a>
-
-        <div class="card p-4">
-          <div class="flex items-center gap-4">
-            <span class="icon-box shrink-0">🕒</span>
-            <p class="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Clinic hours</p>
-          </div>
-          <div class="mt-3 pt-3 border-t border-[var(--border)] space-y-2">
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-[var(--text-secondary)]">Monday – Friday</span>
-              <span class="font-semibold">8:00 AM – 8:00 PM</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-[var(--text-secondary)]">Saturday</span>
-              <span class="font-semibold">9:00 AM – 3:00 PM</span>
-            </div>
-            <div class="flex items-center justify-between text-sm">
-              <span class="text-[var(--text-secondary)]">Sunday</span>
-              <span class="font-semibold text-[var(--text-secondary)]">Closed</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card overflow-hidden p-0">
-        <iframe
-          title="Engage Clinic location map"
-          src="https://maps.google.com/maps?q=Khalifa%20City%2C%20Abu%20Dhabi&t=&z=13&ie=UTF8&iwloc=&output=embed"
-          class="w-full h-52 grayscale-[15%]"
-          style="border:0;"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-      </div>
-
-      <div class="flex items-center gap-3 pt-1">
-        <span class="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">Follow us</span>
-        <a href="#" aria-label="Instagram" class="social-btn">◎</a>
-        <a href="#" aria-label="Facebook" class="social-btn">f</a>
-        <a href="#" aria-label="WhatsApp" class="social-btn">✆</a>
-=======
       
       <!-- Google Maps Iframe -->
       <div class="map-container" style="min-height:280px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;">
@@ -680,7 +581,6 @@
           referrerpolicy="no-referrer-when-downgrade"
           title="Engage Clinic Location">
         </iframe>
->>>>>>> 563f7d8c29d1d47a0aa0b3d01725b3ff917d2ee5
       </div>
     </div>
   </div>
