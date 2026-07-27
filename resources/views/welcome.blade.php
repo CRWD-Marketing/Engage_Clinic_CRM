@@ -172,6 +172,7 @@
     font-size:13.5px;font-weight:800;cursor:pointer;
   }
   .btn-cancel:hover{background:#f5f5f5;}
+<<<<<<< HEAD
 
   /* Get in touch - contact rows */
   .contact-row{
@@ -201,6 +202,25 @@
   }
   .social-btn:hover{
     background:var(--accent);color:#fff;transform:translateY(-1px);
+=======
+  
+  /* Map container */
+  .map-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: #f0f0f0;
+    min-height: 250px;
+  }
+  .map-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+>>>>>>> 563f7d8c29d1d47a0aa0b3d01725b3ff917d2ee5
   }
 </style>
 </head>
@@ -573,13 +593,14 @@
       </form>
     </div>
 
-    <!-- Contact Side -->
+    <!-- Contact Side with Google Maps -->
     <div id="contact" class="space-y-6">
       <span class="eyebrow"><span class="dot"></span> Contact</span>
       <div>
         <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">Get in touch</h2>
         <p class="text-[var(--text-secondary)] mt-2 text-sm leading-relaxed max-w-sm">Prefer to talk it through first? Reach us directly — we usually reply within the hour during clinic hours.</p>
       </div>
+<<<<<<< HEAD
 
       <div class="space-y-3">
         <a href="https://maps.google.com/?q=Khalifa+City+Abu+Dhabi+Engage+Clinic" target="_blank" rel="noopener" class="contact-row card flex items-center gap-4 p-4">
@@ -645,6 +666,21 @@
         <a href="#" aria-label="Instagram" class="social-btn">◎</a>
         <a href="#" aria-label="Facebook" class="social-btn">f</a>
         <a href="#" aria-label="WhatsApp" class="social-btn">✆</a>
+=======
+      
+      <!-- Google Maps Iframe -->
+      <div class="map-container" style="min-height:280px;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;">
+        <iframe 
+          src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d1455.8235078452736!2d54.3810513!3d24.4960328!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x824f161b36042481%3A0xb0645c43efcb1801!2sEngage%20Behavioral%20Learning%20Abilitation%20Center!5e0!3m2!1sen!2sae!4v1739475374654!5m2!1sen!2sae" 
+          width="100%" 
+          height="100%" 
+          style="border:0;min-height:280px;" 
+          allowfullscreen="" 
+          loading="lazy" 
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Engage Clinic Location">
+        </iframe>
+>>>>>>> 563f7d8c29d1d47a0aa0b3d01725b3ff917d2ee5
       </div>
     </div>
   </div>
@@ -774,7 +810,7 @@
       if (this.hasAttribute('required') && !this.value.trim()) {
         this.style.borderColor = '#dc3545';
       } else {
-        this.style.borderColor = '#E2DACE';
+        this.style.borderColor = '#E2DACEB';
       }
     });
     
