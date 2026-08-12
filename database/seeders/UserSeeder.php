@@ -79,6 +79,18 @@ class UserSeeder extends Seeder
                 'manager_id' => $hong->id,
             ],
 
+            // Coordinator
+            [
+                'first_name' => 'Coordinator',
+                'last_name' => 'Staff',
+                'email' => 'coordinator@engagebehavior.com',
+                'phone' => '0500000002',
+                'department' => 'COORDINATOR',
+                'role' => 'COORDINATOR',
+                'manager_id' => $cherry->id,
+                'notes' => 'Scheduling, client communication, intake coordination',
+            ],
+
             // Sales
             [
                 'first_name' => 'Cindy Marie',

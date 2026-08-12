@@ -1,13 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Report\ReportController;
 
+Route::middleware(['auth'])->group(function () {
 
-Route::middleware(['auth'])
-    ->group(function () {
+    Route::get('/reports', [ReportController::class, 'index'])
+        ->name('reports.index');
 
-        Route::get('/reports', [ReportController::class, 'index'])
-            ->name('reports.index');
-
-    });
+});

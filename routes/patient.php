@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\PatientController;
+use App\Http\Controllers\Patient\PatientController;
 
 
 Route::middleware(['auth'])

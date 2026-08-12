@@ -24,7 +24,6 @@ class LeadController extends Controller
         // Search
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-
             $query->where(function ($q) use ($search) {
                 $q->where('child_name', 'LIKE', "%{$search}%")
                     ->orWhere('parent_guardian_name', 'LIKE', "%{$search}%")
@@ -44,8 +43,8 @@ class LeadController extends Controller
         ];
 
         $totalValue = $leads->sum(function ($lead) {
+            // Clean the value before summing
             $value = preg_replace('/[^0-9.]/', '', $lead->estimated_value);
-
             return (float) $value;
         });
 
@@ -82,33 +81,25 @@ class LeadController extends Controller
         ]);
 
         if ($validator->fails()) {
-
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
                     'errors' => $validator->errors()
                 ], 422);
             }
-
-            return back()
-                ->withErrors($validator)
-                ->withInput();
+            return back()->withErrors($validator)->withInput();
         }
 
         $data = $request->all();
 
+        // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
-            $data['estimated_value'] = preg_replace(
-                '/[^0-9.]/',
-                '',
-                $data['estimated_value']
-            );
+            $data['estimated_value'] = $this->cleanEstimatedValue($data['estimated_value']);
         }
 
         $lead = Lead::create($data);
 
         if ($request->ajax() || $request->wantsJson()) {
-
             return response()->json([
                 'success' => true,
                 'message' => 'Lead created successfully!',
@@ -127,13 +118,11 @@ class LeadController extends Controller
     public function show(Request $request, Lead $lead)
     {
         if ($request->ajax() || $request->wantsJson()) {
-
             return response()->json([
                 'success' => true,
                 'lead' => $lead
             ]);
         }
-
         return view('lead.show', compact('lead'));
     }
 
@@ -164,34 +153,25 @@ class LeadController extends Controller
         ]);
 
         if ($validator->fails()) {
-
             if ($request->ajax() || $request->wantsJson()) {
-
                 return response()->json([
                     'success' => false,
                     'errors' => $validator->errors()
                 ], 422);
             }
-
-            return back()
-                ->withErrors($validator)
-                ->withInput();
+            return back()->withErrors($validator)->withInput();
         }
 
         $data = $request->all();
 
+        // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
-            $data['estimated_value'] = preg_replace(
-                '/[^0-9.]/',
-                '',
-                $data['estimated_value']
-            );
+            $data['estimated_value'] = $this->cleanEstimatedValue($data['estimated_value']);
         }
 
         $lead->update($data);
 
         if ($request->ajax() || $request->wantsJson()) {
-
             return response()->json([
                 'success' => true,
                 'message' => 'Lead updated successfully!',
@@ -210,7 +190,6 @@ class LeadController extends Controller
     public function destroy(Lead $lead)
     {
         $lead->delete();
-
         return redirect()
             ->route('leads.index')
             ->with('success', 'Lead deleted successfully!');
@@ -226,7 +205,6 @@ class LeadController extends Controller
         ]);
 
         if ($validator->fails()) {
-
             return response()->json([
                 'success' => false,
                 'errors' => $validator->errors(),
@@ -263,7 +241,6 @@ class LeadController extends Controller
         ]);
 
         if ($validator->fails()) {
-
             return response()->json([
                 'success' => false,
                 'errors' => $validator->errors()
@@ -272,13 +249,9 @@ class LeadController extends Controller
 
         $data = $request->all();
 
+        // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
-
-            $data['estimated_value'] = preg_replace(
-                '/[^0-9.]/',
-                '',
-                $data['estimated_value']
-            );
+            $data['estimated_value'] = $this->cleanEstimatedValue($data['estimated_value']);
         }
 
         $lead = Lead::create($data);
@@ -288,6 +261,29 @@ class LeadController extends Controller
             'message' => 'Lead saved successfully!',
             'lead' => $lead
         ], 201);
+    }
+
+    /**
+     * Get lead count for dashboard badges
+     */
+    public function getLeadCount(Request $request)
+    {
+        $count = Lead::count();
+        
+        // Get count by status
+        $statusCounts = [
+            'new' => Lead::where('status', 'new')->count(),
+            'contacted' => Lead::where('status', 'contacted')->count(),
+            'assessment_booked' => Lead::where('status', 'assessment_booked')->count(),
+            'assessment_done' => Lead::where('status', 'assessment_done')->count(),
+            'enrolled' => Lead::where('status', 'enrolled')->count(),
+        ];
+        
+        return response()->json([
+            'success' => true,
+            'count' => $count,
+            'status_counts' => $statusCounts
+        ]);
     }
 
     /**
@@ -306,9 +302,7 @@ class LeadController extends Controller
         ];
 
         $data = [];
-
         foreach ($statuses as $status) {
-
             $data[$status] = $leads
                 ->where('status', $status)
                 ->values();
@@ -318,5 +312,35 @@ class LeadController extends Controller
             'success' => true,
             'data' => $data
         ]);
+    }
+
+    /**
+     * Clean estimated value to only contain numbers and decimal points
+     */
+    private function cleanEstimatedValue($value)
+    {
+        // Remove all non-numeric characters except decimal point
+        $cleaned = preg_replace('/[^0-9.]/', '', $value);
+        
+        // Remove multiple decimal points (keep only first one)
+        $parts = explode('.', $cleaned);
+        if (count($parts) > 2) {
+            $cleaned = $parts[0] . '.' . implode('', array_slice($parts, 1));
+        }
+        
+        // If value starts with decimal point, add leading zero
+        if (strlen($cleaned) > 0 && $cleaned[0] === '.') {
+            $cleaned = '0' . $cleaned;
+        }
+        
+        // Remove leading zeros (except when it's "0.")
+        if (strlen($cleaned) > 1 && $cleaned[0] === '0' && $cleaned[1] !== '.') {
+            $cleaned = ltrim($cleaned, '0');
+            if ($cleaned === '' || $cleaned === '.') {
+                $cleaned = '0';
+            }
+        }
+        
+        return $cleaned;
     }
 }

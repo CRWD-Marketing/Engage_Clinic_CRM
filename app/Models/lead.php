@@ -44,7 +44,46 @@ class Lead extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'estimated_value' => 'decimal:2',
     ];
+
+    /**
+     * The calendar sessions booked for this child.
+     */
+    public function calendarSessions()
+    {
+        return $this->hasMany(CalendarSession::class, 'patient_id');
+    }
+
+    /**
+     * Set the estimated value attribute - ensures only numbers and decimal points.
+     */
+    public function setEstimatedValueAttribute($value)
+    {
+        // Remove all non-numeric characters except decimal point
+        $cleaned = preg_replace('/[^0-9.]/', '', $value);
+        
+        // Remove multiple decimal points (keep only first one)
+        $parts = explode('.', $cleaned);
+        if (count($parts) > 2) {
+            $cleaned = $parts[0] . '.' . implode('', array_slice($parts, 1));
+        }
+        
+        // If value starts with decimal point, add leading zero
+        if (strlen($cleaned) > 0 && $cleaned[0] === '.') {
+            $cleaned = '0' . $cleaned;
+        }
+        
+        // Remove leading zeros (except when it's "0.")
+        if (strlen($cleaned) > 1 && $cleaned[0] === '0' && $cleaned[1] !== '.') {
+            $cleaned = ltrim($cleaned, '0');
+            if ($cleaned === '' || $cleaned === '.') {
+                $cleaned = '0';
+            }
+        }
+        
+        $this->attributes['estimated_value'] = $cleaned;
+    }
 
     /**
      * Get the numeric estimated value.

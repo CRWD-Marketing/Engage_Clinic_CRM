@@ -1,11 +1,11 @@
-@extends('layouts.admin-sidebar')
+@extends('layouts.coordinator-sidebar')
 
 @section('title', 'Dashboard · Engage Clinic')
 @section('page-title', '')
 @section('page-subtitle', '')
 
 @section('content')
-    <!-- Top Bar - Matching CRM -->
+    <!-- Top Bar -->
     <div style="display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-bottom: 1px solid #EBE4DA; background: #FFFDFA; margin: -22px -28px 18px -28px;">
         <div style="flex: 1; min-width: 0;">
             <div style="font: 600 21px/1.2 'Baloo 2'; color: #16436E;">Good morning, {{ Auth::user()->name }}</div>
@@ -13,47 +13,47 @@
         </div>
         <input 
             type="text" 
-            placeholder="Search families, leads, claims…" 
+            placeholder="Search families, leads, appointments…" 
             style="width: 260px; padding: 10px 14px; border: 1px solid #E2DACE; border-radius: 10px; background: #F6F3EE; font: 600 13px 'Nunito Sans'; color: #2B3A4C; outline: none;"
         >
         <button style="background: #C8355F; color: white; border: none; border-radius: 10px; padding: 11px 18px; font: 800 13px 'Nunito Sans'; cursor: pointer;">+ New Lead</button>
     </div>
 
-    <!-- Stats Cards - 6 columns matching CRM -->
+    <!-- Stats Cards -->
     <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 18px;">
         <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px;">
             <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">New leads · week</div>
-            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">14</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: #2E7D5B;">▲ 27% vs last week</div>
+            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $newLeadsCount ?? '—' }}</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: #2E7D5B;">▲ {{ $newLeadsDelta ?? '—' }}% vs last week</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px;">
             <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Sessions today</div>
-            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">26</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: #8A7D6C;">4 rooms · 5 therapists</div>
+            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $sessionsTodayCount ?? '—' }}</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: #8A7D6C;">{{ $roomsInUseCount ?? '—' }} rooms · {{ $activeTherapistsCount ?? '—' }} therapists</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px;">
-            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Attendance · 30d</div>
-            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">92%</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: #2E7D5B;">▲ 2 pts</div>
+            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Intake calls pending</div>
+            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $pendingIntakeCallsCount ?? '—' }}</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: #B97F24;">{{ $overdueIntakeCallsCount ?? '—' }} overdue</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px;">
-            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Revenue · MTD</div>
-            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">AED 486k</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: #2E7D5B;">▲ 11% vs June</div>
+            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">No-shows · week</div>
+            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $noShowsCount ?? '—' }}</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: #B97F24;">{{ $noShowFollowUpsNeeded ?? '—' }} need follow-up</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px;">
             <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Waitlist</div>
-            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">11</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: #B97F24;">2 openings Thursday</div>
+            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $waitlistCount ?? '—' }}</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: #B97F24;">{{ $openingsThisWeek ?? '—' }} openings this week</div>
         </div>
         <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px;">
-            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Claims pending</div>
-            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">AED 73k</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: #B97F24;">5 claims · oldest 24d</div>
+            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Attendance · 30d</div>
+            <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $attendanceRate ?? '—' }}%</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: #2E7D5B;">▲ {{ $attendanceDelta ?? '—' }} pts</div>
         </div>
     </div>
 
-    <!-- Main Grid - 2 columns matching CRM -->
+    <!-- Main Grid -->
     <div style="display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; align-items: start;">
         <!-- Left Column -->
         <div style="display: flex; flex-direction: column; gap: 18px;">
@@ -137,47 +137,33 @@
                 </div>
             </div>
 
-            <!-- Lead Sources -->
+            <!-- Intake Pipeline -->
             <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 16px 20px;">
                 <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;">
-                    <div style="font: 600 16px 'Baloo 2'; color: #16436E; flex: 1;">Lead sources · this week</div>
-                    <button style="background: none; border: none; font: 800 12px 'Nunito Sans'; color: #C8355F; cursor: pointer; padding: 0;">Reports →</button>
+                    <div style="font: 600 16px 'Baloo 2'; color: #16436E; flex: 1;">Intake pipeline — awaiting scheduling</div>
+                    <button style="background: none; border: none; font: 800 12px 'Nunito Sans'; color: #C8355F; cursor: pointer; padding: 0;">View leads →</button>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 9px;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 86px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">WhatsApp</div>
-                        <div style="flex: 1; height: 10px; background: #F3EDE3; border-radius: 5px; overflow: hidden;">
-                            <div style="width: 78%; height: 100%; background: #1FA855; border-radius: 5px;"></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #F3EDE3;">
+                        <div>
+                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Noora (Umm Rashid)</div>
+                            <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">Intake form complete · requested ABA</div>
                         </div>
-                        <div style="width: 20px; font: 800 12.5px 'Nunito Sans'; color: #16436E; text-align: right;">6</div>
+                        <span style="background: #F7EEDD; color: #B97F24; border-radius: 7px; padding: 3px 9px; font: 800 11px 'Nunito Sans'; white-space: nowrap;">Awaiting call</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 86px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Instagram</div>
-                        <div style="flex: 1; height: 10px; background: #F3EDE3; border-radius: 5px; overflow: hidden;">
-                            <div style="width: 52%; height: 100%; background: #C13584; border-radius: 5px;"></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #F3EDE3;">
+                        <div>
+                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Fatima Al Shamsi</div>
+                            <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">Confirmed Sunday · needs room assignment</div>
                         </div>
-                        <div style="width: 20px; font: 800 12.5px 'Nunito Sans'; color: #16436E; text-align: right;">4</div>
+                        <span style="background: #E3F1E9; color: #2E7D5B; border-radius: 7px; padding: 3px 9px; font: 800 11px 'Nunito Sans'; white-space: nowrap;">Ready to book</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 86px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Website</div>
-                        <div style="flex: 1; height: 10px; background: #F3EDE3; border-radius: 5px; overflow: hidden;">
-                            <div style="width: 26%; height: 100%; background: #24619C; border-radius: 5px;"></div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #F3EDE3;">
+                        <div>
+                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Reem Al Falasi</div>
+                            <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">Parent training starts Saturday · notify Ms. Fatima</div>
                         </div>
-                        <div style="width: 20px; font: 800 12.5px 'Nunito Sans'; color: #16436E; text-align: right;">2</div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 86px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Referral</div>
-                        <div style="flex: 1; height: 10px; background: #F3EDE3; border-radius: 5px; overflow: hidden;">
-                            <div style="width: 13%; height: 100%; background: #B97F24; border-radius: 5px;"></div>
-                        </div>
-                        <div style="width: 20px; font: 800 12.5px 'Nunito Sans'; color: #16436E; text-align: right;">1</div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 86px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Google</div>
-                        <div style="flex: 1; height: 10px; background: #F3EDE3; border-radius: 5px; overflow: hidden;">
-                            <div style="width: 13%; height: 100%; background: #6E4FA8; border-radius: 5px;"></div>
-                        </div>
-                        <div style="width: 20px; font: 800 12.5px 'Nunito Sans'; color: #16436E; text-align: right;">1</div>
+                        <span style="background: #F9E3EA; color: #C8355F; border-radius: 7px; padding: 3px 9px; font: 800 11px 'Nunito Sans'; white-space: nowrap;">Follow up</span>
                     </div>
                 </div>
             </div>
@@ -216,17 +202,17 @@
                 </div>
             </div>
 
-            <!-- Authorizations Expiring -->
+            <!-- No-show Follow-ups -->
             <div style="background: #FBF3E4; border: 1px solid #EBDCBB; border-radius: 14px; padding: 16px 20px;">
-                <div style="font: 600 15px 'Baloo 2'; color: #8A5A10; margin-bottom: 8px;">Authorizations expiring</div>
+                <div style="font: 600 15px 'Baloo 2'; color: #8A5A10; margin-bottom: 8px;">No-shows needing follow-up</div>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <div style="display: flex; justify-content: space-between; gap: 10px;">
-                        <div style="font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Khalifa Al Mansoori</div>
-                        <div style="font: 600 12px 'Nunito Sans'; color: #8A5A10;">Daman · 34 sessions left · renews 30 Sep</div>
+                        <div style="font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Grace Okoro</div>
+                        <div style="font: 600 12px 'Nunito Sans'; color: #8A5A10;">Missed OT · Tue 9:00 · reschedule needed</div>
                     </div>
                     <div style="display: flex; justify-content: space-between; gap: 10px;">
-                        <div style="font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Grace Okoro</div>
-                        <div style="font: 600 12px 'Nunito Sans'; color: #8A5A10;">Thiqa · pre-auth pending 9 days</div>
+                        <div style="font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">Ethan Menon</div>
+                        <div style="font: 600 12px 'Nunito Sans'; color: #8A5A10;">Missed Speech · Mon 10:30 · 2nd no-show</div>
                     </div>
                 </div>
             </div>

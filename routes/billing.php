@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Admin\BillingController;
+use App\Http\Controllers\Billing\BillingController;
 
 
 Route::middleware(['auth'])

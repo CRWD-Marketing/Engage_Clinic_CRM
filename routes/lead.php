@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Lead\LeadController;
 
-
 /*
 |--------------------------------------------------------------------------
 | Admin Lead Routes
@@ -26,15 +25,24 @@ Route::middleware(['auth'])
 
         Route::resource('leads', LeadController::class);
 
-
         Route::patch(
             'leads/{lead}/status',
             [LeadController::class, 'updateStatus']
         )->name('leads.update-status');
 
+        // Add route for getting lead count (for real-time badge updates)
+        Route::get(
+            'leads/count',
+            [LeadController::class, 'getLeadCount']
+        )->name('leads.count');
+
+        // Add route for kanban data
+        Route::get(
+            'leads/kanban',
+            [LeadController::class, 'getKanbanData']
+        )->name('leads.kanban');
+
     });
-
-
 
 /*
 |--------------------------------------------------------------------------

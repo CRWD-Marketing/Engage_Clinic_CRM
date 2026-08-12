@@ -5,193 +5,594 @@
 @section('page-subtitle', '')
 
 @section('content')
+    <style>
+        /* ---- Calendar: responsive layout ---- */
+        .cal-topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px 16px;
+            flex-wrap: wrap;
+            padding: 16px 28px;
+            border-bottom: 1px solid #EBE4DA;
+            background: #FFFDFA;
+        }
+        .cal-topbar-title { flex: 1 1 220px; min-width: 200px; order: 0; }
+        .cal-daylabel { font: 600 21px/1.2 'Baloo 2'; color: #16436E; }
+        .cal-subtitle { font: 600 12.5px 'Nunito Sans'; color: #98897A; }
+        .cal-day-select, .cal-therapist-select {
+            padding: 9px 12px; border: 1px solid #E2DACE; border-radius: 9px;
+            background: #FFFFFF; font: 700 12.5px 'Nunito Sans'; color: #16436E;
+            outline: none; cursor: pointer;
+        }
+        .cal-day-select { order: 1; cursor: text; }
+        .cal-therapist-select { order: 1; max-width: 170px; }
+        .cal-book-btn {
+            background: #C8355F; color: #fff; border: none; border-radius: 10px;
+            padding: 11px 18px; font: 800 13px 'Nunito Sans'; cursor: pointer;
+            order: 2; white-space: nowrap; transition: background-color .15s ease;
+        }
+        .cal-book-btn:hover { background: #A82348; }
+        .cal-legend {
+            display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+            flex: 1 1 100%; order: 3;
+        }
+        .cal-legend-item {
+            display: flex; gap: 6px; align-items: center; white-space: nowrap;
+            font: 700 11.5px 'Nunito Sans'; color: #5A6B7E;
+            background: #FFFFFF; border: 1px solid #E2DACE; border-radius: 999px;
+            padding: 5px 11px 5px 8px; cursor: pointer; transition: all .15s ease;
+        }
+        .cal-legend-item:hover { border-color: #D8CDBC; }
+        .cal-legend-item.is-off { opacity: .45; }
+        .cal-legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+        .cal-legend-reset {
+            font: 800 11px 'Nunito Sans'; color: #98897A; background: none; border: none;
+            cursor: pointer; text-decoration: underline; padding: 5px 4px;
+        }
+        .cal-legend-reset:hover { color: #C8355F; }
+
+        .cal-grid-wrap { flex: 1; display: flex; min-height: 0; }
+        .cal-grid {
+            flex: 1; overflow: auto; padding: 20px 24px;
+            display: flex; gap: 14px; align-items: flex-start;
+            -webkit-overflow-scrolling: touch;
+            scroll-snap-type: x proximity;
+        }
+        .cal-grid::-webkit-scrollbar { height: 7px; }
+        .cal-grid::-webkit-scrollbar-track { background: transparent; }
+        .cal-grid::-webkit-scrollbar-thumb { background: #D8CDBC; border-radius: 999px; }
+        .cal-grid::-webkit-scrollbar-thumb:hover { background: #C2B4A0; }
+
+        .therapist-col {
+            width: 224px; flex-shrink: 0; background: #F6F3EE;
+            border-radius: 14px; padding: 8px; scroll-snap-align: start;
+            transition: box-shadow .15s ease;
+        }
+        .therapist-col.drag-over { box-shadow: inset 0 0 0 2px rgba(200,53,95,.35); }
+        .therapist-col.is-hidden { display: none; }
+        .therapist-col-header { background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+        .therapist-col-name { font: 600 14px 'Baloo 2'; color: #FFFFFF; }
+        .therapist-col-sub { font: 600 11px 'Nunito Sans'; color: #9FB6CC; }
+
+        .session-card { transition: transform .15s ease, box-shadow .15s ease; }
+        .session-card:hover { transform: translateY(-2px); box-shadow: 0 8px 18px -10px rgba(22,42,60,.3); }
+        .session-card.is-hidden { display: none; }
+
+        .col-empty {
+            text-align: center; color: #B0A493; font: 600 11.5px 'Nunito Sans';
+            padding: 16px 4px;
+        }
+
+        @media (max-width: 640px) {
+            .cal-topbar { padding: 12px 14px; gap: 10px; }
+            .cal-daylabel { font-size: 17px; }
+            .cal-subtitle { display: none; } /* helper hint takes too much vertical space on phones */
+            .cal-book-btn { flex: 1 1 auto; text-align: center; }
+            .cal-day-select, .cal-therapist-select { flex: 1 1 auto; }
+            .cal-legend { gap: 6px; }
+            .cal-legend-item { font-size: 10.5px; padding: 4px 9px 4px 7px; }
+            .cal-grid { padding: 12px 14px; gap: 10px; }
+            .therapist-col { width: 78vw; max-width: 240px; }
+
+            #panel-inner {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                padding: 18px 16px 24px !important;
+            }
+        }
+    </style>
+
     <!-- Calendar -->
-    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; margin: -22px -28px 0 -28px;">
-        
+    <div id="calendar-root"
+         data-therapists='@json($therapistsForJs)'
+         data-leads='@json($leadsForJs)'
+         data-feed-url="{{ route('calendar.feed') }}"
+         data-store-url="{{ route('calendar.store') }}"
+         style="flex: 1; display: flex; flex-direction: column; min-height: 0; margin: -22px -28px 0 -28px;">
+
         <!-- Top Bar -->
-        <div style="display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-bottom: 1px solid #EBE4DA; background: #FFFDFA;">
-            <div style="flex: 1;">
-                <div style="font: 600 21px/1.2 'Baloo 2'; color: #16436E;">Calendar — <span>Wed</span></div>
-                <div style="font: 600 12.5px 'Nunito Sans'; color: #98897A;">Drag a card to another therapist, or use "Move to" · click Edit to modify</div>
+        <div class="cal-topbar">
+            <div class="cal-topbar-title">
+                <div class="cal-daylabel">Calendar — <span id="day-label">Today</span></div>
+                <div class="cal-subtitle">Drag a card to another therapist, or use the dropdown · click a legend tag to filter · click Edit to modify</div>
             </div>
-            <select style="padding: 9px 12px; border: 1px solid #E2DACE; border-radius: 9px; background: #FFFFFF; font: 700 12.5px 'Nunito Sans'; color: #16436E; outline: none;">
-                <option>Mon</option>
-                <option>Tue</option>
-                <option selected>Wed</option>
-                <option>Thu</option>
-                <option>Fri</option>
+            <select id="therapist-filter" class="cal-therapist-select">
+                <option value="">All therapists</option>
+                @foreach ($therapists as $therapist)
+                    <option value="{{ $therapist->id }}">{{ trim("{$therapist->first_name} {$therapist->last_name}") }}</option>
+                @endforeach
             </select>
-            <div style="display: flex; gap: 14px; align-items: center; font: 700 12px 'Nunito Sans'; color: #5A6B7E;">
-                <span style="display: flex; gap: 6px; align-items: center;">
-                    <span style="width: 10px; height: 10px; border-radius: 3px; background: #C8355F;"></span>ABA
-                </span>
-                <span style="display: flex; gap: 6px; align-items: center;">
-                    <span style="width: 10px; height: 10px; border-radius: 3px; background: #24619C;"></span>Speech
-                </span>
-                <span style="display: flex; gap: 6px; align-items: center;">
-                    <span style="width: 10px; height: 10px; border-radius: 3px; background: #B97F24;"></span>OT
-                </span>
-                <span style="display: flex; gap: 6px; align-items: center;">
-                    <span style="width: 10px; height: 10px; border-radius: 3px; background: #6E4FA8;"></span>Assessment
-                </span>
+            <input type="date" id="day-select" class="cal-day-select">
+            <button id="btn-book" class="cal-book-btn">+ Book session</button>
+            <div class="cal-legend" id="cal-legend">
+                <button type="button" class="cal-legend-item" data-type="ABA"><span class="cal-legend-dot" style="background:#C8355F;"></span>ABA</button>
+                <button type="button" class="cal-legend-item" data-type="Speech"><span class="cal-legend-dot" style="background:#24619C;"></span>Speech</button>
+                <button type="button" class="cal-legend-item" data-type="OT"><span class="cal-legend-dot" style="background:#B97F24;"></span>OT</button>
+                <button type="button" class="cal-legend-item" data-type="Assessment"><span class="cal-legend-dot" style="background:#6E4FA8;"></span>Assessment</button>
+                <button type="button" class="cal-legend-item" data-type="Parent training"><span class="cal-legend-dot" style="background:#2E7D5B;"></span>Parent training</button>
+                <button type="button" class="cal-legend-reset" id="legend-reset">Reset</button>
             </div>
-            <button style="background: #C8355F; color: white; border: none; border-radius: 10px; padding: 11px 18px; font: 800 13px 'Nunito Sans'; cursor: pointer;">+ Book session</button>
         </div>
-        
+
         <!-- Calendar Grid -->
-        <div style="flex: 1; display: flex; min-height: 0;">
-            <div style="flex: 1; overflow: auto; padding: 20px 24px; display: flex; gap: 14px; align-items: flex-start;">
-                
-                <!-- Dr. Noura Al Ali -->
-                <div style="width: 224px; flex-shrink: 0; background: #F6F3EE; border-radius: 14px; padding: 8px;">
-                    <div style="background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                        <div style="font: 600 14px 'Baloo 2'; color: #FFFFFF;">Dr. Noura Al Ali</div>
-                        <div style="font: 600 11px 'Nunito Sans'; color: #9FB6CC;">BCBA Supervisor · 2 sessions</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <!-- Session 1 -->
-                        <div draggable="true" style="background: #F9E7EC; border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <div style="font: 600 13px 'Baloo 2'; color: #C8355F;">09:00–10:30</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A;">90 min</div>
+        <div class="cal-grid-wrap">
+            <div id="calendar-grid" class="cal-grid">
+                @foreach ($therapists as $therapist)
+                    <div class="therapist-col" data-therapist-id="{{ $therapist->id }}">
+                        <div class="therapist-col-header">
+                            <div class="therapist-col-name">{{ trim("{$therapist->first_name} {$therapist->last_name}") }}</div>
+                            <div class="therapist-col-sub">
+                                {{ \Illuminate\Support\Str::title(str_replace('_', ' ', $therapist->department)) }} ·
+                                <span id="count-{{ $therapist->id }}">0</span> sessions
                             </div>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Khalifa Al Mansoori</div>
-                            <div style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;">ABA · Room 1</div>
-                            <select style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;">
-                                <option value="1" selected>Dr. Noura Al Ali</option>
-                                <option value="2">Ms. Fatima Zahra</option>
-                                <option value="3">Ms. Hanan Youssef</option>
-                                <option value="4">Ms. Priya Nair</option>
-                                <option value="5">Mr. James Okafor</option>
-                            </select>
-                            <button style="background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
                         </div>
-                        
-                        <!-- Session 2 -->
-                        <div draggable="true" style="background: #E3F1E9; border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <div style="font: 600 13px 'Baloo 2'; color: #2E7D5B;">16:00–16:45</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A;">45 min</div>
-                            </div>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Noora (Umm Rashid)</div>
-                            <div style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;">Parent training · Meeting room</div>
-                            <select style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;">
-                                <option value="1" selected>Dr. Noura Al Ali</option>
-                                <option value="2">Ms. Fatima Zahra</option>
-                                <option value="3">Ms. Hanan Youssef</option>
-                                <option value="4">Ms. Priya Nair</option>
-                                <option value="5">Mr. James Okafor</option>
-                            </select>
-                            <button style="background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
-                        </div>
+                        <div class="col-body" id="col-body-{{ $therapist->id }}" style="display: flex; flex-direction: column; gap: 8px; min-height: 40px;"></div>
                     </div>
-                </div>
-                
-                <!-- Ms. Fatima Zahra -->
-                <div style="width: 224px; flex-shrink: 0; background: #F6F3EE; border-radius: 14px; padding: 8px;">
-                    <div style="background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                        <div style="font: 600 14px 'Baloo 2'; color: #FFFFFF;">Ms. Fatima Zahra</div>
-                        <div style="font: 600 11px 'Nunito Sans'; color: #9FB6CC;">RBT · 1 sessions</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div draggable="true" style="background: #F9E7EC; border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <div style="font: 600 13px 'Baloo 2'; color: #C8355F;">13:30–15:30</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A;">120 min</div>
-                            </div>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Khalifa Al Mansoori</div>
-                            <div style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;">ABA · Room 1</div>
-                            <select style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;">
-                                <option value="1">Dr. Noura Al Ali</option>
-                                <option value="2" selected>Ms. Fatima Zahra</option>
-                                <option value="3">Ms. Hanan Youssef</option>
-                                <option value="4">Ms. Priya Nair</option>
-                                <option value="5">Mr. James Okafor</option>
-                            </select>
-                            <button style="background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Ms. Hanan Youssef -->
-                <div style="width: 224px; flex-shrink: 0; background: #F6F3EE; border-radius: 14px; padding: 8px;">
-                    <div style="background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                        <div style="font: 600 14px 'Baloo 2'; color: #FFFFFF;">Ms. Hanan Youssef</div>
-                        <div style="font: 600 11px 'Nunito Sans'; color: #9FB6CC;">RBT · 1 sessions</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div draggable="true" style="background: #F9E7EC; border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <div style="font: 600 13px 'Baloo 2'; color: #C8355F;">14:30–16:30</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A;">120 min</div>
-                            </div>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Layla Hassan</div>
-                            <div style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;">ABA · Room 2</div>
-                            <select style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;">
-                                <option value="1">Dr. Noura Al Ali</option>
-                                <option value="2">Ms. Fatima Zahra</option>
-                                <option value="3" selected>Ms. Hanan Youssef</option>
-                                <option value="4">Ms. Priya Nair</option>
-                                <option value="5">Mr. James Okafor</option>
-                            </select>
-                            <button style="background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Ms. Priya Nair -->
-                <div style="width: 224px; flex-shrink: 0; background: #F6F3EE; border-radius: 14px; padding: 8px;">
-                    <div style="background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                        <div style="font: 600 14px 'Baloo 2'; color: #FFFFFF;">Ms. Priya Nair</div>
-                        <div style="font: 600 11px 'Nunito Sans'; color: #9FB6CC;">Speech-Language Pathologist · 1 sessions</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div draggable="true" style="background: #E7EFF7; border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <div style="font: 600 13px 'Baloo 2'; color: #24619C;">09:30–10:15</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A;">45 min</div>
-                            </div>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Sara Al Hammadi</div>
-                            <div style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;">Speech · Room 3</div>
-                            <select style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;">
-                                <option value="1">Dr. Noura Al Ali</option>
-                                <option value="2">Ms. Fatima Zahra</option>
-                                <option value="3">Ms. Hanan Youssef</option>
-                                <option value="4" selected>Ms. Priya Nair</option>
-                                <option value="5">Mr. James Okafor</option>
-                            </select>
-                            <button style="background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Mr. James Okafor -->
-                <div style="width: 224px; flex-shrink: 0; background: #F6F3EE; border-radius: 14px; padding: 8px;">
-                    <div style="background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                        <div style="font: 600 14px 'Baloo 2'; color: #FFFFFF;">Mr. James Okafor</div>
-                        <div style="font: 600 11px 'Nunito Sans'; color: #9FB6CC;">Occupational Therapist · 1 sessions</div>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div draggable="true" style="background: #F7EEDD; border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                                <div style="font: 600 13px 'Baloo 2'; color: #B97F24;">15:00–16:00</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A;">60 min</div>
-                            </div>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">Social skills group (4)</div>
-                            <div style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;">OT · Sensory gym</div>
-                            <select style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;">
-                                <option value="1">Dr. Noura Al Ali</option>
-                                <option value="2">Ms. Fatima Zahra</option>
-                                <option value="3">Ms. Hanan Youssef</option>
-                                <option value="4">Ms. Priya Nair</option>
-                                <option value="5" selected>Mr. James Okafor</option>
-                            </select>
-                            <button style="background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
-                        </div>
-                    </div>
-                </div>
-                
+                @endforeach
             </div>
         </div>
     </div>
+
+    <!-- Card template (cloned by JS) -->
+    <template id="session-card-template">
+        <div class="session-card" draggable="true" style="border-radius: 11px; padding: 10px 13px; display: flex; flex-direction: column; gap: 6px; cursor: grab;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <div class="card-time" style="font: 600 13px 'Baloo 2';"></div>
+                <div class="card-duration" style="font: 600 10.5px 'Nunito Sans'; color: #98897A;"></div>
+            </div>
+            <div class="card-patient" style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;"></div>
+            <div class="card-meta" style="font: 600 11.5px 'Nunito Sans'; color: #8A7D6C;"></div>
+            <select class="card-therapist-select" style="width: 100%; padding: 5px 6px; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; background: #FFFFFF; font: 700 11px 'Nunito Sans'; color: #16436E; outline: none;"></select>
+            <div style="display: flex; gap: 6px;">
+                <button class="card-edit-btn" style="flex:1; background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #16436E; cursor: pointer;">Edit</button>
+                <button class="card-cancel-btn" style="flex:1; background: #FFFFFF; border: 1px solid rgba(43,58,76,0.15); border-radius: 6px; padding: 4px 0; font: 800 11px 'Nunito Sans'; color: #C8355F; cursor: pointer;">Cancel</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Book / Edit slide-out panel -->
+    <div id="session-modal" style="display:none; position:fixed; inset:0; background:rgba(22,67,110,0.15); z-index:50;">
+        <div id="panel-inner" style="position:absolute; top:0; right:0; height:100vh; width:400px; max-width:92vw; background:#FFFDFA; box-shadow:-24px 0 60px rgba(22,67,110,0.15); padding:26px 26px 30px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; border-left: 6px solid #C8355F; transition: border-left-color .15s ease;">
+
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div id="modal-title" style="font:700 20px 'Baloo 2'; color:#16436E;">Book session</div>
+                <span id="activity-color-dot" style="width:10px; height:10px; border-radius:3px; background:#C8355F; margin-left:auto;"></span>
+            </div>
+            <div id="modal-error" style="display:none; background:#F9E7EC; color:#C8355F; font:700 12px 'Nunito Sans'; padding:8px 10px; border-radius:8px;"></div>
+
+            <form id="session-form" style="display:flex; flex-direction:column; gap:16px;">
+                <input type="hidden" id="f-id" value="">
+
+                <div>
+                    <label for="f-therapist" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Therapist / Assign to</label>
+                    <select id="f-therapist" required style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; background:#FFFFFF; font:700 13.5px 'Nunito Sans'; color:#16436E; outline:none;"></select>
+                </div>
+
+                <div>
+                    <label for="f-day" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Date</label>
+                    <input type="date" id="f-day" required style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; background:#FFFFFF; font:700 13.5px 'Nunito Sans'; color:#16436E; outline:none;">
+                </div>
+
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label for="f-start" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Time</label>
+                        <input type="time" id="f-start" required style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; font:700 13.5px 'Nunito Sans'; color:#16436E;">
+                    </div>
+                    <div style="flex:1;">
+                        <label for="f-duration" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Duration</label>
+                        <select id="f-duration" required style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; background:#FFFFFF; font:700 13.5px 'Nunito Sans'; color:#16436E; outline:none;">
+                            <option value="30">30 min</option>
+                            <option value="45">45 min</option>
+                            <option value="60" selected>60 min</option>
+                            <option value="90">90 min</option>
+                            <option value="120">120 min</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="f-patient" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Patient / Activity</label>
+                    <select id="f-patient" required style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; background:#FFFFFF; font:700 13.5px 'Nunito Sans'; color:#16436E; outline:none;"></select>
+                </div>
+
+                <div>
+                    <label for="f-activity" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Type</label>
+                    <select id="f-activity" required style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; background:#FFFFFF; font:700 13.5px 'Nunito Sans'; color:#16436E; outline:none;">
+                        <option value="ABA">ABA</option>
+                        <option value="Speech">Speech</option>
+                        <option value="OT">OT</option>
+                        <option value="Assessment">Assessment</option>
+                        <option value="Supervision">Supervision</option>
+                        <option value="Parent training">Parent training</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="f-room" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Room (optional)</label>
+                    <input type="text" id="f-room" placeholder="e.g. Room 1, Sensory gym" style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; font:600 13.5px 'Nunito Sans'; color:#16436E;">
+                </div>
+
+                <div id="f-status-wrap" style="display:none;">
+                    <label for="f-status" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Status</label>
+                    <select id="f-status" style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; background:#FFFFFF; font:700 13.5px 'Nunito Sans'; color:#16436E; outline:none;">
+                        <option value="scheduled">Scheduled</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="no_show">No show</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="f-notes" style="display:block; font:800 11px 'Nunito Sans'; letter-spacing:.04em; color:#8A7D6C; text-transform:uppercase; margin-bottom:6px;">Notes (optional)</label>
+                    <textarea id="f-notes" rows="3" style="width:100%; padding:11px 10px; border:1px solid #E2DACE; border-radius:9px; font:600 13.5px 'Nunito Sans'; color:#16436E; resize:vertical;"></textarea>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px;">
+                    <button type="submit" id="save-btn" style="background:#C8355F; border:none; border-radius:10px; padding:13px 0; font:800 13.5px 'Nunito Sans'; color:#FFFFFF; cursor:pointer; transition: background-color .15s ease;">Save</button>
+                    <button type="button" id="modal-cancel" style="background:#FFFFFF; border:1px solid #E2DACE; border-radius:10px; padding:13px 0; font:800 13.5px 'Nunito Sans'; color:#5A6B7E; cursor:pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const root = document.getElementById('calendar-root');
+        const THERAPISTS = JSON.parse(root.dataset.therapists);
+        const LEADS = JSON.parse(root.dataset.leads);
+        const FEED_URL = root.dataset.feedUrl;
+        const STORE_URL = root.dataset.storeUrl;
+        const CSRF = document.querySelector('meta[name="csrf-token"]')?.content
+            || '{{ csrf_token() }}';
+
+        const COLORS = {
+            'ABA':             { bg: '#F9E7EC', fg: '#C8355F' },
+            'Speech':          { bg: '#E7EFF7', fg: '#24619C' },
+            'OT':              { bg: '#F7EEDD', fg: '#B97F24' },
+            'Assessment':      { bg: '#EDE7F5', fg: '#6E4FA8' },
+            'Supervision':     { bg: '#F9E7EC', fg: '#C8355F' },
+            'Parent training': { bg: '#E3F1E9', fg: '#2E7D5B' },
+        };
+
+        let sessionsById = {};
+        let activeTypeFilters = new Set(); // empty = show all types
+
+        function todayIso() {
+            return new Date().toISOString().slice(0, 10);
+        }
+
+        // Parsing "YYYY-MM-DD" directly with `new Date()` reads it as UTC
+        // midnight, which can roll back a day in negative-UTC-offset zones —
+        // appending a local time avoids that shift.
+        function parseIsoDateLocal(dateStr) {
+            return new Date(`${dateStr}T00:00:00`);
+        }
+
+        function formatDayLabel(dateStr) {
+            return parseIsoDateLocal(dateStr).toLocaleDateString('en-US', {
+                weekday: 'short', month: 'short', day: 'numeric',
+            });
+        }
+
+        async function api(url, options = {}) {
+            const res = await fetch(url, {
+                ...options,
+                headers: {
+                    'X-CSRF-TOKEN': CSRF,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                    ...options.headers,
+                },
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const err = new Error(data.message || 'Request failed');
+                err.errors = data.errors || {};
+                throw err;
+            }
+            return data;
+        }
+
+        function fillOptions(select, items, valueKey, labelKey) {
+            select.innerHTML = items.map(i =>
+                `<option value="${i[valueKey]}">${i[labelKey]}</option>`
+            ).join('');
+        }
+
+        function renderColumns() {
+            THERAPISTS.forEach(t => {
+                const body = document.getElementById(`col-body-${t.id}`);
+                if (body) body.innerHTML = '';
+            });
+        }
+
+        function renderSession(s) {
+            sessionsById[s.id] = s;
+            const body = document.getElementById(`col-body-${s.therapist_id}`);
+            if (!body) return;
+
+            const tmpl = document.getElementById('session-card-template').content.cloneNode(true);
+            const card = tmpl.querySelector('.session-card');
+            const colors = COLORS[s.activity_type] || { bg: '#F6F3EE', fg: '#5A6B7E' };
+            card.style.background = colors.bg;
+            card.dataset.sessionId = s.id;
+            card.dataset.activityType = s.activity_type;
+
+            card.querySelector('.card-time').textContent = `${s.start_time}–${s.end_time}`;
+            card.querySelector('.card-time').style.color = colors.fg;
+            card.querySelector('.card-duration').textContent = `${s.duration_minutes} min`;
+            card.querySelector('.card-patient').textContent = s.patient_name;
+            card.querySelector('.card-meta').textContent = `${s.activity_type}${s.room ? ' · ' + s.room : ''}`;
+
+            const select = card.querySelector('.card-therapist-select');
+            fillOptions(select, THERAPISTS, 'id', 'name');
+            select.value = s.therapist_id;
+            select.addEventListener('change', () => reassignTherapist(s.id, select.value));
+
+            card.querySelector('.card-edit-btn').addEventListener('click', () => openModal(s));
+            card.querySelector('.card-cancel-btn').addEventListener('click', () => cancelSession(s.id));
+
+            card.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', String(s.id));
+            });
+
+            body.appendChild(card);
+        }
+
+        function refreshCounts() {
+            THERAPISTS.forEach(t => {
+                const body = document.getElementById(`col-body-${t.id}`);
+                if (!body) return;
+                const visibleCards = body.querySelectorAll('.session-card:not(.is-hidden)').length;
+                document.getElementById(`count-${t.id}`).textContent = visibleCards;
+
+                let emptyMsg = body.querySelector('.col-empty');
+                if (visibleCards === 0) {
+                    if (!emptyMsg) {
+                        emptyMsg = document.createElement('div');
+                        emptyMsg.className = 'col-empty';
+                        body.appendChild(emptyMsg);
+                    }
+                    emptyMsg.textContent = body.querySelector('.session-card')
+                        ? 'No sessions match filter'
+                        : 'No sessions';
+                } else if (emptyMsg) {
+                    emptyMsg.remove();
+                }
+            });
+        }
+
+        // Applies both the therapist column filter and the activity-type card
+        // filter to whatever is currently rendered, without re-fetching.
+        function applyFilters() {
+            const therapistId = document.getElementById('therapist-filter').value;
+
+            document.querySelectorAll('.therapist-col').forEach(col => {
+                const matches = !therapistId || col.dataset.therapistId === therapistId;
+                col.classList.toggle('is-hidden', !matches);
+            });
+
+            document.querySelectorAll('.session-card').forEach(card => {
+                const matches = activeTypeFilters.size === 0 || activeTypeFilters.has(card.dataset.activityType);
+                card.classList.toggle('is-hidden', !matches);
+            });
+
+            refreshCounts();
+        }
+
+        async function loadFeed() {
+            const date = document.getElementById('day-select').value || todayIso();
+            document.getElementById('day-label').textContent = formatDayLabel(date);
+
+            renderColumns();
+            sessionsById = {};
+
+            const sessions = await api(`${FEED_URL}?start=${date}&end=${date}`);
+            sessions
+                .sort((a, b) => a.start_time.localeCompare(b.start_time))
+                .forEach(renderSession);
+
+            applyFilters();
+        }
+
+        async function reassignTherapist(sessionId, newTherapistId) {
+            const s = sessionsById[sessionId];
+            if (!s) return;
+            try {
+                await api(`${FEED_URL.replace('/feed', '')}/${sessionId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        therapist_id: newTherapistId,
+                        patient_id: s.patient_id,
+                        activity_type: s.activity_type,
+                        session_date: s.session_date || document.getElementById('day-select').value,
+                        start_time: s.start_time,
+                        duration_minutes: s.duration_minutes,
+                        room: s.room,
+                        status: s.status || 'scheduled',
+                        notes: s.notes || '',
+                    }),
+                });
+                loadFeed();
+            } catch (e) {
+                alert(e.message + (e.errors?.start_time ? '\n' + e.errors.start_time[0] : ''));
+                loadFeed();
+            }
+        }
+
+        async function cancelSession(sessionId) {
+            if (!confirm('Cancel this session?')) return;
+            await api(`${FEED_URL.replace('/feed', '')}/${sessionId}`, { method: 'DELETE' });
+            loadFeed();
+        }
+
+        // Drag & drop onto a column reassigns the therapist
+        document.querySelectorAll('.therapist-col').forEach(col => {
+            col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
+            col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+            col.addEventListener('drop', (e) => {
+                e.preventDefault();
+                col.classList.remove('drag-over');
+                const sessionId = e.dataTransfer.getData('text/plain');
+                reassignTherapist(sessionId, col.dataset.therapistId);
+            });
+        });
+
+        // --- Therapist filter (column visibility) ---
+        document.getElementById('therapist-filter').addEventListener('change', applyFilters);
+
+        // --- Activity-type legend filter (card visibility) ---
+        // Clicking a tag shows ONLY that type (and any others already toggled on);
+        // clicking it again removes it from the active set. With nothing toggled,
+        // everything shows — "Reset" clears back to that all-visible state.
+        document.querySelectorAll('.cal-legend-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                if (activeTypeFilters.has(type)) {
+                    activeTypeFilters.delete(type);
+                    btn.classList.remove('is-off');
+                } else {
+                    activeTypeFilters.add(type);
+                    btn.classList.add('is-off');
+                }
+                // If every tag ends up toggled "on" that's equivalent to "no filter" —
+                // reset the set so newly-created sessions of other types still show.
+                if (activeTypeFilters.size === document.querySelectorAll('.cal-legend-item').length) {
+                    activeTypeFilters.clear();
+                    document.querySelectorAll('.cal-legend-item').forEach(b => b.classList.remove('is-off'));
+                }
+                applyFilters();
+            });
+        });
+        document.getElementById('legend-reset').addEventListener('click', () => {
+            activeTypeFilters.clear();
+            document.querySelectorAll('.cal-legend-item').forEach(b => b.classList.remove('is-off'));
+            document.getElementById('therapist-filter').value = '';
+            applyFilters();
+        });
+
+        // --- Slide-out panel (book / edit) ---
+        const modal = document.getElementById('session-modal');
+        const form = document.getElementById('session-form');
+        const panelInner = document.getElementById('panel-inner');
+        const activityDot = document.getElementById('activity-color-dot');
+        const saveBtn = document.getElementById('save-btn');
+        const activitySelect = document.getElementById('f-activity');
+
+        // Recolors the panel's left accent border, the small dot next to the
+        // title, and the Save button — all matched to the same palette used
+        // by the legend swatches and the session cards.
+        function applyActivityColor(type) {
+            const c = COLORS[type] || { bg: '#F6F3EE', fg: '#5A6B7E' };
+            panelInner.style.borderLeftColor = c.fg;
+            activityDot.style.background = c.fg;
+            saveBtn.style.background = c.fg;
+        }
+
+        activitySelect.addEventListener('change', () => applyActivityColor(activitySelect.value));
+
+        function openModal(session = null) {
+            fillOptions(document.getElementById('f-therapist'), THERAPISTS, 'id', 'name');
+            fillOptions(document.getElementById('f-patient'), LEADS, 'id', 'name');
+            document.getElementById('modal-error').style.display = 'none';
+
+            if (session) {
+                document.getElementById('modal-title').textContent = 'Edit session';
+                document.getElementById('f-status-wrap').style.display = 'block';
+                document.getElementById('f-id').value = session.id;
+                document.getElementById('f-therapist').value = session.therapist_id;
+                document.getElementById('f-patient').value = session.patient_id;
+                document.getElementById('f-activity').value = session.activity_type;
+                document.getElementById('f-day').value = session.session_date || document.getElementById('day-select').value;
+                document.getElementById('f-start').value = session.start_time;
+                document.getElementById('f-duration').value = session.duration_minutes;
+                document.getElementById('f-room').value = session.room || '';
+                document.getElementById('f-status').value = session.status || 'scheduled';
+                document.getElementById('f-notes').value = session.notes || '';
+            } else {
+                document.getElementById('modal-title').textContent = 'Book session';
+                document.getElementById('f-status-wrap').style.display = 'none';
+                form.reset();
+                document.getElementById('f-id').value = '';
+                document.getElementById('f-day').value = document.getElementById('day-select').value;
+            }
+
+            applyActivityColor(document.getElementById('f-activity').value);
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('btn-book').addEventListener('click', () => openModal());
+        document.getElementById('modal-cancel').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('f-id').value;
+            const payload = {
+                therapist_id: document.getElementById('f-therapist').value,
+                patient_id: document.getElementById('f-patient').value,
+                activity_type: document.getElementById('f-activity').value,
+                session_date: document.getElementById('f-day').value,
+                start_time: document.getElementById('f-start').value,
+                duration_minutes: document.getElementById('f-duration').value,
+                room: document.getElementById('f-room').value,
+                notes: document.getElementById('f-notes').value,
+            };
+            if (id) payload.status = document.getElementById('f-status').value;
+
+            const errBox = document.getElementById('modal-error');
+            errBox.style.display = 'none';
+
+            try {
+                if (id) {
+                    await api(`${FEED_URL.replace('/feed', '')}/${id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(payload),
+                    });
+                } else {
+                    await api(STORE_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(payload),
+                    });
+                }
+                closeModal();
+                loadFeed();
+            } catch (err) {
+                const firstError = Object.values(err.errors || {})[0]?.[0] || err.message;
+                errBox.textContent = firstError;
+                errBox.style.display = 'block';
+            }
+        });
+
+        document.getElementById('day-select').addEventListener('change', loadFeed);
+
+        document.getElementById('day-select').value = todayIso();
+        loadFeed();
+    })();
+    </script>
 @endsection
