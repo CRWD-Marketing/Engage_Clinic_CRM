@@ -8,7 +8,7 @@ Route::middleware(['auth'])
     ->group(function () {
 
         Route::get('/whatsapp', [WhatsappController::class, 'index'])->name('whatsapp.index');
-        Route::post('/whatsapp/send', [WhatsappController::class, 'send'])->name('whatsapp.send');
+        Route::post('/whatsapp/send', [WhatsappController::class, 'send'])->middleware('throttle:20,1')->name('whatsapp.send');
         Route::post('/whatsapp/{contact}/convert-to-lead', [WhatsappController::class, 'convertToLead'])->name('whatsapp.convertToLead');
         Route::post('/whatsapp/message/{message}/convert-to-lead', [WhatsappController::class, 'convertMessageToLead'])->name('whatsapp.message.convertToLead');
 

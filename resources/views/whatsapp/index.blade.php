@@ -62,6 +62,10 @@
         .wa-messages {
             background-image: radial-gradient(rgba(43, 58, 76, 0.05) 1px, transparent 1px);
             background-size: 22px 22px;
+            overscroll-behavior: contain;
+        }
+        .wa-contact-list, #wa-family-panel {
+            overscroll-behavior: contain;
         }
         .wa-date-divider { display: flex; align-items: center; justify-content: center; margin: 2px 0 8px; }
         .wa-date-divider span {
@@ -227,23 +231,59 @@
                     @endforelse
                 </div>
 
+                @if ($errors->any())
+                    <div style="padding: 10px 20px; background: #FDECEE; border-top: 1px solid #F3C9D5; font: 700 12.5px 'Nunito Sans'; color: #C8355F;">
+                        {{ $errors->first() }}
+                    </div>
+                @endif
+
                 <!-- Message Input -->
-                <form action="{{ route('whatsapp.send') }}" method="POST" style="display: flex; gap: 10px; padding: 14px 20px; background: #FFFDFA; border-top: 1px solid #E4DCCE;">
+                <form id="wa-send-form" action="{{ route('whatsapp.send') }}" method="POST" style="display: flex; gap: 10px; padding: 14px 20px; background: #FFFDFA; border-top: 1px solid #E4DCCE;">
                     @csrf
                     <input type="hidden" name="contact_id" value="{{ $activeContact->id }}">
                     <input
                         type="text"
                         name="message"
+                        value="{{ old('message') }}"
                         placeholder="Type a reply…"
                         required
                         class="wa-msg-input"
                         style="flex: 1; padding: 11px 16px; border: 1px solid #E2DACE; border-radius: 22px; background: #F6F3EE; font: 600 13.5px 'Nunito Sans'; color: #2B3A4C; outline: none; transition: border-color 0.12s ease, box-shadow 0.12s ease;"
                     >
                     <button type="submit" class="wa-send-btn" style="display: flex; align-items: center; gap: 7px; background: #1FA855; color: white; border: none; border-radius: 22px; padding: 0 20px; font: 800 13px 'Nunito Sans'; cursor: pointer;">
-                        Send
+                        <span class="wa-send-btn-label">Send</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </button>
                 </form>
+                <script>
+                    (function () {
+                        var messages = document.querySelector('.wa-messages');
+                        if (messages) messages.scrollTop = messages.scrollHeight;
+                    })();
+                    (function () {
+                        var form = document.getElementById('wa-send-form');
+                        if (!form) return;
+
+                        form.addEventListener('submit', function (e) {
+                            if (form.dataset.submitting === 'true') {
+                                e.preventDefault();
+                                return;
+                            }
+
+                            form.dataset.submitting = 'true';
+
+                            var btn = form.querySelector('.wa-send-btn');
+                            var label = form.querySelector('.wa-send-btn-label');
+                            var input = form.querySelector('.wa-msg-input');
+
+                            btn.disabled = true;
+                            input.readOnly = true;
+                            btn.style.opacity = '0.6';
+                            btn.style.cursor = 'not-allowed';
+                            if (label) label.textContent = 'Sending…';
+                        });
+                    })();
+                </script>
             @else
                 <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center;">
                     <div style="width: 56px; height: 56px; border-radius: 50%; background: #FFFDFA; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
@@ -256,7 +296,7 @@
         </div>
 
         <!-- Right Sidebar - Family Details -->
-        <div style="width: 290px; border-left: 1px solid #EBE4DA; background: #FFFDFA; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; overflow-y: auto;">
+        <div id="wa-family-panel" style="width: 290px; border-left: 1px solid #EBE4DA; background: #FFFDFA; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; overflow-y: auto;">
             <div style="font: 600 16px 'Baloo 2'; color: #16436E;">Family details</div>
 
             @if ($activeContact?->lead)
@@ -286,13 +326,31 @@
 
                 <a href="{{ route('leads.show', $lead->id) }}" class="wa-view-lead" style="text-align: center; background: #C8355F; color: white; border: none; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans'; cursor: pointer; text-decoration: none;">View lead</a>
             @elseif ($activeContact)
-                <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 4px;">
-                    <div style="width: 44px; height: 44px; border-radius: 50%; background: #F3EDE3; display: flex; align-items: center; justify-content: center;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="#B0A493" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke="#B0A493" stroke-width="1.6"/></svg>
+                <div style="display: flex; flex-direction: column;">
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Child</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $leadHints['child_name'] ?? '—' }} @if($leadHints['child_age'] ?? null) · {{ $leadHints['child_age'] }} yrs @endif</div>
                     </div>
-                    <div style="font: 700 12.5px 'Nunito Sans'; color: #98897A;">
-                        No linked lead for this conversation.
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Interested in</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $leadHints['interested_in'] ?? '—' }}</div>
                     </div>
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Source</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ ucfirst($activeContact->channel) }}</div>
+                    </div>
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">First contact</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $activeContact->created_at->format('M j, H:i') }}</div>
+                    </div>
+                    <div style="padding: 10px 0;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Insurance mentioned</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $leadHints['insurance'] ?? '—' }}</div>
+                    </div>
+                </div>
+
+                <div style="background: #F3EDE3; border-radius: 10px; padding: 12px 14px; font: 600 12px/1.5 'Nunito Sans'; color: #5A6B7E;">
+                    Detected automatically from the conversation — no lead created yet. Review and convert when ready.
                 </div>
 
                 <form action="{{ route('whatsapp.convertToLead', $activeContact->id) }}" method="POST">

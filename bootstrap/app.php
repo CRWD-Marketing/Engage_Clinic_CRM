@@ -30,6 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Http\Exceptions\ThrottleRequestsException $e, \Illuminate\Http\Request $request) {
+            if (! $request->expectsJson()) {
+                return back()->withErrors(['message' => 'You\'re sending too fast. Please wait a moment and try again.']);
+            }
+        });
     })
     ->create();

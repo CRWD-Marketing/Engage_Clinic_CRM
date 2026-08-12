@@ -25,16 +25,81 @@ class WhatsappController extends Controller
             : $contacts->first();
 
         $messages = collect();
+        $leadHints = [];
 
         if ($activeContact) {
             $messages = $activeContact->messages()->orderBy('sent_at')->get();
+
+            if (! $activeContact->lead_id) {
+                $leadHints = $this->extractLeadHints($messages);
+            }
 
             if ($activeContact->unread_count > 0) {
                 $activeContact->update(['unread_count' => 0]);
             }
         }
 
-        return view('whatsapp.index', compact('contacts', 'activeContact', 'messages'));
+        return view('whatsapp.index', compact('contacts', 'activeContact', 'messages', 'leadHints'));
+    }
+
+    /**
+     * Best-effort scan of a conversation's inbound messages for lead details a family
+     * has already volunteered - child's name/age, service + hours interested in, and
+     * any insurance provider mentioned - so "Convert to Lead" doesn't start blank.
+     */
+    private function extractLeadHints($messages): array
+    {
+        $text = $messages->where('direction', 'inbound')->pluck('body')->filter()->implode(' . ');
+
+        $childName = null;
+        $childAge = null;
+
+        if (preg_match('/\bmy\s+(?:son|daughter|child|kid)\s+([A-Z][A-Za-z\'-]+)\s+is\s+(\d{1,2})\b/i', $text, $m)) {
+            $childName = $m[1];
+            $childAge = (int) $m[2];
+        }
+
+        $insurers = [
+            'Daman', 'Thiqa', 'ADNIC', 'AXA', 'Bupa', 'Cigna', 'MetLife', 'NextCare',
+            'Oman Insurance', 'Al Madallah', 'Almadallah', 'Saico', 'Orient Insurance',
+            'Union Insurance', 'National Health Insurance', 'Neuron',
+        ];
+        $insurance = null;
+
+        foreach ($insurers as $insurer) {
+            if (stripos($text, $insurer) !== false) {
+                $insurance = $insurer;
+                break;
+            }
+        }
+
+        $services = [
+            'ABA' => 'ABA', 'Speech' => 'Speech', 'Occupational Therapy' => 'OT', 'OT' => 'OT',
+            'Assessment' => 'Assessment', 'Parent training' => 'Parent training',
+        ];
+        $service = null;
+
+        foreach ($services as $needle => $label) {
+            if (stripos($text, $needle) !== false) {
+                $service = $label;
+                break;
+            }
+        }
+
+        $hours = null;
+
+        if (preg_match('/(\d{1,3})\s*(?:hours?|hrs?|h)\b(?:\s*(?:\/|per)\s*week)?/i', $text, $m)) {
+            $hours = $m[1].'h/week';
+        }
+
+        $interestedIn = trim(collect([$service, $hours])->filter()->implode(' ')) ?: null;
+
+        return [
+            'child_name' => $childName,
+            'child_age' => $childAge,
+            'interested_in' => $interestedIn,
+            'insurance' => $insurance,
+        ];
     }
 
     /**
@@ -163,10 +228,16 @@ class WhatsappController extends Controller
             return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
         }
 
+        $hints = $this->extractLeadHints($contact->messages()->get());
+
         $lead = Lead::create([
+            'child_name' => $hints['child_name'],
+            'child_age' => $hints['child_age'],
             'parent_guardian_name' => $contact->name,
             'phone' => $contact->channel === 'whatsapp' ? $contact->wa_id : null,
             'source' => ucfirst($contact->channel),
+            'interested_in' => $hints['interested_in'],
+            'insurance' => $hints['insurance'],
             'status' => Lead::STATUS_NEW,
         ]);
 
@@ -177,7 +248,8 @@ class WhatsappController extends Controller
 
     /**
      * Create a lead from one specific inbound message, triggered by that message's
-     * "Convert to Lead" hover action. The message's own text becomes the lead's notes.
+     * "Convert to Lead" hover action. The message's own text becomes the lead's notes,
+     * while name/age/interested-in/insurance are still drawn from the whole conversation.
      */
     public function convertMessageToLead(WhatsappMessage $message)
     {
@@ -187,10 +259,16 @@ class WhatsappController extends Controller
             return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
         }
 
+        $hints = $this->extractLeadHints($contact->messages()->get());
+
         $lead = Lead::create([
+            'child_name' => $hints['child_name'],
+            'child_age' => $hints['child_age'],
             'parent_guardian_name' => $contact->name,
             'phone' => $contact->channel === 'whatsapp' ? $contact->wa_id : null,
             'source' => ucfirst($contact->channel),
+            'interested_in' => $hints['interested_in'],
+            'insurance' => $hints['insurance'],
             'notes' => $message->body,
             'status' => Lead::STATUS_NEW,
         ]);
@@ -303,7 +381,8 @@ class WhatsappController extends Controller
 
         $senderId = $messagingItem['sender']['id'];
         $body = $messagingItem['message']['text'] ?? null;
-        $sentAt = Carbon::createFromTimestamp((int) $messagingItem['timestamp']);
+        // Messenger Platform sends `timestamp` in milliseconds, unlike WhatsApp's Cloud API (seconds).
+        $sentAt = Carbon::createFromTimestamp(intdiv((int) $messagingItem['timestamp'], 1000));
 
         $contact = WhatsappContact::firstOrNew(['wa_id' => $senderId]);
         $isNewContact = ! $contact->exists;
