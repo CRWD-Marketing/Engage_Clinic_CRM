@@ -154,6 +154,52 @@ class WhatsappController extends Controller
         return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
     }
 
+    /**
+     * Manually create a lead from a conversation, triggered by the "Convert to Lead" button.
+     */
+    public function convertToLead(WhatsappContact $contact)
+    {
+        if ($contact->lead_id) {
+            return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
+        }
+
+        $lead = Lead::create([
+            'parent_guardian_name' => $contact->name,
+            'phone' => $contact->channel === 'whatsapp' ? $contact->wa_id : null,
+            'source' => ucfirst($contact->channel),
+            'status' => Lead::STATUS_NEW,
+        ]);
+
+        $contact->update(['lead_id' => $lead->id]);
+
+        return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
+    }
+
+    /**
+     * Create a lead from one specific inbound message, triggered by that message's
+     * "Convert to Lead" hover action. The message's own text becomes the lead's notes.
+     */
+    public function convertMessageToLead(WhatsappMessage $message)
+    {
+        $contact = $message->contact;
+
+        if ($contact->lead_id) {
+            return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
+        }
+
+        $lead = Lead::create([
+            'parent_guardian_name' => $contact->name,
+            'phone' => $contact->channel === 'whatsapp' ? $contact->wa_id : null,
+            'source' => ucfirst($contact->channel),
+            'notes' => $message->body,
+            'status' => Lead::STATUS_NEW,
+        ]);
+
+        $contact->update(['lead_id' => $lead->id]);
+
+        return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
+    }
+
     private function sendWhatsappMessage(WhatsappContact $contact, string $message)
     {
         $phoneNumberId = config('services.whatsapp.phone_number_id');
@@ -199,24 +245,12 @@ class WhatsappController extends Controller
         $name = $contactPayload['profile']['name'] ?? null;
 
         $contact = WhatsappContact::firstOrNew(['wa_id' => $waId]);
-        $isNewContact = ! $contact->exists;
 
         if ($name && ! $contact->name) {
             $contact->name = $name;
         }
 
         $contact->save();
-
-        if ($isNewContact) {
-            $lead = Lead::create([
-                'parent_guardian_name' => $name,
-                'phone' => $waId,
-                'source' => 'WhatsApp',
-                'status' => Lead::STATUS_NEW,
-            ]);
-
-            $contact->update(['lead_id' => $lead->id]);
-        }
 
         $body = match ($message['type'] ?? 'text') {
             'text' => $message['text']['body'] ?? null,
@@ -286,14 +320,6 @@ class WhatsappController extends Controller
             if ($name) {
                 $contact->update(['name' => $name]);
             }
-
-            $lead = Lead::create([
-                'parent_guardian_name' => $name,
-                'source' => ucfirst($channel),
-                'status' => Lead::STATUS_NEW,
-            ]);
-
-            $contact->update(['lead_id' => $lead->id]);
         }
 
         WhatsappMessage::updateOrCreate(

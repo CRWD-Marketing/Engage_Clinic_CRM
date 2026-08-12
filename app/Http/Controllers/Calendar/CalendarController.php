@@ -17,7 +17,12 @@ class CalendarController extends Controller
      */
     public function index()
     {
-        $therapists = User::where('role', 'THERAPIST')->get();
+        // Therapists only ever see their own column; everyone else with calendar
+        // access sees the full team.
+        $therapists = auth()->user()->role === 'THERAPIST'
+            ? User::where('id', auth()->id())->get()
+            : User::where('role', 'THERAPIST')->get();
+
         $leads = Lead::orderBy('child_name')->get(['id', 'child_name']);
 
         $therapistsForJs = $therapists->map(fn ($t) => [
@@ -41,7 +46,11 @@ class CalendarController extends Controller
     {
         $query = CalendarSession::with(['therapist', 'child']);
 
-        if ($request->filled('therapist_id')) {
+        if (auth()->user()->role === 'THERAPIST') {
+            // Enforced server-side regardless of what's in the request - a therapist
+            // can't see anyone else's schedule by tampering with the query string.
+            $query->forTherapist(auth()->id());
+        } elseif ($request->filled('therapist_id')) {
             $query->forTherapist($request->therapist_id);
         }
 

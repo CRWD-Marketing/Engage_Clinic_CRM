@@ -68,6 +68,13 @@
             background: #FFFDFA; color: #8A7D6C; font: 700 10px 'Nunito Sans'; letter-spacing: 0.5px;
             text-transform: uppercase; padding: 4px 13px; border-radius: 20px; box-shadow: 0 1px 3px rgba(43,58,76,0.08);
         }
+        .wa-msg-convert-form { opacity: 0; transition: opacity 0.12s ease; margin-left: 4px; }
+        .wa-msg-row:hover .wa-msg-convert-form { opacity: 1; }
+        .wa-msg-convert-btn {
+            border: none; background: none; padding: 0; cursor: pointer;
+            font: 700 11px 'Nunito Sans'; color: #C8355F; text-decoration: underline;
+        }
+        .wa-msg-convert-btn:hover { color: #AD2A52; }
     </style>
 
     <!-- WhatsApp Inbox -->
@@ -187,11 +194,17 @@
                             <div class="wa-date-divider"><span>{{ $dividerLabel }}</span></div>
                         @endif
                         @if ($message->direction === 'inbound')
-                            <div style="display: flex; justify-content: flex-start;">
+                            <div class="wa-msg-row" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;">
                                 <div style="max-width: 62%; background: #FFFFFF; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
                                     {{ $message->body ?? '['.$message->type.']' }}
                                     <span style="font: 600 10px 'Nunito Sans'; color: #9AA79B; margin-left: 8px; white-space: nowrap;">{{ $message->sent_at->format('H:i') }}</span>
                                 </div>
+                                @if (! $activeContact->lead_id && $message->body)
+                                    <form action="{{ route('whatsapp.message.convertToLead', $message->id) }}" method="POST" class="wa-msg-convert-form">
+                                        @csrf
+                                        <button type="submit" class="wa-msg-convert-btn">Convert to Lead</button>
+                                    </form>
+                                @endif
                             </div>
                         @else
                             <div style="display: flex; justify-content: flex-end;">
@@ -272,21 +285,27 @@
                 </div>
 
                 <a href="{{ route('leads.show', $lead->id) }}" class="wa-view-lead" style="text-align: center; background: #C8355F; color: white; border: none; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans'; cursor: pointer; text-decoration: none;">View lead</a>
-
-                <div style="background: #F3EDE3; border-radius: 10px; padding: 12px 14px; font: 600 12px/1.5 'Nunito Sans'; color: #5A6B7E;">
-                    Auto-capture is on: new WhatsApp or Instagram contacts create a lead card in "New" with the first message attached.
+            @elseif ($activeContact)
+                <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 4px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: #F3EDE3; display: flex; align-items: center; justify-content: center;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="#B0A493" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke="#B0A493" stroke-width="1.6"/></svg>
+                    </div>
+                    <div style="font: 700 12.5px 'Nunito Sans'; color: #98897A;">
+                        No linked lead for this conversation.
+                    </div>
                 </div>
+
+                <form action="{{ route('whatsapp.convertToLead', $activeContact->id) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="wa-view-lead" style="width: 100%; text-align: center; background: #C8355F; color: white; border: none; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans'; cursor: pointer;">Convert to Lead</button>
+                </form>
             @else
                 <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 24px 4px;">
                     <div style="width: 44px; height: 44px; border-radius: 50%; background: #F3EDE3; display: flex; align-items: center; justify-content: center;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="#B0A493" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke="#B0A493" stroke-width="1.6"/></svg>
                     </div>
                     <div style="font: 700 12.5px 'Nunito Sans'; color: #98897A;">
-                        @if ($activeContact)
-                            No linked lead for this conversation.
-                        @else
-                            Select a conversation to see family details.
-                        @endif
+                        Select a conversation to see family details.
                     </div>
                 </div>
             @endif
