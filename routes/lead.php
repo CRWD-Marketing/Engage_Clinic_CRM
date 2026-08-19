@@ -30,6 +30,16 @@ Route::middleware(['auth'])
             [LeadController::class, 'updateStatus']
         )->name('leads.update-status');
 
+        Route::post(
+            'leads/{lead}/notes',
+            [LeadController::class, 'addNote']
+        )->name('leads.notes.store');
+
+        Route::post(
+            'leads/{lead}/convert-to-patient',
+            [LeadController::class, 'convertToPatient']
+        )->name('leads.convert-to-patient');
+
         // Add route for getting lead count (for real-time badge updates)
         Route::get(
             'leads/count',

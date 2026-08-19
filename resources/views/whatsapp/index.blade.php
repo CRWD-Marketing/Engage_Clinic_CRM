@@ -3,7 +3,7 @@
 @section('title', 'WhatsApp · Engage Clinic')
 @section('page-title', '')
 @section('page-subtitle', '')
-@section('content-class', 'content-fill-height')
+@section('content-class', 'content-fill-height content-full-width')
 
 @section('content')
     @php
@@ -324,7 +324,7 @@
                     </div>
                 </div>
 
-                <a href="{{ route('leads.show', $lead->id) }}" class="wa-view-lead" style="text-align: center; background: #C8355F; color: white; border: none; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans'; cursor: pointer; text-decoration: none;">View lead</a>
+                <div style="text-align: center; background: #E3F1E9; color: #1F7A4D; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans';">In leads pipeline &#10003;</div>
             @elseif ($activeContact)
                 <div style="display: flex; flex-direction: column;">
                     <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">

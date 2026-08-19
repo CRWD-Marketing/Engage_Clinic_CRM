@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Lead;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
+use App\Models\LeadActivity;
+use App\Models\Patient;
+use App\Models\PatientNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -14,7 +17,7 @@ class LeadController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Lead::query();
+        $query = Lead::query()->with(['owner', 'patient']);
 
         // Filter by status
         if ($request->has('status') && $request->status !== 'all') {
@@ -34,24 +37,36 @@ class LeadController extends Controller
 
         $leads = $query->latest()->get();
 
-        $statuses = [
-            'new',
-            'contacted',
-            'assessment_booked',
-            'assessment_done',
-            'enrolled'
-        ];
+        $statuses = array_keys(Lead::getStatuses());
 
-        $totalValue = $leads->sum(function ($lead) {
+        // Converted leads have graduated to the Patients module - they no longer
+        // belong in the pipeline, even though the underlying Lead row stays put
+        // (it remains the scheduling identity for Calendar sessions).
+        $activeLeads = $leads->reject(fn ($lead) => $lead->status === Lead::STATUS_TERMINATED || $lead->patient);
+
+        $totalValue = $activeLeads->sum(function ($lead) {
             // Clean the value before summing
             $value = preg_replace('/[^0-9.]/', '', $lead->estimated_value);
             return (float) $value;
         });
 
+        $unassignedCount = $activeLeads->whereNull('assigned_to')->count();
+        $followUpCount = $activeLeads->whereNotNull('follow_up_due_at')->count();
+        $terminatedCount = $leads->where('status', Lead::STATUS_TERMINATED)->count();
+
+        $assignableUsers = \App\Models\User::where('is_active', true)
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name']);
+
         return view('lead.index', compact(
             'leads',
             'statuses',
-            'totalValue'
+            'totalValue',
+            'activeLeads',
+            'unassignedCount',
+            'followUpCount',
+            'terminatedCount',
+            'assignableUsers'
         ));
     }
 
@@ -78,6 +93,8 @@ class LeadController extends Controller
             'insurance' => 'nullable|string|max:50',
             'estimated_value' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
+            'assigned_to' => 'nullable|exists:users,id',
+            'follow_up_due_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -118,9 +135,13 @@ class LeadController extends Controller
     public function show(Request $request, Lead $lead)
     {
         if ($request->ajax() || $request->wantsJson()) {
+            $lead->load(['owner', 'notesLog.user', 'assignmentLog.user']);
+
             return response()->json([
                 'success' => true,
-                'lead' => $lead
+                'lead' => $lead,
+                'notes_log' => $lead->notesLog,
+                'assignment_log' => $lead->assignmentLog,
             ]);
         }
         return view('lead.show', compact('lead'));
@@ -149,7 +170,9 @@ class LeadController extends Controller
             'insurance' => 'nullable|string|max:50',
             'estimated_value' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
-            'status' => 'nullable|string|in:new,contacted,assessment_booked,assessment_done,enrolled',
+            'status' => 'nullable|string|in:new,contacted,assessment_booked,assessment_done,enrolled,terminated',
+            'assigned_to' => 'nullable|exists:users,id',
+            'follow_up_due_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -169,7 +192,32 @@ class LeadController extends Controller
             $data['estimated_value'] = $this->cleanEstimatedValue($data['estimated_value']);
         }
 
+        // A lead needs an owner before it can move to Contacted - check the value
+        // this request would actually leave in place, not just what's already saved.
+        // (If the request explicitly clears assigned_to, that empty value must win,
+        // not silently fall back to the lead's current owner.)
+        $incomingAssignedTo = array_key_exists('assigned_to', $data) ? $data['assigned_to'] : $lead->assigned_to;
+
+        if (($data['status'] ?? $lead->status) === Lead::STATUS_CONTACTED && ! $incomingAssignedTo) {
+            $message = 'A lead must have an owner before it can move to Contacted.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => ['assigned_to' => [$message]],
+                    'message' => $message,
+                ], 422);
+            }
+            return back()->withErrors(['assigned_to' => $message])->withInput();
+        }
+
+        $previousAssignedTo = $lead->assigned_to;
+
         $lead->update($data);
+
+        if ($lead->wasChanged('assigned_to')) {
+            $this->logAssignmentChange($lead, $previousAssignedTo, $lead->assigned_to);
+        }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -201,7 +249,7 @@ class LeadController extends Controller
     public function updateStatus(Request $request, Lead $lead)
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'required|string|in:new,contacted,assessment_booked,assessment_done,enrolled',
+            'status' => 'required|string|in:new,contacted,assessment_booked,assessment_done,enrolled,terminated',
         ]);
 
         if ($validator->fails()) {
@@ -209,6 +257,16 @@ class LeadController extends Controller
                 'success' => false,
                 'errors' => $validator->errors(),
                 'message' => 'Invalid status provided'
+            ], 422);
+        }
+
+        if ($request->status === Lead::STATUS_CONTACTED && ! $lead->assigned_to) {
+            $message = 'A lead must have an owner before it can move to Contacted.';
+
+            return response()->json([
+                'success' => false,
+                'errors' => ['assigned_to' => [$message]],
+                'message' => $message,
             ], 422);
         }
 
@@ -220,6 +278,90 @@ class LeadController extends Controller
             'success' => true,
             'message' => 'Lead status updated successfully!',
             'lead' => $lead
+        ]);
+    }
+
+    /**
+     * Add a timestamped note to a lead's activity log.
+     */
+    public function addNote(Request $request, Lead $lead)
+    {
+        $validator = Validator::make($request->all(), [
+            'body' => 'required|string|max:2000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $activity = $lead->activities()->create([
+            'user_id' => auth()->id(),
+            'type' => LeadActivity::TYPE_NOTE,
+            'body' => $request->body,
+        ]);
+
+        $activity->load('user');
+
+        return response()->json([
+            'success' => true,
+            'note' => $activity,
+        ], 201);
+    }
+
+    /**
+     * Convert an enrolled lead into a real patient record. The lead itself is
+     * left untouched (it stays the "child identity" scheduling still uses) -
+     * this just creates the linked clinical/enrollment record.
+     */
+    public function convertToPatient(Lead $lead)
+    {
+        if (! $lead->canConvertToPatient()) {
+            $message = $lead->status !== Lead::STATUS_ENROLLED
+                ? 'Only enrolled leads can be converted to a patient.'
+                : 'This lead has already been converted to a patient.';
+
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+
+        $patient = Patient::create([
+            'lead_id' => $lead->id,
+            'enrolled_at' => now(),
+        ]);
+
+        PatientNote::create([
+            'patient_id' => $patient->id,
+            'user_id' => auth()->id(),
+            'body' => 'Converted from lead — '.($lead->notes ?: 'no enquiry notes on file'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Converted to patient.',
+            'redirect' => route('patient.index', ['patient' => $patient->id]),
+        ]);
+    }
+
+    /**
+     * Record an assignment change in the lead's activity log.
+     */
+    private function logAssignmentChange(Lead $lead, ?int $previousUserId, ?int $newUserId): void
+    {
+        $newUser = $newUserId ? \App\Models\User::find($newUserId) : null;
+        $newName = $newUser ? trim($newUser->first_name.' '.$newUser->last_name) : null;
+
+        $body = match (true) {
+            ! $previousUserId && $newUserId => "Assigned to {$newName}",
+            $previousUserId && ! $newUserId => 'Unassigned',
+            default => "Reassigned to {$newName}",
+        };
+
+        $lead->activities()->create([
+            'user_id' => auth()->id(),
+            'type' => LeadActivity::TYPE_ASSIGNMENT,
+            'body' => $body,
         ]);
     }
 
@@ -238,6 +380,8 @@ class LeadController extends Controller
             'insurance' => 'nullable|string|max:50',
             'estimated_value' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
+            'assigned_to' => 'nullable|exists:users,id',
+            'follow_up_due_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -268,8 +412,6 @@ class LeadController extends Controller
      */
     public function getLeadCount(Request $request)
     {
-        $count = Lead::count();
-        
         // Get count by status
         $statusCounts = [
             'new' => Lead::where('status', 'new')->count(),
@@ -277,8 +419,13 @@ class LeadController extends Controller
             'assessment_booked' => Lead::where('status', 'assessment_booked')->count(),
             'assessment_done' => Lead::where('status', 'assessment_done')->count(),
             'enrolled' => Lead::where('status', 'enrolled')->count(),
+            'terminated' => Lead::where('status', 'terminated')->count(),
         ];
-        
+
+        // The sidebar badge only flags leads still in "New" - once a lead is being
+        // contacted or assessed it's no longer something that needs attention.
+        $count = $statusCounts['new'];
+
         return response()->json([
             'success' => true,
             'count' => $count,
@@ -298,7 +445,8 @@ class LeadController extends Controller
             'contacted',
             'assessment_booked',
             'assessment_done',
-            'enrolled'
+            'enrolled',
+            'terminated',
         ];
 
         $data = [];

@@ -1,32 +1,26 @@
 @extends('layouts.auth')
 
-@section('title', 'Sign In · Engage Clinic')
+@section('title', 'Reset Password · Engage Clinic')
 
 @section('panel-heading')
-    Clinic operations,<br><span class="accent">one login</span> away.
+    Choose a<br><span class="accent">new password</span>
 @endsection
 
 @section('panel-text')
-    Manage patient records, book and reschedule appointments, track staff shifts, and control who has access to what — all from one dashboard built for your entire care team.
+    Pick something you haven't used before. It should be at least 8 characters.
 @endsection
 
 @section('form-content')
     <div class="form-header">
-        <h2>Sign in</h2>
-        <p>Enter your credentials to reach the dashboard.</p>
+        <h2>New password</h2>
+        <p>Enter and confirm your new password below.</p>
     </div>
 
-    @if (session('status'))
-        <div class="status-banner">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg>
-            <span>{{ session('status') }}</span>
-        </div>
-    @endif
-
-    <form action="{{ route('login.submit') }}" method="POST" novalidate>
+    <form action="{{ route('password.update') }}" method="POST" novalidate>
         @csrf
 
-        <!-- Email -->
+        <input type="hidden" name="token" value="{{ $token }}">
+
         <div class="field">
             <label for="email">Work email</label>
             <div class="input-wrap">
@@ -37,7 +31,7 @@
                     name="email"
                     class="@error('email') error @enderror"
                     placeholder="you@engageclinic.ae"
-                    value="{{ old('email') }}"
+                    value="{{ old('email', $email) }}"
                     required
                     autofocus
                     autocomplete="username"
@@ -48,9 +42,8 @@
             @enderror
         </div>
 
-        <!-- Password -->
         <div class="field">
-            <label for="password">Password</label>
+            <label for="password">New password</label>
             <div class="input-wrap">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                 <input
@@ -58,9 +51,9 @@
                     id="password"
                     name="password"
                     class="has-toggle @error('password') error @enderror"
-                    placeholder="Enter your password"
+                    placeholder="At least 8 characters"
                     required
-                    autocomplete="current-password"
+                    autocomplete="new-password"
                 >
                 <button type="button" class="toggle-visibility" aria-label="Show password">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -71,24 +64,33 @@
             @enderror
         </div>
 
-        <div class="row-between">
-            <label class="remember">
-                <input type="checkbox" name="remember">
-                Remember me
-            </label>
-            <a href="{{ route('password.request') }}" class="link-muted">
-                Forgot password?
-            </a>
+        <div class="field">
+            <label for="password_confirmation">Confirm new password</label>
+            <div class="input-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                <input
+                    type="password"
+                    id="password_confirmation"
+                    name="password_confirmation"
+                    class="has-toggle"
+                    placeholder="Re-enter your new password"
+                    required
+                    autocomplete="new-password"
+                >
+                <button type="button" class="toggle-visibility" aria-label="Show password">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
         </div>
 
-        <button type="submit" class="btn-primary">
-            Sign in
+        <button type="submit" class="btn-primary" style="margin-top: 8px;">
+            Reset password
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
         </button>
     </form>
 
-    <div class="notice">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
-        <p><strong>Authorized access only.</strong> This portal is restricted to Engage Clinic staff. All activity is logged.</p>
-    </div>
+    <a href="{{ route('login') }}" class="link-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back to sign in
+    </a>
 @endsection

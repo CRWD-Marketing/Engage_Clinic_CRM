@@ -80,6 +80,12 @@
             flex: 1 1 auto;
             min-height: 0;
         }
+
+        /* Opt-in modifier for pages (e.g. Billing) whose layout is built to use the full
+           browser width instead of being capped and centered at 1440px. */
+        .main-content-inner.content-full-width {
+            max-width: none;
+        }
         
         .sidebar-link {
             display: flex;
@@ -515,7 +521,7 @@
             <a href="{{ route('leads.index') }}" class="sidebar-link {{ request()->routeIs('leads.index') ? 'active' : '' }}">
                 <i class="fas fa-filter"></i> Leads
                 @php
-                    $leadCount = \App\Models\Lead::count();
+                    $leadCount = \App\Models\Lead::where('status', 'new')->count();
                 @endphp
                 @if($leadCount > 0)
                     <span class="badge badge-pulse">{{ $leadCount }}</span>
@@ -611,7 +617,7 @@
                     <a href="{{ route('profile.index') }}" class="dropdown-item">
                         <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
                     </a>
-                    <a href="#" class="dropdown-item">
+                    <a href="{{ route('profile.index') }}" class="dropdown-item">
                         <i class="fas fa-cog" style="width: 17px;"></i> Settings
                     </a>
                     <div class="dropdown-divider"></div>
@@ -645,7 +651,7 @@
             <a href="{{ route('leads.index') }}" class="sidebar-link {{ request()->routeIs('leads.index') ? 'active' : '' }}">
                 <i class="fas fa-filter"></i> Leads
                 @php
-                    $leadCount = \App\Models\Lead::count();
+                    $leadCount = \App\Models\Lead::where('status', 'new')->count();
                 @endphp
                 @if($leadCount > 0)
                     <span class="badge badge-pulse">{{ $leadCount }}</span>
@@ -741,7 +747,7 @@
                     <a href="{{ route('profile.index') }}" class="dropdown-item">
                         <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
                     </a>
-                    <a href="#" class="dropdown-item">
+                    <a href="{{ route('profile.index') }}" class="dropdown-item">
                         <i class="fas fa-cog" style="width: 17px;"></i> Settings
                     </a>
                     <div class="dropdown-divider"></div>

@@ -26,6 +26,7 @@ class CalendarSession extends Model
         'duration_minutes',
         'room',
         'status',
+        'follow_up_completed_at',
         'notes',
         'created_by',
     ];
@@ -38,6 +39,7 @@ class CalendarSession extends Model
     protected $casts = [
         'session_date' => 'date',
         'duration_minutes' => 'integer',
+        'follow_up_completed_at' => 'datetime',
     ];
 
     /**
@@ -115,5 +117,13 @@ class CalendarSession extends Model
     public function scopeNotCancelled(Builder $query): Builder
     {
         return $query->where('status', '!=', 'cancelled');
+    }
+
+    /**
+     * Scope a query to only include no-shows still awaiting a coordinator follow-up.
+     */
+    public function scopeNoShowNeedsFollowUp(Builder $query): Builder
+    {
+        return $query->where('status', 'no_show')->whereNull('follow_up_completed_at');
     }
 }

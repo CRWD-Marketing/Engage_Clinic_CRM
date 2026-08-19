@@ -25,8 +25,11 @@ class User extends Authenticatable
         'first_name',
         'middle_name',
         'last_name',
+        'job_title',
         'email',
         'phone_number',
+        'timezone',
+        'message_signature',
         'password',
 
         'department',
@@ -122,5 +125,13 @@ class User extends Authenticatable
         $features = config("role_permissions.{$this->role}", []);
 
         return in_array($feature, $features, true);
+    }
+
+    /**
+     * Human-readable role label, e.g. "FULL_ADMIN" -> "Full Admin".
+     */
+    public function roleLabel(): string
+    {
+        return Str::title(str_replace('_', ' ', strtolower($this->role)));
     }
 }

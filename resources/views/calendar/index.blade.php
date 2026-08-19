@@ -3,6 +3,7 @@
 @section('title', 'Calendar · Engage Clinic')
 @section('page-title', '')
 @section('page-subtitle', '')
+@section('content-class', 'content-full-width')
 
 @section('content')
     <style>

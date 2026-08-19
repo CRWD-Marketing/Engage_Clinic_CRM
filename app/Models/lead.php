@@ -17,6 +17,20 @@ class Lead extends Model
     const STATUS_ASSESSMENT_BOOKED = 'assessment_booked';
     const STATUS_ASSESSMENT_DONE = 'assessment_done';
     const STATUS_ENROLLED = 'enrolled';
+    const STATUS_TERMINATED = 'terminated';
+
+    /**
+     * The linear forward pipeline, used for advance()/moveBack()/progress calculations.
+     * Deliberately excludes STATUS_TERMINATED - termination is a side branch a lead can
+     * be moved to from any stage, not a step in the normal forward progression.
+     */
+    const PIPELINE_STATUSES = [
+        self::STATUS_NEW,
+        self::STATUS_CONTACTED,
+        self::STATUS_ASSESSMENT_BOOKED,
+        self::STATUS_ASSESSMENT_DONE,
+        self::STATUS_ENROLLED,
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -34,6 +48,8 @@ class Lead extends Model
         'estimated_value',
         'notes',
         'status',
+        'assigned_to',
+        'follow_up_due_at',
     ];
 
     /**
@@ -45,7 +61,16 @@ class Lead extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'estimated_value' => 'decimal:2',
+        'follow_up_due_at' => 'datetime',
     ];
+
+    /**
+     * Always include the assignee's display name in JSON output, so the
+     * Kanban board's JS can refresh a card's owner line without an extra request.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = ['assigned_to_name'];
 
     /**
      * The calendar sessions booked for this child.
@@ -53,6 +78,72 @@ class Lead extends Model
     public function calendarSessions()
     {
         return $this->hasMany(CalendarSession::class, 'patient_id');
+    }
+
+    /**
+     * The clinical/enrollment record this lead was converted into, if any.
+     */
+    public function patient()
+    {
+        return $this->hasOne(Patient::class);
+    }
+
+    /**
+     * Whether this lead is eligible to be converted to a patient - must be
+     * enrolled, and not already converted.
+     */
+    public function canConvertToPatient(): bool
+    {
+        return $this->status === self::STATUS_ENROLLED && ! $this->patient()->exists();
+    }
+
+    /**
+     * The staff member this lead is assigned to, if any.
+     *
+     * Deliberately NOT named assignedTo() - Eloquent snake-cases relation names
+     * for array/JSON output, and "assignedTo" -> "assigned_to" would collide
+     * with (and silently overwrite) the raw assigned_to FK column in the
+     * serialized response, turning it from a plain ID into a full user object.
+     */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    /**
+     * Display name of the assigned staff member, or null if unassigned.
+     */
+    public function getAssignedToNameAttribute(): ?string
+    {
+        if (! $this->relationLoaded('owner')) {
+            $this->load('owner');
+        }
+
+        return $this->owner ? trim($this->owner->first_name.' '.$this->owner->last_name) : null;
+    }
+
+    /**
+     * Full activity log (notes + assignment changes), newest first.
+     */
+    public function activities()
+    {
+        return $this->hasMany(LeadActivity::class)->latest();
+    }
+
+    /**
+     * Just the note-type activity entries.
+     */
+    public function notesLog()
+    {
+        return $this->activities()->where('type', LeadActivity::TYPE_NOTE);
+    }
+
+    /**
+     * Just the assignment-change activity entries.
+     */
+    public function assignmentLog()
+    {
+        return $this->activities()->where('type', LeadActivity::TYPE_ASSIGNMENT);
     }
 
     /**
@@ -114,6 +205,7 @@ class Lead extends Model
             self::STATUS_ASSESSMENT_BOOKED => 'Assessment Booked',
             self::STATUS_ASSESSMENT_DONE => 'Assessment Done',
             self::STATUS_ENROLLED => 'Enrolled',
+            self::STATUS_TERMINATED => 'Terminated',
         ];
     }
 
@@ -128,8 +220,17 @@ class Lead extends Model
             self::STATUS_ASSESSMENT_BOOKED => 'orange',
             self::STATUS_ASSESSMENT_DONE => 'purple',
             self::STATUS_ENROLLED => 'green',
+            self::STATUS_TERMINATED => 'red',
             default => 'gray',
         };
+    }
+
+    /**
+     * Whether this lead has been marked terminated (lost/declined).
+     */
+    public function isTerminated(): bool
+    {
+        return $this->status === self::STATUS_TERMINATED;
     }
 
     /**
@@ -145,13 +246,12 @@ class Lead extends Model
      */
     public function getNextStatus(): ?string
     {
-        $statuses = array_keys(self::getStatuses());
-        $currentIndex = array_search($this->status, $statuses);
-        
-        if ($currentIndex !== false && isset($statuses[$currentIndex + 1])) {
-            return $statuses[$currentIndex + 1];
+        $currentIndex = array_search($this->status, self::PIPELINE_STATUSES);
+
+        if ($currentIndex !== false && isset(self::PIPELINE_STATUSES[$currentIndex + 1])) {
+            return self::PIPELINE_STATUSES[$currentIndex + 1];
         }
-        
+
         return null;
     }
 
@@ -160,13 +260,12 @@ class Lead extends Model
      */
     public function getPreviousStatus(): ?string
     {
-        $statuses = array_keys(self::getStatuses());
-        $currentIndex = array_search($this->status, $statuses);
-        
-        if ($currentIndex !== false && isset($statuses[$currentIndex - 1])) {
-            return $statuses[$currentIndex - 1];
+        $currentIndex = array_search($this->status, self::PIPELINE_STATUSES);
+
+        if ($currentIndex !== false && isset(self::PIPELINE_STATUSES[$currentIndex - 1]) && $currentIndex > 0) {
+            return self::PIPELINE_STATUSES[$currentIndex - 1];
         }
-        
+
         return null;
     }
 
@@ -187,22 +286,22 @@ class Lead extends Model
     }
 
     /**
-     * Get the stage index (0-based).
+     * Get the stage index (0-based) within the pipeline. Terminated leads (not part of
+     * the linear pipeline) report index 0.
      */
     public function getStageIndex(): int
     {
-        $statuses = array_keys(self::getStatuses());
-        $index = array_search($this->status, $statuses);
-        
+        $index = array_search($this->status, self::PIPELINE_STATUSES);
+
         return $index !== false ? $index : 0;
     }
 
     /**
-     * Get the total number of stages.
+     * Get the total number of pipeline stages.
      */
     public static function getTotalStages(): int
     {
-        return count(self::getStatuses());
+        return count(self::PIPELINE_STATUSES);
     }
 
     /**
@@ -225,7 +324,7 @@ class Lead extends Model
      */
     public function canAdvance(): bool
     {
-        return !$this->isAtFinalStage();
+        return !$this->isAtFinalStage() && !$this->isTerminated();
     }
 
     /**
@@ -307,18 +406,26 @@ class Lead extends Model
     }
 
     /**
-     * Scope a query to only include active leads (not enrolled).
+     * Scope a query to only include leads still open (not enrolled or terminated).
      */
     public function scopeActive($query)
     {
-        return $query->where('status', '!=', self::STATUS_ENROLLED);
+        return $query->whereNotIn('status', [self::STATUS_ENROLLED, self::STATUS_TERMINATED]);
     }
 
     /**
-     * Scope a query to only include leads that are in progress (not new or enrolled).
+     * Scope a query to only include leads that are in progress (not new, enrolled, or terminated).
      */
     public function scopeInProgress($query)
     {
-        return $query->whereNotIn('status', [self::STATUS_NEW, self::STATUS_ENROLLED]);
+        return $query->whereNotIn('status', [self::STATUS_NEW, self::STATUS_ENROLLED, self::STATUS_TERMINATED]);
+    }
+
+    /**
+     * Scope a query to only include terminated (lost/declined) leads.
+     */
+    public function scopeTerminated($query)
+    {
+        return $query->where('status', self::STATUS_TERMINATED);
     }
 }

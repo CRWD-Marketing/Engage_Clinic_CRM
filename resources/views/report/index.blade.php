@@ -3,6 +3,7 @@
 @section('title', 'Reports · Engage Clinic')
 @section('page-title', '')
 @section('page-subtitle', '')
+@section('content-class', 'content-full-width')
 
 @section('content')
     <!-- Reports & Analytics -->

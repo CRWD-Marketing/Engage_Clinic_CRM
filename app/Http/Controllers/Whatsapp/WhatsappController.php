@@ -380,7 +380,18 @@ class WhatsappController extends Controller
         }
 
         $senderId = $messagingItem['sender']['id'];
-        $body = $messagingItem['message']['text'] ?? null;
+        $message = $messagingItem['message'];
+        $body = $message['text'] ?? null;
+
+        // Stickers (incl. the emoji sticker tray), images, GIFs etc. arrive as `attachments`
+        // instead of `text` - there's no literal character to store, so label the type instead
+        // of leaving both `type` and `body` looking like a blank/failed text message.
+        $type = 'text';
+        if ($body === null && ! empty($message['attachments'])) {
+            $attachmentTypes = collect($message['attachments'])->pluck('type')->filter();
+            $type = $attachmentTypes->contains('sticker') ? 'sticker' : ($attachmentTypes->first() ?? 'attachment');
+        }
+
         // Messenger Platform sends `timestamp` in milliseconds, unlike WhatsApp's Cloud API (seconds).
         $sentAt = Carbon::createFromTimestamp(intdiv((int) $messagingItem['timestamp'], 1000));
 
@@ -402,11 +413,11 @@ class WhatsappController extends Controller
         }
 
         WhatsappMessage::updateOrCreate(
-            ['wa_message_id' => $messagingItem['message']['mid']],
+            ['wa_message_id' => $message['mid']],
             [
                 'whatsapp_contact_id' => $contact->id,
                 'direction' => 'inbound',
-                'type' => 'text',
+                'type' => $type,
                 'body' => $body,
                 'status' => 'received',
                 'sent_at' => $sentAt,
@@ -414,7 +425,7 @@ class WhatsappController extends Controller
         );
 
         $contact->update([
-            'last_message_preview' => $body ?? '[message]',
+            'last_message_preview' => $body ?? '['.$type.']',
             'last_message_at' => $sentAt,
             'unread_count' => $contact->unread_count + 1,
         ]);

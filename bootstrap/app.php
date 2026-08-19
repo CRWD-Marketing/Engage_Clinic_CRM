@@ -35,5 +35,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 return back()->withErrors(['message' => 'You\'re sending too fast. Please wait a moment and try again.']);
             }
         });
+
+        // A wrong-method hit (e.g. GET on the POST-only /logout route, from a stale
+        // bookmark or typed URL) shouldn't show a raw stack trace - just send the
+        // visitor somewhere sensible instead.
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException $e, \Illuminate\Http\Request $request) {
+            if (! $request->expectsJson()) {
+                return redirect()->to(auth()->check() ? route('dashboard') : route('login'));
+            }
+        });
     })
     ->create();
