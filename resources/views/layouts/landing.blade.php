@@ -6,11 +6,13 @@
 <title>@yield('title', 'Engage Clinic · ABA Therapy Built Around Your Child')</title>
 <link rel="icon" type="image/png" href="{{ asset('uploads/engage.png') }}">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#F7F5EF;
+    --bg:#FFFF;
     --dot:#DFDACD;
     --card:#FFFFFF;
     --border:#E2DACE;
@@ -427,6 +429,138 @@
     menuBtn.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
     document.querySelectorAll('#mobile-menu a').forEach(a => a.addEventListener('click', () => mobileMenu.classList.add('hidden')));
   }
+</script>
+
+<script>
+  // GSAP hero text reveal — plays once on load for whichever page's hero (marked
+  // with .js-hero) is present. Every landing page shares the same eyebrow/h1/p/CTA
+  // shape, so this one script drives all of them. On the homepage the hero copy is
+  // also swapped by the gallery carousel (see welcome.blade.php) via its own CSS
+  // transitions - this only owns the very first entrance, then clears its inline
+  // styles so that carousel is free to take over afterwards.
+  (function () {
+    if (typeof gsap === 'undefined') return;
+
+    const hero = document.querySelector('.js-hero');
+    if (!hero) return;
+
+    const eyebrow = hero.querySelector('.eyebrow, .eyebrow-plain');
+    const heading = hero.querySelector('h1');
+    const paragraph = hero.querySelector('p');
+    const ctas = hero.querySelectorAll('.btn-pink, .btn-ghost, .btn-outline-white, .btn-white');
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let words = [];
+    if (heading) {
+      heading.innerHTML = heading.textContent
+        .trim()
+        .split(/\s+/)
+        .map(word => `<span style="display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:0.15em;margin-bottom:-0.15em;"><span style="display:inline-block;">${word}</span></span>`)
+        .join(' ');
+      words = Array.from(heading.querySelectorAll(':scope > span > span'));
+    }
+
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+    if (eyebrow) tl.from(eyebrow, { opacity: 0, y: 14, duration: 0.5 });
+    if (words.length) tl.from(words, { yPercent: 110, opacity: 0, duration: 0.7, stagger: 0.045 }, eyebrow ? '-=0.25' : 0);
+    if (paragraph) tl.from(paragraph, { opacity: 0, y: 14, duration: 0.5 }, '-=0.35');
+    if (ctas.length) tl.from(ctas, { opacity: 0, y: 14, duration: 0.5, stagger: 0.08 }, '-=0.3');
+
+    tl.eventCallback('onComplete', function () {
+      gsap.set([eyebrow, heading, paragraph, ...ctas, ...words].filter(Boolean), { clearProps: 'all' });
+    });
+  })();
+</script>
+
+<script>
+  // GSAP ScrollTrigger text reveal — shared across every page. Sections opt in
+  // per element with one of three classes:
+  //   .reveal-heading  headings, split into words and revealed with a stagger
+  //   .reveal-text     paragraphs/labels, simple fade + upward move
+  //   .reveal-group    a grid/row container whose direct children fade + move
+  //                    up together with a stagger, as one entrance
+  // Each element replays every time it scrolls into view — forward when
+  // entering from below, reset back to hidden when scrolled back above it —
+  // so the reveal repeats on every pass, not just the first. The hero is
+  // excluded since it already animates on load.
+  (function () {
+    if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    document.querySelectorAll('.reveal-heading').forEach(function (heading) {
+      if (heading.closest('.js-hero')) return;
+
+      // Wrap each word in an overflow-hidden mask span so it can slide up into
+      // view. Walks child nodes rather than using textContent so that nested
+      // markup (e.g. a highlighted <span style="color:...">) keeps its own
+      // styling instead of being flattened to plain text.
+      const originalNodes = Array.from(heading.childNodes);
+      heading.innerHTML = '';
+      originalNodes.forEach(function (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const parts = node.textContent.split(/(\s+)/);
+          parts.forEach(function (part) {
+            if (part.trim() === '') {
+              heading.appendChild(document.createTextNode(part));
+              return;
+            }
+            const outer = document.createElement('span');
+            outer.style.cssText = 'display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:0.15em;margin-bottom:-0.15em;';
+            const inner = document.createElement('span');
+            inner.style.display = 'inline-block';
+            inner.textContent = part;
+            outer.appendChild(inner);
+            heading.appendChild(outer);
+          });
+        } else {
+          const outer = document.createElement('span');
+          outer.style.cssText = 'display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:0.15em;margin-bottom:-0.15em;';
+          const inner = document.createElement('span');
+          inner.style.display = 'inline-block';
+          inner.appendChild(node);
+          outer.appendChild(inner);
+          heading.appendChild(outer);
+        }
+      });
+      const words = heading.querySelectorAll(':scope > span > span');
+
+      gsap.from(words, {
+        yPercent: 110,
+        opacity: 0,
+        duration: 0.7,
+        stagger: 0.035,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: heading, start: 'top 85%', toggleActions: 'restart none none reverse' },
+      });
+    });
+
+    gsap.utils.toArray('.reveal-text').forEach(function (el) {
+      gsap.from(el, {
+        y: 22,
+        opacity: 0,
+        duration: 0.65,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 88%', toggleActions: 'restart none none reverse' },
+      });
+    });
+
+    gsap.utils.toArray('.reveal-group').forEach(function (group) {
+      const items = group.children;
+      if (!items.length) return;
+      gsap.from(items, {
+        y: 24,
+        opacity: 0,
+        duration: 0.6,
+        stagger: 0.08,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: group, start: 'top 85%', toggleActions: 'restart none none reverse' },
+      });
+    });
+  })();
 </script>
 
 @stack('scripts')

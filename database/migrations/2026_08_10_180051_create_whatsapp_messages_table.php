@@ -17,6 +17,15 @@ return new class extends Migration
             $table->string('wa_message_id')->nullable()->unique(); // Meta's wamid, null for messages that failed to send
             $table->enum('direction', ['inbound', 'outbound']);
             $table->string('type')->default('text');
+            // Meta's sticker attachment id, e.g. the well-known "like" thumbs-up
+            // stickers - kept around for debugging/future sticker-specific handling.
+            $table->string('sticker_id')->nullable();
+            // CDN url for an attachment we can't turn into text - a story a contact
+            // replied to/mentioned us in, or a photo/video/file attachment - so the
+            // inbox can show the actual image instead of a bare "[type]" label.
+            // text() rather than string(): Facebook/Instagram CDN urls carry long
+            // signed query strings that routinely exceed a varchar(255).
+            $table->text('media_url')->nullable();
             $table->text('body')->nullable();
             $table->string('status')->nullable(); // sent, delivered, read, failed (outbound) / received (inbound)
             $table->timestamp('sent_at');

@@ -9,7 +9,7 @@
 @section('content')
 
 <!-- Hero -->
-<section class="py-20 md:py-28 text-center" style="background:var(--navy-deep);">
+<section class="js-hero py-20 md:py-28 text-center" style="background:var(--navy-deep);">
   <div class="max-w-3xl mx-auto px-6 lg:px-8">
     <span class="eyebrow-plain" style="color:var(--pink-mid);">Careers</span>
     <h1 class="display mt-4 text-3xl sm:text-5xl font-extrabold leading-[1.15] text-white">Grow with us. Change lives with us.</h1>
@@ -68,8 +68,8 @@
 <!-- Why join -->
 <section class="py-16 md:py-24 dotted">
   <div class="max-w-6xl mx-auto px-6 lg:px-8">
-    <h2 class="display text-3xl md:text-4xl font-extrabold text-[var(--navy)] text-center mb-14">Why join Engage?</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <h2 class="reveal-heading display text-3xl md:text-4xl font-extrabold text-[var(--navy)] text-center mb-14">Why join Engage?</h2>
+    <div class="reveal-group grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       @foreach ($perks as $perk)
         @php $pa = $perkAccent[$perk['accent']]; @endphp
         <div class="card p-7">
@@ -87,10 +87,10 @@
 <!-- Current opportunities -->
 <section class="py-16 md:py-24 bg-white border-y border-[var(--border)]">
   <div class="max-w-4xl mx-auto px-6 lg:px-8">
-    <span class="eyebrow-plain">Open Positions</span>
-    <h2 class="display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] mb-10">Current opportunities</h2>
+    <span class="eyebrow-plain reveal-text">Open Positions</span>
+    <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] mb-10">Current opportunities</h2>
 
-    <div class="space-y-4">
+    <div class="reveal-group space-y-4">
       @foreach ($positions as $job)
         <details class="job-item">
           <summary class="flex items-center justify-between gap-4">

@@ -5,7 +5,7 @@ use App\Http\Controllers\Billing\BillingController;
 use App\Http\Controllers\Billing\InvoiceController;
 
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'feature:billing'])
     ->group(function () {
 
         Route::get('/billing', [BillingController::class, 'index'])

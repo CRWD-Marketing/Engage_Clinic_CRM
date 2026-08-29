@@ -13,17 +13,13 @@
     .pt-sidebar-head { padding: 16px 18px; border-bottom: 1px solid #EBE4DA; display: flex; flex-direction: column; gap: 12px; }
     .pt-sidebar-title { font: 600 18px 'Baloo 2'; color: #16436E; }
     .pt-sidebar-sub { font: 600 12px 'Nunito Sans'; color: #98897A; margin-top: 2px; }
-    .pt-search-form { position: relative; }
-    .pt-search-input {
-        width: 100%; box-sizing: border-box; padding: 10px 14px 10px 34px; border: 1px solid #E2DACE;
-        border-radius: 10px; background: #F6F3EE; font: 600 12.5px 'Nunito Sans'; color: #2B3A4C; outline: none;
-        transition: border-color 0.15s ease, background 0.15s ease;
+    .pt-add-btn {
+        background: #C8355F; color: #fff; border: none; border-radius: 10px; padding: 10px 16px;
+        font: 800 12px 'Nunito Sans'; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        box-shadow: 0 4px 14px rgba(200,53,95,0.28); transition: background 0.15s ease, transform 0.05s ease;
     }
-    .pt-search-input:focus { border-color: #C8355F; background: #FFFDFA; }
-    .pt-search-icon {
-        position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #B0A493;
-        font-size: 12.5px; pointer-events: none;
-    }
+    .pt-add-btn:hover { background: #A82348; }
+    .pt-add-btn:active { transform: translateY(1px); }
     .pt-list { flex: 1; overflow-y: auto; }
     .pt-row {
         display: flex; gap: 11px; align-items: center; padding: 13px 18px; cursor: pointer;
@@ -184,18 +180,15 @@
     <!-- Left Sidebar - Patient List -->
     <div class="pt-sidebar">
         <div class="pt-sidebar-head">
-            <div>
-                <div class="pt-sidebar-title">Patients</div>
-                <div class="pt-sidebar-sub">{{ $patients->count() }} {{ Str::plural('patient', $patients->count()) }}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                <div>
+                    <div class="pt-sidebar-title">Patients</div>
+                    <div class="pt-sidebar-sub">{{ $patients->count() }} {{ Str::plural('patient', $patients->count()) }}</div>
+                </div>
+                @if (auth()->user()->role !== 'COORDINATOR' && auth()->user()->role !== 'THERAPIST')
+                    <button type="button" class="pt-add-btn" onclick="openPatientAddModal()">+ Add patient</button>
+                @endif
             </div>
-            <form class="pt-search-form" method="GET" action="{{ route('patient.index') }}">
-                <span class="pt-search-icon">&#128269;</span>
-                <input
-                    type="text" name="search" class="pt-search-input"
-                    placeholder="Search patients, parents, phone…"
-                    value="{{ request('search') }}"
-                >
-            </form>
         </div>
         <div class="pt-list">
             @forelse ($patients as $patient)
@@ -258,13 +251,17 @@
                 </div>
             @endif
 
-            @if ($activePatient->programme || $activePatient->insurance_provider)
+            @php $attendanceRate = $activePatient->attendanceRate30d(); @endphp
+            @if ($activePatient->programme || $activePatient->insurance_provider || $attendanceRate !== null)
                 <div class="pt-chips-row">
                     @if ($activePatient->programme)
                         <span class="pt-chip" style="background: #F9E7EC; color: #C8355F; padding: 5px 12px; font-size: 12px;">{{ $activePatient->programme }}</span>
                     @endif
                     @if ($activePatient->insurance_provider)
                         <span class="pt-chip" style="background: #E7EFF7; color: #24619C; padding: 5px 12px; font-size: 12px;">{{ $activePatient->insurance_provider }}</span>
+                    @endif
+                    @if ($attendanceRate !== null)
+                        <span class="pt-chip" style="background: #F3EDE3; color: #5A6B7E; padding: 5px 12px; font-size: 12px;">Attendance {{ $attendanceRate }}%</span>
                     @endif
                 </div>
             @endif
@@ -341,7 +338,7 @@
                                 <div class="pt-avatar" style="width: 26px; height: 26px; font-size: 10.5px; background: {{ $avatarColor($therapist->id) }};">
                                     {{ strtoupper(substr($therapist->first_name, 0, 1)) }}
                                 </div>
-                                {{ trim($therapist->first_name.' '.$therapist->last_name) }}
+                                {{ trim($therapist->first_name.' '.$therapist->last_name) }}{{ $therapist->job_title ? ' — '.$therapist->job_title : '' }}
                             </div>
                         @empty
                             <div class="pt-card-empty">No therapists assigned yet.</div>
@@ -352,9 +349,12 @@
                         <div class="pt-card-title">Upcoming sessions</div>
                         @php $activityColors = ['ABA' => ['#F9E7EC', '#C8355F'], 'Speech' => ['#E7EFF7', '#24619C']]; @endphp
                         @forelse ($upcomingSessions as $session)
-                            @php [$bg, $fg] = $activityColors[$session->activity_type] ?? ['#F3EDE3', '#5A6B7E']; @endphp
+                            @php
+                                [$bg, $fg] = $activityColors[$session->activity_type] ?? ['#F3EDE3', '#5A6B7E'];
+                                $dayLabel = $session->session_date->isToday() ? 'Today' : $session->session_date->format('D');
+                            @endphp
                             <div class="pt-upcoming-row">
-                                <div class="pt-upcoming-day">{{ $session->session_date->format('D j M') }} {{ substr($session->start_time, 0, 5) }}</div>
+                                <div class="pt-upcoming-day">{{ $dayLabel }} {{ substr($session->start_time, 0, 5) }}</div>
                                 <span class="pt-chip" style="background: {{ $bg }}; color: {{ $fg }};">{{ $session->activity_type }}</span>
                             </div>
                         @empty
@@ -440,6 +440,77 @@
         </div>
     </div>
 @endif
+
+<!-- Add Patient Modal -->
+<div id="ptAddModal" class="pt-modal-overlay">
+    <div class="pt-modal-box">
+        <div class="pt-modal-header">
+            <div>
+                <div class="pt-modal-title">Client details</div>
+                <div class="pt-modal-subtitle">Complete the clinical and insurance record</div>
+            </div>
+            <button type="button" class="pt-modal-close" onclick="closePatientAddModal()">✕</button>
+        </div>
+
+        <form id="ptAddForm" onsubmit="savePatientAdd(event)">
+            @csrf
+
+            <div class="pt-grid-2col">
+                <div>
+                    <div class="pt-field-label">Child's name *</div>
+                    <input id="ptNewChildName" name="child_name" type="text" placeholder="e.g. Khalifa Al Mansoori" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Age</div>
+                    <input id="ptNewChildAge" name="child_age" type="number" min="0" max="25" placeholder="6" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Diagnosis *</div>
+                    <input id="ptNewDiagnosis" name="diagnosis" type="text" placeholder="e.g. ASD Level 2" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Programme *</div>
+                    <input id="ptNewProgramme" name="programme" type="text" placeholder="e.g. ABA 20h/wk + Speech 2h" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Parent / guardian</div>
+                    <input id="ptNewParentName" name="parent_guardian_name" type="text" placeholder="e.g. Mr. Saif Al Mansoori" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Phone *</div>
+                    <input id="ptNewPhone" name="phone" type="text" placeholder="+971 5x xxx xxxx" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Insurance *</div>
+                    <input id="ptNewInsurance" name="insurance_provider" type="text" placeholder="e.g. Daman Enhanced" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Auth. hrs *</div>
+                    <input id="ptNewAuthTotal" name="authorized_sessions_total" type="number" min="0" placeholder="96" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Renewal</div>
+                    <input id="ptNewAuthRenews" name="authorization_renews_at" type="date" class="pt-field-input">
+                </div>
+                <div>
+                    <div class="pt-field-label">Start</div>
+                    <input id="ptNewEnrolledAt" name="enrolled_at" type="date" class="pt-field-input">
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <div class="pt-field-label">Clinical note</div>
+                    <textarea id="ptNewClinicalNote" name="clinical_note" rows="2" placeholder="Optional — adds a timestamped session note" class="pt-field-input" style="resize: vertical; font-family: 'Nunito Sans';"></textarea>
+                </div>
+            </div>
+
+            <div id="ptAddFormError" style="display:none; color:#B3261E; font: 700 12px 'Nunito Sans'; margin-top: 4px;"></div>
+
+            <div class="pt-modal-actions">
+                <button type="submit" class="pt-btn-save">Save client</button>
+                <button type="button" class="pt-btn-cancel" onclick="closePatientAddModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -498,6 +569,59 @@
         });
     }
 
+    const ptStoreUrl = @json(route('patient.store'));
+
+    function openPatientAddModal() {
+        const modal = document.getElementById('ptAddModal');
+        if (modal) { modal.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    }
+
+    function closePatientAddModal() {
+        const modal = document.getElementById('ptAddModal');
+        if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+        const form = document.getElementById('ptAddForm');
+        if (form) form.reset();
+        const errorBox = document.getElementById('ptAddFormError');
+        if (errorBox) errorBox.style.display = 'none';
+    }
+
+    function savePatientAdd(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('ptAddForm');
+        const formData = new FormData(form);
+        const errorBox = document.getElementById('ptAddFormError');
+        errorBox.style.display = 'none';
+
+        const btn = form.querySelector('.pt-btn-save');
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+
+        fetch(ptStoreUrl, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': ptCsrf(), 'Accept': 'application/json' },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                errorBox.textContent = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Could not save.');
+                errorBox.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        })
+        .catch(() => {
+            errorBox.textContent = 'Network error. Please try again.';
+            errorBox.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = originalText;
+        });
+    }
+
     function addPatientNote() {
         if (!ptNotesUrl) return;
 
@@ -538,7 +662,7 @@
             }
         })
         .catch(() => alert('Network error. Please try again.'))
-        .finally(() => { btn.disabled = false; });
+        .finally(() => { btn.disabled = textarea.value.trim().length === 0; });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -548,9 +672,26 @@
                 if (e.target === this) closePatientEditModal();
             });
         }
+        const addModal = document.getElementById('ptAddModal');
+        if (addModal) {
+            addModal.addEventListener('click', function (e) {
+                if (e.target === this) closePatientAddModal();
+            });
+        }
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closePatientEditModal();
+            if (e.key === 'Escape') {
+                closePatientEditModal();
+                closePatientAddModal();
+            }
         });
+
+        const noteTextarea = document.getElementById('ptNoteBody');
+        const noteBtn = document.getElementById('ptAddNoteBtn');
+        if (noteTextarea && noteBtn) {
+            const syncNoteBtnState = () => { noteBtn.disabled = noteTextarea.value.trim().length === 0; };
+            syncNoteBtnState();
+            noteTextarea.addEventListener('input', syncNoteBtnState);
+        }
     });
 </script>
 @endpush

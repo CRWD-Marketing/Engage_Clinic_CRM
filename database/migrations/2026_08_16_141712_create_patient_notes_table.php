@@ -16,6 +16,10 @@ return new class extends Migration
             $table->foreignId('patient_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->text('body');
+            $table->boolean('flagged')->default(false);
+            $table->string('flag_reason')->nullable();
+            $table->timestamp('signed_off_at')->nullable();
+            $table->foreignId('signed_off_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->index('patient_id');

@@ -14,6 +14,20 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UserSeeder::class,
             ServiceSeeder::class,
+
+            LeadSeeder::class,
+            LeadActivitySeeder::class,
+            PatientSeeder::class,
+            PatientTherapistSeeder::class,
+            PatientNoteSeeder::class,
+            PatientGoalSeeder::class,
+            CalendarSessionSeeder::class,
+            InvoiceSeeder::class,
+            WaitlistSeeder::class,
+            ContactSeeder::class,
+            WhatsappContactSeeder::class,
+            WhatsappMessageSeeder::class,
+            KnowledgeBaseSeeder::class,
         ]);
     }
 }

@@ -151,6 +151,8 @@ class CreateAccount extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        $this->assertCanAssignRole($validated['role']);
+
         $user = User::create($validated);
 
         if ($this->wantsJsonResponse($request)) {
@@ -242,6 +244,10 @@ public function update(Request $request, User $user): JsonResponse|RedirectRespo
         unset($validated['password']);
     }
 
+    if (array_key_exists('role', $validated)) {
+        $this->assertCanAssignRole($validated['role']);
+    }
+
     $user->update($validated);
 
     if ($this->wantsJsonResponse($request)) {
@@ -263,6 +269,11 @@ public function update(Request $request, User $user): JsonResponse|RedirectRespo
      */
     public function destroy(Request $request, User $user): JsonResponse|RedirectResponse
     {
+        // Deleting an account is permanent and irreversible - only Full Admin
+        // may do it. Everyone else with 'users' access (e.g. HR) should
+        // deactivate via is_active instead when offboarding someone.
+        abort_unless(auth()->user()->role === 'FULL_ADMIN', 403, 'Only a Full Admin can delete a user account. Deactivate the account instead.');
+
         $user->delete();
 
         if ($this->wantsJsonResponse($request)) {
@@ -275,5 +286,20 @@ public function update(Request $request, User $user): JsonResponse|RedirectRespo
         return redirect()
             ->route('users.index')
             ->with('success', 'User deleted successfully.');
+    }
+
+    /**
+     * Anyone with 'users' access (e.g. HR) can assign day-to-day roles like
+     * THERAPIST or SALES_STAFF, but only a Full Admin can grant FULL_ADMIN or
+     * CLINICAL_SUPERVISOR - the two roles with clinical-record or full-system
+     * access - so a lower-privileged account can't promote its way up.
+     */
+    private function assertCanAssignRole(string $role): void
+    {
+        $sensitive = ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'];
+
+        if (in_array($role, $sensitive, true) && auth()->user()->role !== 'FULL_ADMIN') {
+            abort(403, 'Only a Full Admin can assign the '.$role.' role.');
+        }
     }
 }

@@ -20,6 +20,9 @@ return new class extends Migration
 
             $table->string('diagnosis')->nullable();
             $table->string('programme')->nullable(); // e.g. "ABA 20h/wk + Speech 2h"
+            // Standard ABA/clinical practice is a periodic (often 90-day) treatment
+            // plan review - this is when the next one is due.
+            $table->date('treatment_plan_review_due_at')->nullable();
 
             $table->string('insurance_provider')->nullable();
             $table->unsignedInteger('authorized_sessions_total')->nullable();

@@ -7,32 +7,9 @@
 
 @section('content')
     @php
-        $avatarPalette = ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'];
-        $avatarColor = fn ($seed) => $avatarPalette[crc32($seed) % count($avatarPalette)];
-
-        $tick = function (?string $status) {
-            return match ($status) {
-                'read' => '<svg width="16" height="11" viewBox="0 0 20 11" fill="none"><path d="M1 5.5L5 9.5L11 1.5" stroke="#24619C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5.5L11 9.5L19 1" stroke="#24619C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-                'delivered' => '<svg width="16" height="11" viewBox="0 0 20 11" fill="none"><path d="M1 5.5L5 9.5L11 1.5" stroke="#9AA79B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5.5L11 9.5L19 1" stroke="#9AA79B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-                'sent' => '<svg width="12" height="11" viewBox="0 0 16 11" fill="none"><path d="M1 5.5L5 9.5L11 1.5" stroke="#9AA79B" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-                'failed' => '<span style="color:#C8355F; font:700 10px \'Nunito Sans\';">⚠ failed</span>',
-                default => '',
-            };
-        };
-
-        $channelBadge = function (string $channel) {
-            $badgeStyle = 'position:absolute; bottom:-2px; right:-2px; width:15px; height:15px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:2px solid #FFFDFA;';
-
-            if ($channel === 'instagram') {
-                return '<span style="'.$badgeStyle.' background:linear-gradient(45deg,#FEDA75,#D62976,#4F5BD5);"><svg width="8" height="8" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" stroke="white" stroke-width="2.4"/><circle cx="12" cy="12" r="4.5" stroke="white" stroke-width="2.4"/><circle cx="18" cy="6" r="1.3" fill="white"/></svg></span>';
-            }
-
-            if ($channel === 'facebook') {
-                return '<span style="'.$badgeStyle.' background:linear-gradient(45deg,#0662FE,#00B2FF);"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.15 2 11.26c0 2.91 1.44 5.51 3.7 7.21V22l3.38-1.86c.9.25 1.87.38 2.92.38 5.52 0 10-4.15 10-9.26C22 6.15 17.52 2 12 2zm1.02 12.47l-2.55-2.72-4.98 2.72 5.48-5.82 2.61 2.72 4.92-2.72-5.48 5.82z"/></svg></span>';
-            }
-
-            return '<span style="'.$badgeStyle.' background:#1FA855;"><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 5L2 22l5.2-1.4c1.4.8 3.1 1.2 4.8 1.2 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg></span>';
-        };
+        $avatarColor = fn ($seed) => \App\Models\WhatsappContact::avatarColor($seed);
+        $tick = fn (?string $status) => \App\Models\WhatsappMessage::tickIcon($status);
+        $channelBadge = fn (string $channel) => \App\Models\WhatsappContact::channelBadgeHtml($channel);
     @endphp
 
     <style>
@@ -79,13 +56,16 @@
             font: 700 11px 'Nunito Sans'; color: #C8355F; text-decoration: underline;
         }
         .wa-msg-convert-btn:hover { color: #AD2A52; }
+        #wa-channel-filter { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        #wa-channel-filter::-webkit-scrollbar { display: none; }
+        .wa-filter-pill { flex-shrink: 0; white-space: nowrap; }
     </style>
 
     <!-- WhatsApp Inbox -->
     <div style="flex: 1; display: flex; min-height: 0; overflow-x: auto; margin: -22px -28px;">
 
         <!-- Left Sidebar - Chat List -->
-        <div style="width: 300px; border-right: 1px solid #EBE4DA; background: #FFFDFA; display: flex; flex-direction: column; flex-shrink: 0;">
+        <div style="width: 320px; min-height: 0; border-right: 1px solid #EBE4DA; background: #FFFDFA; display: flex; flex-direction: column; flex-shrink: 0;">
             <div style="padding: 16px 18px; border-bottom: 1px solid #EBE4DA;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="position: relative; width: 8px; height: 8px;">
@@ -109,7 +89,7 @@
                             style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid #E2DACE; border-radius: 9px; background: #F6F3EE; font: 600 12px 'Nunito Sans'; color: #2B3A4C; outline: none; box-sizing: border-box;"
                         >
                     </div>
-                    <div id="wa-channel-filter" style="display: flex; gap: 6px; margin-top: 10px;">
+                    <div id="wa-channel-filter" style="display: flex; gap: 6px; margin-top: 10px; padding-bottom: 2px;">
                         <button type="button" data-channel-filter="all" class="wa-filter-pill is-active" style="border: 1px solid #E2DACE; background: #2B3A4C; color: white; border-radius: 20px; padding: 4px 11px; font: 700 11px 'Nunito Sans'; cursor: pointer;">All</button>
                         <button type="button" data-channel-filter="whatsapp" class="wa-filter-pill" style="border: 1px solid #E2DACE; background: #F6F3EE; color: #5A6B7E; border-radius: 20px; padding: 4px 11px; font: 700 11px 'Nunito Sans'; cursor: pointer;">WhatsApp</button>
                         <button type="button" data-channel-filter="instagram" class="wa-filter-pill" style="border: 1px solid #E2DACE; background: #F6F3EE; color: #5A6B7E; border-radius: 20px; padding: 4px 11px; font: 700 11px 'Nunito Sans'; cursor: pointer;">Instagram</button>
@@ -117,33 +97,9 @@
                     </div>
                 @endif
             </div>
-            <div id="wa-contact-list" class="wa-contact-list" style="flex: 1; overflow-y: auto;">
+            <div id="wa-contact-list" class="wa-contact-list" style="flex: 1; min-height: 0; overflow-y: auto;">
                 @forelse ($contacts as $contact)
-                    @php $isActive = $activeContact && $activeContact->id === $contact->id; @endphp
-                    <a
-                        href="{{ route('whatsapp.index', ['contact' => $contact->id]) }}"
-                        data-search="{{ strtolower(($contact->name ?? '').' '.$contact->wa_id.' '.$contact->last_message_preview) }}"
-                        data-channel="{{ $contact->channel }}"
-                        class="wa-contact-row {{ $isActive ? 'is-active' : '' }}"
-                        style="display: flex; gap: 11px; align-items: center; padding: 12px 18px; cursor: pointer; border-bottom: 1px solid #F3EDE3; background: {{ $isActive ? '#F5EFE7' : 'transparent' }}; text-decoration: none;"
-                    >
-                        <div style="position: relative; flex-shrink: 0;">
-                            <div style="width: 36px; height: 36px; border-radius: 50%; background: {{ $avatarColor($contact->wa_id) }}; color: white; display: flex; align-items: center; justify-content: center; font: 600 13px 'Baloo 2';">
-                                {{ strtoupper(substr($contact->name ?? $contact->wa_id, 0, 2)) }}
-                            </div>
-                            {!! $channelBadge($contact->channel) !!}
-                        </div>
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="display: flex; gap: 6px; align-items: baseline;">
-                                <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $contact->name ?? $contact->wa_id }}</div>
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #B0A493; flex-shrink: 0;">{{ optional($contact->last_message_at)->diffForHumans(null, true) }}</div>
-                            </div>
-                            <div style="font: 600 12px 'Nunito Sans'; color: #98897A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $contact->last_message_preview }}</div>
-                        </div>
-                        @if ($contact->unread_count > 0)
-                            <span style="background: #1FA855; color: white; border-radius: 9px; padding: 1px 7px; font: 800 10.5px 'Nunito Sans'; flex-shrink: 0;">{{ $contact->unread_count }}</span>
-                        @endif
-                    </a>
+                    @include('whatsapp.partials.contact_row', ['contact' => $contact, 'activeContactId' => $activeContact->id ?? null])
                 @empty
                     <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding: 48px 24px;">
                         <div style="width: 52px; height: 52px; border-radius: 50%; background: #F3EDE3; display: flex; align-items: center; justify-content: center;">
@@ -157,18 +113,27 @@
         </div>
 
         <!-- Middle - Chat Messages -->
-        <div style="flex: 1; display: flex; flex-direction: column; min-width: 380px; background: #F1EBE1;">
+        <div style="flex: 1; display: flex; flex-direction: column; min-width: 380px; min-height: 0; background: #F1EBE1;">
             @if ($activeContact)
                 <!-- Chat Header -->
                 <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #E4DCCE; background: #FFFDFA;">
                     <div style="position: relative; flex-shrink: 0;">
-                        <div style="width: 38px; height: 38px; border-radius: 50%; background: {{ $avatarColor($activeContact->wa_id) }}; color: white; display: flex; align-items: center; justify-content: center; font: 600 14px 'Baloo 2';">
-                            {{ strtoupper(substr($activeContact->name ?? $activeContact->wa_id, 0, 2)) }}
-                        </div>
+                        @if ($activeContact->avatar_url)
+                            <img src="{{ $activeContact->avatar_url }}" alt="" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; display: block;">
+                        @else
+                            <div style="width: 38px; height: 38px; border-radius: 50%; background: {{ $avatarColor($activeContact->wa_id) }}; color: white; display: flex; align-items: center; justify-content: center; font: 600 14px 'Baloo 2';">
+                                {{ strtoupper(substr($activeContact->name ?? $activeContact->wa_id, 0, 2)) }}
+                            </div>
+                        @endif
                         {!! $channelBadge($activeContact->channel) !!}
                     </div>
                     <div style="flex: 1;">
-                        <div style="font: 800 14.5px 'Nunito Sans'; color: #2B3A4C;">{{ $activeContact->name ?? $activeContact->wa_id }}</div>
+                        <div style="display: flex; align-items: center; gap: 7px;">
+                            <div style="font: 800 14.5px 'Nunito Sans'; color: #2B3A4C;">{{ $activeContact->name ?? $activeContact->wa_id }}</div>
+                            @if ($activeContact->needs_human_attention)
+                                <span title="{{ $activeContact->needs_human_reason }}" style="display: inline-flex; align-items: center; gap: 4px; background: #FDECEE; color: #C8355F; border-radius: 999px; padding: 2px 8px; font: 800 10px 'Nunito Sans';">● Needs attention</span>
+                            @endif
+                        </div>
                         <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">
                             @if ($activeContact->channel === 'instagram')
                                 {{ '@' }}{{ $activeContact->name ?? 'Instagram DM' }} · Instagram
@@ -179,11 +144,19 @@
                             @endif
                         </div>
                     </div>
+                    <form action="{{ route('whatsapp.updateAiState', $activeContact->id) }}" method="POST" style="margin: 0;">
+                        @csrf
+                        <select name="ai_state" onchange="this.form.submit()" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 9px; padding: 7px 10px; font: 800 12px 'Nunito Sans'; cursor: pointer;">
+                            @foreach (\App\Models\WhatsappContact::aiStateLabels() as $value => $label)
+                                <option value="{{ $value }}" @selected($activeContact->ai_state === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </form>
                     <a href="{{ route('calendar.index') }}" class="wa-book-btn" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 9px; padding: 8px 14px; font: 800 12px 'Nunito Sans'; cursor: pointer; text-decoration: none; white-space: nowrap;">Book assessment</a>
                 </div>
 
                 <!-- Messages -->
-                <div class="wa-messages" style="flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px;">
+                <div id="wa-messages" class="wa-messages" data-last-message-id="{{ $messages->last()->id ?? 0 }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px;">
                     @php $lastMsgDate = null; @endphp
                     @forelse ($messages as $message)
                         @php
@@ -197,30 +170,7 @@
                         @if ($showDivider)
                             <div class="wa-date-divider"><span>{{ $dividerLabel }}</span></div>
                         @endif
-                        @if ($message->direction === 'inbound')
-                            <div class="wa-msg-row" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;">
-                                <div style="max-width: 62%; background: #FFFFFF; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
-                                    {{ $message->body ?? '['.$message->type.']' }}
-                                    <span style="font: 600 10px 'Nunito Sans'; color: #9AA79B; margin-left: 8px; white-space: nowrap;">{{ $message->sent_at->format('H:i') }}</span>
-                                </div>
-                                @if (! $activeContact->lead_id && $message->body)
-                                    <form action="{{ route('whatsapp.message.convertToLead', $message->id) }}" method="POST" class="wa-msg-convert-form">
-                                        @csrf
-                                        <button type="submit" class="wa-msg-convert-btn">Convert to Lead</button>
-                                    </form>
-                                @endif
-                            </div>
-                        @else
-                            <div style="display: flex; justify-content: flex-end;">
-                                <div style="max-width: 62%; background: #DDF3E0; border-radius: 14px 14px 4px 14px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
-                                    {{ $message->body }}
-                                    <span style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; white-space: nowrap; vertical-align: middle;">
-                                        <span style="font: 600 10px 'Nunito Sans'; color: #9AA79B;">{{ $message->sent_at->format('H:i') }}</span>
-                                        {!! $tick($message->status) !!}
-                                    </span>
-                                </div>
-                            </div>
-                        @endif
+                        @include('whatsapp.partials.message', ['message' => $message, 'activeContact' => $activeContact])
                     @empty
                         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;">
                             <div style="width: 44px; height: 44px; border-radius: 50%; background: #FFFDFA; display: flex; align-items: center; justify-content: center;">
@@ -232,13 +182,13 @@
                 </div>
 
                 @if ($errors->any())
-                    <div style="padding: 10px 20px; background: #FDECEE; border-top: 1px solid #F3C9D5; font: 700 12.5px 'Nunito Sans'; color: #C8355F;">
+                    <div style="flex-shrink: 0; padding: 10px 20px; background: #FDECEE; border-top: 1px solid #F3C9D5; font: 700 12.5px 'Nunito Sans'; color: #C8355F;">
                         {{ $errors->first() }}
                     </div>
                 @endif
 
                 <!-- Message Input -->
-                <form id="wa-send-form" action="{{ route('whatsapp.send') }}" method="POST" style="display: flex; gap: 10px; padding: 14px 20px; background: #FFFDFA; border-top: 1px solid #E4DCCE;">
+                <form id="wa-send-form" action="{{ route('whatsapp.send') }}" method="POST" style="flex-shrink: 0; display: flex; gap: 10px; padding: 14px 20px; background: #FFFDFA; border-top: 1px solid #E4DCCE;">
                     @csrf
                     <input type="hidden" name="contact_id" value="{{ $activeContact->id }}">
                     <input
@@ -257,8 +207,26 @@
                 </form>
                 <script>
                     (function () {
-                        var messages = document.querySelector('.wa-messages');
-                        if (messages) messages.scrollTop = messages.scrollHeight;
+                        var messages = document.getElementById('wa-messages');
+                        if (!messages) return;
+
+                        // Bound the message thread to the space between the chat header and the
+                        // reply box so it scrolls in place — the reply box stays put instead of
+                        // being pushed off-screen once a conversation has a lot of messages.
+                        function sizeMessages() {
+                            var top = messages.getBoundingClientRect().top;
+                            var after = 0;
+                            var sibling = messages.nextElementSibling;
+                            while (sibling) {
+                                after += sibling.getBoundingClientRect().height;
+                                sibling = sibling.nextElementSibling;
+                            }
+                            messages.style.maxHeight = Math.max(window.innerHeight - top - after, 160) + 'px';
+                        }
+
+                        sizeMessages();
+                        messages.scrollTop = messages.scrollHeight;
+                        window.addEventListener('resize', sizeMessages);
                     })();
                     (function () {
                         var form = document.getElementById('wa-send-form');
@@ -296,7 +264,7 @@
         </div>
 
         <!-- Right Sidebar - Family Details -->
-        <div id="wa-family-panel" style="width: 290px; border-left: 1px solid #EBE4DA; background: #FFFDFA; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; overflow-y: auto;">
+        <div id="wa-family-panel" style="width: 290px; min-height: 0; border-left: 1px solid #EBE4DA; background: #FFFDFA; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; overflow-y: auto;">
             <div style="font: 600 16px 'Baloo 2'; color: #16436E;">Family details</div>
 
             @if ($activeContact?->lead)
@@ -326,31 +294,63 @@
 
                 <div style="text-align: center; background: #E3F1E9; color: #1F7A4D; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans';">In leads pipeline &#10003;</div>
             @elseif ($activeContact)
-                <div style="display: flex; flex-direction: column;">
-                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
-                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Child</div>
-                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $leadHints['child_name'] ?? '—' }} @if($leadHints['child_age'] ?? null) · {{ $leadHints['child_age'] }} yrs @endif</div>
+                @php
+                    $childName = $activeContact->child_name ?? $leadHints['child_name'] ?? '';
+                    $interestedIn = $activeContact->interested_in ?? $leadHints['interested_in'] ?? '';
+                    $insurance = $activeContact->insurance ?? $leadHints['insurance'] ?? '';
+                    $fieldLabelStyle = "font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 4px;";
+                    $fieldInputStyle = "width: 100%; box-sizing: border-box; font: 700 12px 'Nunito Sans'; color: #2B3A4C; padding: 6px 8px; border: 1px solid #EBE4DA; border-radius: 8px; background: #FFFFFF;";
+                @endphp
+                <form action="{{ route('whatsapp.updateFamilyDetails', $activeContact->id) }}" method="POST">
+                    @csrf
+                    <div style="display: flex; flex-direction: column;">
+                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
+                            <label style="{{ $fieldLabelStyle }}">Child</label>
+                            <input type="text" name="child_name" value="{{ old('child_name', $childName) }}" placeholder="Child's name" style="{{ $fieldInputStyle }}">
+                            @if($leadHints['child_age'] ?? null)
+                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A; margin-top: 3px;">Detected age: {{ $leadHints['child_age'] }} yrs</div>
+                            @endif
+                        </div>
+                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
+                            <label style="{{ $fieldLabelStyle }}">Interested in</label>
+                            <select name="interested_in" style="{{ $fieldInputStyle }}">
+                                <option value="">—</option>
+                                <option value="ABA therapy" @selected(old('interested_in', $interestedIn) === 'ABA therapy')>ABA therapy</option>
+                                <option value="Speech therapy" @selected(old('interested_in', $interestedIn) === 'Speech therapy')>Speech therapy</option>
+                                <option value="Occupational therapy" @selected(old('interested_in', $interestedIn) === 'Occupational therapy')>Occupational therapy</option>
+                                <option value="Diagnostic assessment" @selected(old('interested_in', $interestedIn) === 'Diagnostic assessment')>Diagnostic assessment</option>
+                                <option value="Early intervention" @selected(old('interested_in', $interestedIn) === 'Early intervention')>Early intervention</option>
+                                <option value="Combined program" @selected(old('interested_in', $interestedIn) === 'Combined program')>Combined program</option>
+                            </select>
+                        </div>
+                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
+                            <label style="{{ $fieldLabelStyle }}">Source</label>
+                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ ucfirst($activeContact->channel) }}</div>
+                        </div>
+                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
+                            <label style="{{ $fieldLabelStyle }}">First contact</label>
+                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $activeContact->created_at->format('M j, H:i') }}</div>
+                        </div>
+                        <div style="padding: 6px 0;">
+                            <label style="{{ $fieldLabelStyle }}">Insurance mentioned</label>
+                            <select name="insurance" style="{{ $fieldInputStyle }}">
+                                <option value="">—</option>
+                                <option value="Not sure yet" @selected(old('insurance', $insurance) === 'Not sure yet')>Not sure yet</option>
+                                <option value="Daman" @selected(old('insurance', $insurance) === 'Daman')>Daman</option>
+                                <option value="Daman Enhanced" @selected(old('insurance', $insurance) === 'Daman Enhanced')>Daman Enhanced</option>
+                                <option value="Thiqa" @selected(old('insurance', $insurance) === 'Thiqa')>Thiqa</option>
+                                <option value="ADNIC" @selected(old('insurance', $insurance) === 'ADNIC')>ADNIC</option>
+                                <option value="AXA / GIG" @selected(old('insurance', $insurance) === 'AXA / GIG')>AXA / GIG</option>
+                                <option value="Self-pay" @selected(old('insurance', $insurance) === 'Self-pay')>Self-pay</option>
+                            </select>
+                        </div>
                     </div>
-                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
-                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Interested in</div>
-                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $leadHints['interested_in'] ?? '—' }}</div>
-                    </div>
-                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
-                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Source</div>
-                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ ucfirst($activeContact->channel) }}</div>
-                    </div>
-                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
-                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">First contact</div>
-                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $activeContact->created_at->format('M j, H:i') }}</div>
-                    </div>
-                    <div style="padding: 10px 0;">
-                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Insurance mentioned</div>
-                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $leadHints['insurance'] ?? '—' }}</div>
-                    </div>
-                </div>
+
+                    <button type="submit" style="width: 100%; text-align: center; background: #FFFFFF; color: #16436E; border: 1px solid #16436E; border-radius: 10px; padding: 10px; font: 800 13px 'Nunito Sans'; cursor: pointer; margin-top: 10px;">Save details</button>
+                </form>
 
                 <div style="background: #F3EDE3; border-radius: 10px; padding: 12px 14px; font: 600 12px/1.5 'Nunito Sans'; color: #5A6B7E;">
-                    Detected automatically from the conversation — no lead created yet. Review and convert when ready.
+                    Child/interested in/insurance are auto-detected from the conversation until you edit and save them here. No lead created yet — review and convert when ready.
                 </div>
 
                 <form action="{{ route('whatsapp.convertToLead', $activeContact->id) }}" method="POST">
@@ -371,49 +371,96 @@
 
     </div>
 
-    @if ($contacts->isNotEmpty())
-        <script>
-            (function () {
-                var input = document.getElementById('wa-contact-search');
-                var list = document.getElementById('wa-contact-list');
-                var filterBar = document.getElementById('wa-channel-filter');
+    <script>
+        (function () {
+            var input = document.getElementById('wa-contact-search');
+            var list = document.getElementById('wa-contact-list');
+            var filterBar = document.getElementById('wa-channel-filter');
+            var activeChannel = 'all';
+
+            function applyFilters() {
                 if (!input || !list) return;
+                var term = input.value.trim().toLowerCase();
+                var rows = list.querySelectorAll('.wa-contact-row');
 
-                var activeChannel = 'all';
+                rows.forEach(function (row) {
+                    var haystack = row.getAttribute('data-search') || '';
+                    var matchesSearch = haystack.includes(term);
+                    var matchesChannel = activeChannel === 'all' || row.getAttribute('data-channel') === activeChannel;
+                    row.style.display = (matchesSearch && matchesChannel) ? 'flex' : 'none';
+                });
+            }
 
-                function applyFilters() {
-                    var term = input.value.trim().toLowerCase();
-                    var rows = list.querySelectorAll('.wa-contact-row');
+            function wirePillHighlight(pill) {
+                filterBar.querySelectorAll('.wa-filter-pill').forEach(function (p) {
+                    p.classList.remove('is-active');
+                    p.style.background = '#F6F3EE';
+                    p.style.color = '#5A6B7E';
+                });
+                pill.classList.add('is-active');
+                pill.style.background = '#2B3A4C';
+                pill.style.color = 'white';
+            }
 
-                    rows.forEach(function (row) {
-                        var haystack = row.getAttribute('data-search') || '';
-                        var matchesSearch = haystack.includes(term);
-                        var matchesChannel = activeChannel === 'all' || row.getAttribute('data-channel') === activeChannel;
-                        row.style.display = (matchesSearch && matchesChannel) ? 'flex' : 'none';
+            if (input) input.addEventListener('input', applyFilters);
+
+            // Guarantee the conversation list scrolls within its own column instead of
+            // overflowing the page once there are enough conversations to exceed the
+            // available height (belt-and-suspenders on top of the flexbox sizing, since
+            // that chain can get thrown off by ancestor layout quirks at small viewports).
+            function sizeContactList() {
+                if (!list) return;
+                var top = list.getBoundingClientRect().top;
+                var maxHeight = window.innerHeight - top;
+                list.style.maxHeight = Math.max(maxHeight, 160) + 'px';
+            }
+            sizeContactList();
+            window.addEventListener('resize', sizeContactList);
+
+            if (filterBar) {
+                filterBar.querySelectorAll('.wa-filter-pill').forEach(function (pill) {
+                    pill.addEventListener('click', function () {
+                        activeChannel = pill.getAttribute('data-channel-filter');
+                        wirePillHighlight(pill);
+                        applyFilters();
                     });
-                }
+                });
+            }
 
-                input.addEventListener('input', applyFilters);
+            // Live-ish inbox: poll for new messages/contacts every few seconds instead of
+            // requiring a manual refresh. Reuses the same Blade partials the initial page
+            // load used (rendered server-side, returned as HTML), so there's no separate
+            // JS rendering logic to keep in sync with the PHP version.
+            var pollUrl = @json(route('whatsapp.poll'));
+            var activeContactId = new URLSearchParams(window.location.search).get('contact');
+            var messagesEl = document.getElementById('wa-messages');
 
-                if (filterBar) {
-                    filterBar.querySelectorAll('.wa-filter-pill').forEach(function (pill) {
-                        pill.addEventListener('click', function () {
-                            activeChannel = pill.getAttribute('data-channel-filter');
+            function poll() {
+                if (document.visibilityState === 'hidden') return;
 
-                            filterBar.querySelectorAll('.wa-filter-pill').forEach(function (p) {
-                                p.classList.remove('is-active');
-                                p.style.background = '#F6F3EE';
-                                p.style.color = '#5A6B7E';
-                            });
-                            pill.classList.add('is-active');
-                            pill.style.background = '#2B3A4C';
-                            pill.style.color = 'white';
+                var params = new URLSearchParams();
+                if (activeContactId) params.set('contact', activeContactId);
+                params.set('after', (messagesEl && messagesEl.dataset.lastMessageId) || 0);
 
+                fetch(pollUrl + '?' + params.toString(), { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (list && typeof data.contacts_html === 'string') {
+                            list.innerHTML = data.contacts_html;
                             applyFilters();
-                        });
-                    });
-                }
-            })();
-        </script>
-    @endif
+                        }
+
+                        if (messagesEl && data.messages_html) {
+                            var wasNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
+                            messagesEl.insertAdjacentHTML('beforeend', data.messages_html);
+                            messagesEl.dataset.lastMessageId = data.latest_message_id;
+                            if (wasNearBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
+                        }
+                    })
+                    .catch(function () { /* transient network hiccup - just try again next tick */ });
+            }
+
+            setInterval(poll, 4000);
+        })();
+    </script>
 @endsection

@@ -35,7 +35,9 @@ return new class extends Migration
             
             // Status tracking
             $table->string('status')->default('new'); // new, contacted, in_progress, converted, lost
-            
+            $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
+            $table->dateTime('follow_up_due_at')->nullable();
+
             // Timestamps
             $table->timestamps();
             

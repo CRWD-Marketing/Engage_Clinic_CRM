@@ -19,8 +19,11 @@ return new class extends Migration
             $table->string('first_name');
             $table->string('middle_name')->nullable();
             $table->string('last_name');
+            $table->string('job_title')->nullable();
             $table->string('email')->unique();
             $table->string('phone_number')->nullable();
+            $table->string('timezone')->nullable()->default('Asia/Dubai (GST)');
+            $table->string('message_signature')->nullable();
 
             // Authentication
             $table->timestamp('email_verified_at')->nullable();

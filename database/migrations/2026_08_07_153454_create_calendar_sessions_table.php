@@ -41,6 +41,9 @@ return new class extends Migration
             $table->enum('status', ['scheduled', 'completed', 'cancelled', 'no_show'])
                 ->default('scheduled');
 
+            // Tracks whether a coordinator has followed up on a no-show; null means still pending.
+            $table->timestamp('follow_up_completed_at')->nullable();
+
             $table->text('notes')->nullable();
 
             $table->foreignId('created_by')

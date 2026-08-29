@@ -84,6 +84,92 @@
             padding: 16px 4px;
         }
 
+        /* ---- View toggle (Day / Week / Month) ---- */
+        .cal-view-toggle {
+            display: flex; gap: 4px; background: #F3EDE3; padding: 4px;
+            border-radius: 10px; order: 1;
+        }
+        .cal-view-btn {
+            border: none; background: transparent; padding: 7px 14px;
+            border-radius: 8px; font: 800 12.5px 'Nunito Sans'; color: #5A6B7E;
+            cursor: pointer; transition: background-color .15s ease, color .15s ease;
+        }
+        .cal-view-btn.active { background: #C8355F; color: #FFFFFF; }
+        .cal-view-btn:not(.active):hover { color: #16436E; }
+
+        .cal-nav-arrow {
+            background: #FFFFFF; border: 1px solid #E2DACE; border-radius: 8px;
+            width: 30px; height: 30px; font: 700 15px 'Nunito Sans'; color: #16436E;
+            cursor: pointer; line-height: 1;
+        }
+        .cal-nav-arrow:hover { border-color: #C8355F; color: #C8355F; }
+        .cal-nav-label {
+            font: 800 12.5px 'Nunito Sans'; color: #16436E; min-width: 110px;
+            text-align: center; display: inline-block;
+        }
+        .cal-nav-today {
+            background: #FFFFFF; border: 1px solid #E2DACE; border-radius: 8px;
+            padding: 6px 11px; font: 800 11.5px 'Nunito Sans'; color: #16436E; cursor: pointer;
+        }
+        .cal-nav-today:hover { border-color: #C8355F; color: #C8355F; }
+        .cal-month-nav, .cal-week-nav { display: flex; align-items: center; gap: 8px; order: 1; }
+
+        /* ---- Week view ---- */
+        .week-grid {
+            flex: 1; overflow: auto; padding: 20px 24px;
+            display: flex; gap: 14px; align-items: flex-start;
+        }
+        .week-col { flex: 1; min-width: 190px; background: #F6F3EE; border-radius: 14px; padding: 8px; }
+        .week-col-header { background: #16436E; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; }
+        .week-col-day { font: 700 14px 'Baloo 2'; color: #FFFFFF; }
+        .week-col-sub { font: 600 11px 'Nunito Sans'; color: #9FB6CC; }
+        .week-session {
+            border-radius: 10px; padding: 9px 11px; margin-bottom: 8px;
+            cursor: pointer; transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .week-session:hover { transform: translateY(-2px); box-shadow: 0 8px 18px -10px rgba(22,42,60,.3); }
+        .week-session-time { font: 700 11.5px 'Nunito Sans'; }
+        .week-session-dur { font: 600 10px 'Nunito Sans'; color: #98897A; float: right; }
+        .week-session-name { font: 800 12.5px 'Nunito Sans'; color: #2B3A4C; margin-top: 3px; }
+        .week-session-meta { font: 600 11px 'Nunito Sans'; color: #8A7D6C; margin-top: 1px; }
+
+        /* ---- Month view ---- */
+        .month-grid {
+            flex: 1; overflow: auto; padding: 20px 24px;
+            display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); gap: 10px;
+            align-content: start;
+        }
+        .month-dow {
+            font: 800 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase;
+            letter-spacing: .5px; padding: 0 4px 4px;
+        }
+        .month-cell {
+            background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 12px;
+            padding: 8px; min-height: 108px; cursor: pointer; transition: border-color .15s ease;
+            display: flex; flex-direction: column; gap: 3px;
+        }
+        .month-cell:hover { border-color: #C8355F; }
+        .month-cell.is-today { border: 2px solid #C8355F; }
+        .month-cell.is-empty { background: transparent; border-color: transparent; cursor: default; }
+        .month-cell-top { display: flex; justify-content: space-between; align-items: baseline; }
+        .month-cell-date { font: 800 12.5px 'Nunito Sans'; color: #2B3A4C; }
+        .month-cell-count { font: 800 11px 'Nunito Sans'; color: #C8355F; }
+        .month-chip {
+            border-radius: 6px; padding: 2px 6px; font: 700 10.5px 'Nunito Sans';
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .month-more { font: 700 10px 'Nunito Sans'; color: #98897A; }
+        .month-book-link {
+            font: 800 10.5px 'Nunito Sans'; color: #C8355F; margin-top: auto;
+            cursor: pointer; align-self: flex-start;
+        }
+        .month-book-link:hover { text-decoration: underline; }
+
+        @media (max-width: 900px) {
+            .cal-nav-label { min-width: 84px; font-size: 11.5px; }
+            .cal-view-btn { padding: 6px 10px; font-size: 11.5px; }
+        }
+
         @media (max-width: 640px) {
             .cal-topbar { padding: 12px 14px; gap: 10px; }
             .cal-daylabel { font-size: 17px; }
@@ -115,8 +201,27 @@
         <div class="cal-topbar">
             <div class="cal-topbar-title">
                 <div class="cal-daylabel">Calendar — <span id="day-label">Today</span></div>
-                <div class="cal-subtitle">Drag a card to another therapist, or use the dropdown · click a legend tag to filter · click Edit to modify</div>
+                <div class="cal-subtitle" id="cal-subtitle">Drag a card to another therapist, or use the dropdown · click a legend tag to filter · click Edit to modify</div>
             </div>
+
+            <div class="cal-view-toggle" id="cal-view-toggle">
+                <button type="button" class="cal-view-btn active" data-view="day">Day</button>
+                <button type="button" class="cal-view-btn" data-view="week">Week</button>
+                <button type="button" class="cal-view-btn" data-view="month">Month</button>
+            </div>
+
+            <div class="cal-week-nav" id="cal-week-nav" style="display:none;">
+                <button type="button" id="week-prev" class="cal-nav-arrow" aria-label="Previous week">‹</button>
+                <button type="button" id="week-today" class="cal-nav-today">This week</button>
+                <button type="button" id="week-next" class="cal-nav-arrow" aria-label="Next week">›</button>
+            </div>
+
+            <div class="cal-month-nav" id="cal-month-nav" style="display:none;">
+                <button type="button" id="month-prev" class="cal-nav-arrow" aria-label="Previous month">‹</button>
+                <span id="month-nav-label" class="cal-nav-label"></span>
+                <button type="button" id="month-next" class="cal-nav-arrow" aria-label="Next month">›</button>
+            </div>
+
             <select id="therapist-filter" class="cal-therapist-select">
                 <option value="">All therapists</option>
                 @foreach ($therapists as $therapist)
@@ -136,7 +241,7 @@
         </div>
 
         <!-- Calendar Grid -->
-        <div class="cal-grid-wrap">
+        <div class="cal-grid-wrap" id="day-view">
             <div id="calendar-grid" class="cal-grid">
                 @foreach ($therapists as $therapist)
                     <div class="therapist-col" data-therapist-id="{{ $therapist->id }}">
@@ -151,6 +256,16 @@
                     </div>
                 @endforeach
             </div>
+        </div>
+
+        <!-- Week view -->
+        <div class="cal-grid-wrap" id="week-view" style="display:none;">
+            <div id="week-grid" class="week-grid"></div>
+        </div>
+
+        <!-- Month view -->
+        <div class="cal-grid-wrap" id="month-view" style="display:none;">
+            <div id="month-grid" class="month-grid"></div>
         </div>
     </div>
 
@@ -277,6 +392,9 @@
 
         let sessionsById = {};
         let activeTypeFilters = new Set(); // empty = show all types
+        let currentView = 'day';
+        let weekAnchor = null;  // any date within the currently displayed week
+        let monthAnchor = null; // any date within the currently displayed month
 
         function todayIso() {
             return new Date().toISOString().slice(0, 10);
@@ -293,6 +411,35 @@
             return parseIsoDateLocal(dateStr).toLocaleDateString('en-US', {
                 weekday: 'short', month: 'short', day: 'numeric',
             });
+        }
+
+        // Formats a Date back to "YYYY-MM-DD" using its *local* fields - toISOString()
+        // converts to UTC first, which can roll the date back a day in negative-UTC
+        // offset zones (same pitfall parseIsoDateLocal above works around on the way in).
+        function toIsoLocal(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function addDays(date, n) {
+            const d = new Date(date);
+            d.setDate(d.getDate() + n);
+            return d;
+        }
+
+        function mondayOf(dateStr) {
+            const d = parseIsoDateLocal(dateStr);
+            const day = d.getDay(); // 0=Sun..6=Sat
+            const diff = day === 0 ? -6 : 1 - day;
+            return addDays(d, diff);
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+            }[c]));
         }
 
         async function api(url, options = {}) {
@@ -415,6 +562,199 @@
                 .forEach(renderSession);
 
             applyFilters();
+        }
+
+        const WEEK_DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+        function therapistName(therapistId) {
+            return (THERAPISTS.find(t => t.id == therapistId) || {}).name || '';
+        }
+
+        async function loadWeekFeed() {
+            const monday = mondayOf(weekAnchor || todayIso());
+            const friday = addDays(monday, 4);
+            const mondayIso = toIsoLocal(monday);
+            const fridayIso = toIsoLocal(friday);
+
+            document.getElementById('day-label').textContent =
+                `week of ${monday.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+            const sessions = await api(`${FEED_URL}?start=${mondayIso}&end=${fridayIso}`);
+            const byDay = {};
+            sessions.forEach(s => { (byDay[s.session_date] ||= []).push(s); });
+            Object.values(byDay).forEach(list => list.sort((a, b) => a.start_time.localeCompare(b.start_time)));
+
+            const grid = document.getElementById('week-grid');
+            grid.innerHTML = '';
+
+            WEEK_DAY_LABELS.forEach((label, i) => {
+                const dateIso = toIsoLocal(addDays(monday, i));
+                const daySessions = byDay[dateIso] || [];
+
+                const col = document.createElement('div');
+                col.className = 'week-col';
+
+                const rows = daySessions.length === 0
+                    ? '<div class="col-empty">No sessions</div>'
+                    : daySessions.map(s => {
+                        const colors = COLORS[s.activity_type] || { bg: '#F6F3EE', fg: '#5A6B7E' };
+                        const meta = [therapistName(s.therapist_id), s.room].filter(Boolean).map(escapeHtml).join(' · ');
+                        return `
+                            <div class="week-session" style="background:${colors.bg};" data-session-id="${s.id}">
+                                <div>
+                                    <span class="week-session-time" style="color:${colors.fg};">${escapeHtml(s.start_time)}–${escapeHtml(s.end_time)}</span>
+                                    <span class="week-session-dur">${escapeHtml(s.duration_minutes)} min</span>
+                                </div>
+                                <div class="week-session-name">${escapeHtml(s.patient_name)}</div>
+                                <div class="week-session-meta">${meta}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                col.innerHTML = `
+                    <div class="week-col-header">
+                        <div class="week-col-day">${label}</div>
+                        <div class="week-col-sub">${daySessions.length} session${daySessions.length === 1 ? '' : 's'}</div>
+                    </div>
+                    ${rows}
+                `;
+
+                col.querySelectorAll('.week-session').forEach(el => {
+                    el.addEventListener('click', () => {
+                        const session = daySessions.find(s => String(s.id) === el.dataset.sessionId);
+                        if (session) openModal(session);
+                    });
+                });
+
+                grid.appendChild(col);
+            });
+        }
+
+        function monthRange(anchorIso) {
+            const d = parseIsoDateLocal(anchorIso);
+            const first = new Date(d.getFullYear(), d.getMonth(), 1);
+            const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+            return { first, last };
+        }
+
+        async function loadMonthFeed() {
+            const { first, last } = monthRange(monthAnchor || todayIso());
+            const firstIso = toIsoLocal(first);
+            const lastIso = toIsoLocal(last);
+            const label = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+            document.getElementById('day-label').textContent = label;
+            document.getElementById('month-nav-label').textContent = label;
+
+            const sessions = await api(`${FEED_URL}?start=${firstIso}&end=${lastIso}`);
+            const byDay = {};
+            sessions.forEach(s => { (byDay[s.session_date] ||= []).push(s); });
+            Object.values(byDay).forEach(list => list.sort((a, b) => a.start_time.localeCompare(b.start_time)));
+
+            const grid = document.getElementById('month-grid');
+            grid.innerHTML = '';
+
+            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => {
+                const dow = document.createElement('div');
+                dow.className = 'month-dow';
+                dow.textContent = d;
+                grid.appendChild(dow);
+            });
+
+            // Monday-first leading gap before day 1 (getDay() is Sunday-first: 0=Sun..6=Sat).
+            const firstWeekday = first.getDay();
+            const leadingBlanks = firstWeekday === 0 ? 6 : firstWeekday - 1;
+            for (let i = 0; i < leadingBlanks; i++) {
+                const blank = document.createElement('div');
+                blank.className = 'month-cell is-empty';
+                grid.appendChild(blank);
+            }
+
+            const todayIsoVal = todayIso();
+            const daysInMonth = last.getDate();
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cellDate = new Date(first.getFullYear(), first.getMonth(), day);
+                const cellIso = toIsoLocal(cellDate);
+                const daySessions = byDay[cellIso] || [];
+
+                const cell = document.createElement('div');
+                cell.className = 'month-cell' + (cellIso === todayIsoVal ? ' is-today' : '');
+
+                const preview = daySessions.slice(0, 3).map(s => {
+                    const colors = COLORS[s.activity_type] || { bg: '#F6F3EE', fg: '#5A6B7E' };
+                    return `<div class="month-chip" style="background:${colors.bg}; color:${colors.fg};">${escapeHtml(s.start_time)} ${escapeHtml(s.patient_name)}</div>`;
+                }).join('');
+
+                const more = daySessions.length > 3
+                    ? `<div class="month-more">+${daySessions.length - 3} more</div>`
+                    : '';
+
+                cell.innerHTML = `
+                    <div class="month-cell-top">
+                        <span class="month-cell-date">${day}</span>
+                        ${daySessions.length ? `<span class="month-cell-count">${daySessions.length}</span>` : ''}
+                    </div>
+                    ${preview}
+                    ${more}
+                    <span class="month-book-link">+ Book</span>
+                `;
+
+                cell.querySelector('.month-book-link').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.getElementById('day-select').value = cellIso;
+                    openModal();
+                });
+
+                cell.addEventListener('click', () => {
+                    document.getElementById('day-select').value = cellIso;
+                    switchView('day');
+                });
+
+                grid.appendChild(cell);
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+
+            document.querySelectorAll('.cal-view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+
+            document.getElementById('day-view').style.display = view === 'day' ? 'flex' : 'none';
+            document.getElementById('week-view').style.display = view === 'week' ? 'flex' : 'none';
+            document.getElementById('month-view').style.display = view === 'month' ? 'flex' : 'none';
+
+            document.getElementById('cal-legend').style.display = view === 'day' ? 'flex' : 'none';
+            document.getElementById('therapist-filter').style.display = view === 'day' ? '' : 'none';
+            document.getElementById('day-select').style.display = view === 'day' ? '' : 'none';
+            document.getElementById('cal-week-nav').style.display = view === 'week' ? 'flex' : 'none';
+            document.getElementById('cal-month-nav').style.display = view === 'month' ? 'flex' : 'none';
+
+            const subtitle = document.getElementById('cal-subtitle');
+
+            if (view === 'day') {
+                subtitle.textContent = 'Drag a card to another therapist, or use the dropdown · click a legend tag to filter · click Edit to modify';
+                loadFeed();
+            } else if (view === 'week') {
+                subtitle.textContent = 'Every therapist, Monday to Friday · click a session to edit it';
+                weekAnchor = document.getElementById('day-select').value || todayIso();
+                loadWeekFeed();
+            } else {
+                subtitle.textContent = 'Click a date to open that day';
+                monthAnchor = document.getElementById('day-select').value || todayIso();
+                loadMonthFeed();
+            }
+        }
+
+        // Re-fetches whichever view is currently on screen - used after a session is
+        // booked/edited/cancelled/reassigned so Week/Month don't silently reload Day's
+        // data underneath a view the user isn't looking at.
+        function refreshCurrentView() {
+            if (currentView === 'week') loadWeekFeed();
+            else if (currentView === 'month') loadMonthFeed();
+            else loadFeed();
         }
 
         async function reassignTherapist(sessionId, newTherapistId) {
@@ -582,7 +922,7 @@
                     });
                 }
                 closeModal();
-                loadFeed();
+                refreshCurrentView();
             } catch (err) {
                 const firstError = Object.values(err.errors || {})[0]?.[0] || err.message;
                 errBox.textContent = firstError;
@@ -591,6 +931,35 @@
         });
 
         document.getElementById('day-select').addEventListener('change', loadFeed);
+
+        // --- Day / Week / Month view toggle ---
+        document.querySelectorAll('.cal-view-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchView(btn.dataset.view));
+        });
+
+        document.getElementById('week-prev').addEventListener('click', () => {
+            weekAnchor = toIsoLocal(addDays(mondayOf(weekAnchor || todayIso()), -7));
+            loadWeekFeed();
+        });
+        document.getElementById('week-next').addEventListener('click', () => {
+            weekAnchor = toIsoLocal(addDays(mondayOf(weekAnchor || todayIso()), 7));
+            loadWeekFeed();
+        });
+        document.getElementById('week-today').addEventListener('click', () => {
+            weekAnchor = todayIso();
+            loadWeekFeed();
+        });
+
+        document.getElementById('month-prev').addEventListener('click', () => {
+            const { first } = monthRange(monthAnchor || todayIso());
+            monthAnchor = toIsoLocal(new Date(first.getFullYear(), first.getMonth() - 1, 1));
+            loadMonthFeed();
+        });
+        document.getElementById('month-next').addEventListener('click', () => {
+            const { first } = monthRange(monthAnchor || todayIso());
+            monthAnchor = toIsoLocal(new Date(first.getFullYear(), first.getMonth() + 1, 1));
+            loadMonthFeed();
+        });
 
         document.getElementById('day-select').value = todayIso();
         loadFeed();

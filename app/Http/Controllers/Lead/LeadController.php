@@ -107,7 +107,7 @@ class LeadController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        $data = $request->all();
+        $data = $this->normalizeNullableFields($request->all());
 
         // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
@@ -185,7 +185,7 @@ class LeadController extends Controller
             return back()->withErrors($validator)->withInput();
         }
 
-        $data = $request->all();
+        $data = $this->normalizeNullableFields($request->all());
 
         // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
@@ -237,6 +237,10 @@ class LeadController extends Controller
      */
     public function destroy(Lead $lead)
     {
+        // Coordinator's lead access is intake/communication support, not full
+        // pipeline ownership - deleting a lead stays with Full Admin/Sales.
+        abort_if(auth()->user()->role === 'COORDINATOR', 403, 'Coordinators cannot delete leads.');
+
         $lead->delete();
         return redirect()
             ->route('leads.index')
@@ -318,6 +322,10 @@ class LeadController extends Controller
      */
     public function convertToPatient(Lead $lead)
     {
+        // Same reasoning as destroy() - conversion is a pipeline-ownership
+        // decision, outside a Coordinator's "limited" lead access.
+        abort_if(auth()->user()->role === 'COORDINATOR', 403, 'Coordinators cannot convert leads to patients.');
+
         if (! $lead->canConvertToPatient()) {
             $message = $lead->status !== Lead::STATUS_ENROLLED
                 ? 'Only enrolled leads can be converted to a patient.'
@@ -391,7 +399,7 @@ class LeadController extends Controller
             ], 422);
         }
 
-        $data = $request->all();
+        $data = $this->normalizeNullableFields($request->all());
 
         // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
@@ -460,6 +468,25 @@ class LeadController extends Controller
             'success' => true,
             'data' => $data
         ]);
+    }
+
+    /**
+     * The edit/create forms always submit assigned_to and follow_up_due_at,
+     * even when left blank, as empty strings. assigned_to is a nullable FK
+     * (bigint) and follow_up_due_at a nullable datetime column, and MySQL's
+     * strict mode rejects '' for both - so it must become null before it
+     * ever reaches Eloquent, or the update/create throws an uncaught
+     * QueryException.
+     */
+    private function normalizeNullableFields(array $data): array
+    {
+        foreach (['assigned_to', 'follow_up_due_at'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === '') {
+                $data[$field] = null;
+            }
+        }
+
+        return $data;
     }
 
     /**

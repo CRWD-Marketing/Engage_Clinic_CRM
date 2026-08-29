@@ -9,7 +9,7 @@
 @section('content')
 
 <!-- Hero -->
-<section class="relative py-24 md:py-32 overflow-hidden" style="background:var(--navy-deep);">
+<section class="js-hero relative py-24 md:py-32 overflow-hidden" style="background:var(--navy-deep);">
   <img src="https://images.unsplash.com/photo-1587323655395-b1c77a12c89a?fm=jpg&q=80&w=1600&auto=format&fit=crop" alt="Child happily engaged in a therapy session" class="absolute inset-0 w-full h-full object-cover opacity-40">
   <div class="absolute inset-0" style="background:linear-gradient(90deg,var(--navy-deep) 20%,rgba(14,46,76,.55) 60%,rgba(14,46,76,.25) 100%);"></div>
   <div class="max-w-7xl mx-auto px-6 lg:px-8 relative">
@@ -100,14 +100,14 @@
       </div>
 
       <div class="{{ $p['imgSide'] === 'left' ? 'lg:order-2' : 'lg:order-1' }}">
-        <span class="service-badge" style="background:{{ $a['soft'] }};color:{{ $a['btn'] }};">
+        <span class="reveal-text service-badge" style="background:{{ $a['soft'] }};color:{{ $a['btn'] }};">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">{!! $icons[$p['icon']] !!}</svg>
           {{ $p['badge'] }}
         </span>
-        <h2 class="display mt-4 text-2xl sm:text-3xl font-extrabold text-[var(--navy)]">{{ $p['title'] }}</h2>
-        <p class="mt-3 text-[var(--text-secondary)] leading-relaxed">{{ $p['desc'] }}</p>
+        <h2 class="reveal-heading display mt-4 text-2xl sm:text-3xl font-extrabold text-[var(--navy)]">{{ $p['title'] }}</h2>
+        <p class="reveal-text mt-3 text-[var(--text-secondary)] leading-relaxed">{{ $p['desc'] }}</p>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 mt-6">
+        <div class="reveal-group grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 mt-6">
           @foreach ($p['checks'] as $check)
             <div class="service-check">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ $a['btn'] }}" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
@@ -129,12 +129,12 @@
 <!-- CTA -->
 <section class="py-16 md:py-20 bg-white">
   <div class="max-w-2xl mx-auto px-6 lg:px-8 text-center">
-    <span class="trust-pill" style="border-color:var(--pink-border);color:var(--pink);">
+    <span class="reveal-text trust-pill" style="border-color:var(--pink-border);color:var(--pink);">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
       Health Insurance Accepted · Free 30-Min Consultation Available
     </span>
-    <h2 class="display mt-6 text-2xl sm:text-3xl font-extrabold text-[var(--navy)]">Not sure which program is right?</h2>
-    <p class="mt-3 text-[var(--text-secondary)]">Book a free 30-minute consultation. Our clinicians will guide you to the right starting point.</p>
+    <h2 class="reveal-heading display mt-6 text-2xl sm:text-3xl font-extrabold text-[var(--navy)]">Not sure which program is right?</h2>
+    <p class="reveal-text mt-3 text-[var(--text-secondary)]">Book a free 30-minute consultation. Our clinicians will guide you to the right starting point.</p>
     <a href="#" onclick="event.preventDefault(); openBookingModal();" class="btn-pink inline-flex mt-7">Book Free Consultation →</a>
   </div>
 </section>

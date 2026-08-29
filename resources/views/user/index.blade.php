@@ -3,11 +3,21 @@
 @section('title', 'Users Management · Engage Clinic')
 @section('page-title', '')
 @section('page-subtitle', '')
-@section('content-class', 'content-fill-height')
+@section('content-class', 'content-fill-height content-full-width')
 
 @section('content')
 <style>
-    .main-content-inner:has(.um-wrap) { max-width: none; }
+    /* Fixed dashboard-style layout: topbar, stat cards, filters, and pagination are
+       ALWAYS visible - only the table rows scroll, to fill whatever space remains.
+       Critically, there is exactly ONE overflow:auto element in this whole chain
+       (.um-table-scroll, far below) - every ancestor between the viewport and it is
+       either a fixed-size flex item (flex-shrink:0) or a pure sizing pass-through
+       (flex:1; min-height:0; overflow:hidden - no scrolling of its own). Two
+       independently-auto-overflowing containers stacked on top of each other is what
+       caused the original bug (sub-pixel rounding under browser zoom made the outer
+       one falsely detect its own overflow and grab a scrollbar instead of deferring
+       to the inner one) - keeping only one real scroll container avoids that class
+       of bug entirely, regardless of zoom level. */
     .um-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; margin: -22px -28px; background: #F6F3EE; }
 
     .um-topbar {
@@ -23,9 +33,12 @@
     }
     .um-add-btn:hover { background: #A82348; }
 
-    .um-body { flex: 1; overflow-y: auto; padding: 20px 28px 28px; display: flex; flex-direction: column; gap: 18px; }
+    .um-body {
+        flex: 1; min-height: 0; overflow: hidden;
+        padding: 20px 28px 28px; display: flex; flex-direction: column; gap: 18px;
+    }
 
-    .um-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .um-stats { flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
     .um-stat {
         background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 16px 18px;
         transition: border-color .15s ease;
@@ -39,9 +52,13 @@
     .um-stat-dot.is-active { background: #1FA855; }
     .um-stat-dot.is-inactive { background: #B0A493; }
 
-    .um-card { background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; overflow: hidden; }
+    .um-card {
+        flex: 1; min-height: 0; overflow: hidden;
+        background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px;
+        display: flex; flex-direction: column;
+    }
 
-    .um-filters { padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid #EBE4DA; }
+    .um-filters { flex-shrink: 0; padding: 16px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border-bottom: 1px solid #EBE4DA; }
     .um-search { position: relative; flex: 1; min-width: 200px; max-width: 300px; }
     .um-search i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #B0A493; font-size: 12px; }
     .um-input, .um-select {
@@ -65,11 +82,17 @@
     .um-clear-link:hover { background: #F6F3EE; color: #2B3A4C; }
     .um-count-pill { font: 800 11px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.05em; margin-left: auto; white-space: nowrap; }
 
-    .um-table-scroll { overflow-x: auto; }
+    /* Only this row area scrolls - a fixed, bounded height (not a viewport-fill flex
+       calculation) so it stays robust under browser zoom. The topbar, stat cards,
+       filters, and pagination bar all stay in normal page flow around it. */
+    /* The single scrollable element in this whole page - see the note on .um-wrap above. */
+    .um-table-scroll { flex: 1; min-height: 0; overflow-x: auto; overflow-y: auto; }
     .um-table { width: 100%; border-collapse: collapse; font: 600 13px 'Nunito Sans'; }
     .um-table thead th {
+        position: sticky; top: 0; z-index: 1;
         text-align: left; padding: 11px 20px; font: 700 10.5px 'Nunito Sans'; color: #98897A;
         text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #EBE4DA; white-space: nowrap;
+        background: #FFFFFF;
     }
     .um-table tbody tr { border-bottom: 1px solid #F3EDE3; transition: background-color .12s ease; }
     .um-table tbody tr:last-child { border-bottom: none; }
@@ -117,6 +140,7 @@
     .um-empty-text { font: 700 12.5px 'Nunito Sans'; color: #98897A; }
 
     .um-pagination-bar {
+        flex-shrink: 0;
         padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px;
         border-top: 1px solid #EBE4DA; flex-wrap: wrap;
     }

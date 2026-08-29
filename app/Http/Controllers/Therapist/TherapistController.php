@@ -16,7 +16,7 @@ class TherapistController extends Controller
      * them. Everyone else (currently just THERAPIST) is scoped to their own
      * sessions only — see role_permissions.php's note on the THERAPIST role.
      */
-    protected const FULL_VISIBILITY_ROLES = ['FULL_ADMIN', 'HR_STAFF', 'CLINICAL_SUPERVISOR'];
+    protected const FULL_VISIBILITY_ROLES = ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'];
 
     /**
      * Display a listing of the resource.

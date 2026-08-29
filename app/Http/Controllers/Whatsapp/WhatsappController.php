@@ -3,16 +3,29 @@
 namespace App\Http\Controllers\Whatsapp;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessAiEmployeeReply;
+use App\Models\AiEmployeeSettings;
 use App\Models\Lead;
 use App\Models\WhatsappContact;
 use App\Models\WhatsappMessage;
+use App\Services\Messaging\OutboundMessagingResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class WhatsappController extends Controller
 {
+    /**
+     * Messenger's quick-tap "like" (thumbs-up) button sends one of these fixed
+     * sticker ids depending on how many times it's tapped (small/medium/large).
+     * These are Meta's own long-standing, publicly documented constants.
+     */
+    private const LIKE_STICKER_IDS = ['369239263222822', '369239383222811', '369239343222815'];
+
+    public function __construct(private OutboundMessagingResolver $messagingResolver) {}
+
     /**
      * Display the WhatsApp inbox: the contact list plus the active conversation.
      */
@@ -40,6 +53,60 @@ class WhatsappController extends Controller
         }
 
         return view('whatsapp.index', compact('contacts', 'activeContact', 'messages', 'leadHints'));
+    }
+
+    /**
+     * Polled by the inbox every few seconds so new messages and contact updates
+     * (unread counts, previews, reordering, brand-new conversations) show up without
+     * a manual refresh. Returns rendered HTML fragments (reusing the same partials
+     * as the initial page load) rather than raw JSON, so the two never drift apart.
+     */
+    public function poll(Request $request)
+    {
+        $activeContactId = $request->filled('contact') ? (int) $request->query('contact') : null;
+        $afterMessageId = (int) $request->query('after', 0);
+
+        $contacts = WhatsappContact::orderByDesc('last_message_at')->get();
+        $contactsHtml = $contacts->map(fn ($contact) => view('whatsapp.partials.contact_row', [
+            'contact' => $contact,
+            'activeContactId' => $activeContactId,
+        ])->render())->implode('');
+
+        $messagesHtml = '';
+        $latestMessageId = $afterMessageId;
+
+        if ($activeContactId) {
+            $activeContact = $contacts->firstWhere('id', $activeContactId);
+
+            if ($activeContact) {
+                $newMessages = $activeContact->messages()->where('id', '>', $afterMessageId)->orderBy('sent_at')->get();
+
+                if ($newMessages->isNotEmpty()) {
+                    $messagesHtml = $newMessages->map(fn ($message) => view('whatsapp.partials.message', [
+                        'message' => $message,
+                        'activeContact' => $activeContact,
+                    ])->render())->implode('');
+
+                    $latestMessageId = $newMessages->last()->id;
+
+                    // The conversation is open in front of the user right now, so
+                    // anything that just arrived counts as read immediately.
+                    if ($activeContact->unread_count > 0) {
+                        $activeContact->update(['unread_count' => 0]);
+                        $contactsHtml = $contacts->map(fn ($contact) => view('whatsapp.partials.contact_row', [
+                            'contact' => $contact->id === $activeContact->id ? $activeContact->fresh() : $contact,
+                            'activeContactId' => $activeContactId,
+                        ])->render())->implode('');
+                    }
+                }
+            }
+        }
+
+        return response()->json([
+            'contacts_html' => $contactsHtml,
+            'messages_html' => $messagesHtml,
+            'latest_message_id' => $latestMessageId,
+        ]);
     }
 
     /**
@@ -126,7 +193,18 @@ class WhatsappController extends Controller
      */
     public function handleWebhook(Request $request)
     {
-        Log::info('Meta webhook payload', $request->all());
+        if (! $this->verifySignature($request)) {
+            Log::warning('Rejected Meta webhook POST with invalid/missing X-Hub-Signature-256.');
+
+            return response('Invalid signature', 403);
+        }
+
+        // Logged as a pre-encoded JSON string rather than passed as the array context -
+        // Monolog's normalizer silently truncates nested arrays past 9 levels deep
+        // ("Over 9 levels deep, aborting normalization"), and these payloads
+        // (entry > messaging > message > attachments > payload > url) hit that
+        // ceiling exactly, hiding the very data you need to debug attachments/stickers.
+        Log::info('Meta webhook payload: '.json_encode($request->all()));
 
         $object = $request->input('object');
 
@@ -135,13 +213,17 @@ class WhatsappController extends Controller
                 // Instagram's `messages` field webhook: entry[].changes[].value = {sender, recipient, timestamp, message}.
                 foreach ($entry['changes'] ?? [] as $change) {
                     if (($change['field'] ?? null) === 'messages') {
-                        $this->storeInboundMessengerMessage($change['value'] ?? [], 'instagram');
+                        $this->safely(function () use ($change) {
+                            $this->dispatchAiReplyIfEligible($this->storeInboundMessengerMessage($change['value'] ?? [], 'instagram'));
+                        });
                     }
                 }
 
                 // Older Messenger-style shape some events may still use: entry[].messaging[].
                 foreach ($entry['messaging'] ?? [] as $messagingItem) {
-                    $this->storeInboundMessengerMessage($messagingItem, 'instagram');
+                    $this->safely(function () use ($messagingItem) {
+                        $this->dispatchAiReplyIfEligible($this->storeInboundMessengerMessage($messagingItem, 'instagram'));
+                    });
                 }
 
                 continue;
@@ -150,7 +232,9 @@ class WhatsappController extends Controller
             if ($object === 'page') {
                 // Facebook Page Messenger webhook: entry[].messaging[] = {sender, recipient, timestamp, message}.
                 foreach ($entry['messaging'] ?? [] as $messagingItem) {
-                    $this->storeInboundMessengerMessage($messagingItem, 'facebook');
+                    $this->safely(function () use ($messagingItem) {
+                        $this->dispatchAiReplyIfEligible($this->storeInboundMessengerMessage($messagingItem, 'facebook'));
+                    });
                 }
 
                 continue;
@@ -160,16 +244,93 @@ class WhatsappController extends Controller
                 $value = $change['value'] ?? [];
 
                 foreach ($value['messages'] ?? [] as $message) {
-                    $this->storeInboundMessage($message, $value['contacts'][0] ?? null);
+                    $this->safely(function () use ($message, $value) {
+                        $this->dispatchAiReplyIfEligible($this->storeInboundMessage($message, $value['contacts'][0] ?? null));
+                    });
                 }
 
                 foreach ($value['statuses'] ?? [] as $status) {
-                    $this->updateMessageStatus($status);
+                    $this->safely(fn () => $this->updateMessageStatus($status));
                 }
             }
         }
 
         return response()->json(['status' => 'received']);
+    }
+
+    /**
+     * Verifies Meta's HMAC signature on the raw POST body using the app secret,
+     * so this endpoint (necessarily CSRF-exempt and unauthenticated for Meta to
+     * reach it) can't be forged into feeding arbitrary payloads to the AI Employee.
+     * Uses getContent() (the exact raw bytes Meta signed), not $request->all() -
+     * any re-encoding would produce a different HMAC and always fail verification.
+     *
+     * Checked against both app secrets, not just Facebook's: this app registers
+     * Instagram under its own separate app ("Instagram API with Instagram Login",
+     * see sendInstagramMessage()/fetchMessengerProfile()) with its own app secret,
+     * while WhatsApp + Facebook Messenger are signed under the Meta/Facebook app.
+     * Accepting either keeps all three product types verified without needing to
+     * branch on $request->input('object') before the signature check runs.
+     */
+    private function verifySignature(Request $request): bool
+    {
+        $signatureHeader = $request->header('X-Hub-Signature-256');
+
+        if (! $signatureHeader || ! str_starts_with($signatureHeader, 'sha256=')) {
+            return false;
+        }
+
+        $body = $request->getContent();
+
+        foreach ([config('services.facebook.app_secret'), config('services.instagram.app_secret')] as $secret) {
+            if (! $secret) {
+                continue;
+            }
+
+            $expected = 'sha256='.hash_hmac('sha256', $body, (string) $secret);
+
+            if (hash_equals($expected, $signatureHeader)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Queues the AI Employee for a freshly stored inbound message, if it's a type
+     * the AI is allowed to respond to. Called from inside the same safely() closure
+     * that stores the message, so a dispatch failure can't crash the webhook batch.
+     */
+    private function dispatchAiReplyIfEligible(?WhatsappMessage $message): void
+    {
+        if (! $message || ! $message->isEligibleForAutoReply()) {
+            return;
+        }
+
+        // Every eligible inbound message gets its own fresh response delay -
+        // this is a deliberate pacing requirement, not just anti-spam: each
+        // message independently waits response_delay_seconds before the AI
+        // replies to it, not a one-time delay for the whole conversation.
+        $delaySeconds = AiEmployeeSettings::current()->response_delay_seconds;
+
+        ProcessAiEmployeeReply::dispatch($message->id)->delay(now()->addSeconds($delaySeconds));
+    }
+
+    /**
+     * Run one webhook entry's storage step in isolation. Meta batches multiple events into a
+     * single POST, and (pre-existing behavior) an uncaught exception from one bad/malformed
+     * event was bubbling up through the whole request - returning a 500 that both dropped every
+     * other event in that same payload and told Meta to keep retrying, indefinitely re-sending
+     * an event that will never succeed (e.g. the "String data, right truncated" case above).
+     */
+    private function safely(\Closure $callback): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            Log::error('Failed to process a Meta webhook event: '.$e->getMessage(), ['exception' => $e]);
+        }
     }
 
     /**
@@ -185,16 +346,19 @@ class WhatsappController extends Controller
 
         $contact = WhatsappContact::findOrFail($validated['contact_id']);
 
-        $response = match ($contact->channel) {
-            'instagram' => $this->sendInstagramMessage($contact, $validated['message']),
-            'facebook' => $this->sendFacebookMessage($contact, $validated['message']),
-            default => $this->sendWhatsappMessage($contact, $validated['message']),
-        };
+        $response = $this->messagingResolver->resolve($contact->channel)->sendText($contact, $validated['message']);
 
         if ($response->failed()) {
             Log::error(ucfirst($contact->channel).' send failed', $response->json() ?? ['status' => $response->status()]);
 
-            return back()->withErrors(['message' => 'Failed to send message.'])->withInput();
+            // Surface Meta's actual rejection reason (e.g. "Error validating access
+            // token", "This message is sent outside of allowed window") directly in
+            // the UI - the generic "Failed to send message" gave no way to tell an
+            // expired token from a wrong recipient id without SSHing in to read logs.
+            $metaError = $response->json('error.message');
+            $detail = $metaError ? " ({$metaError})" : " (HTTP {$response->status()})";
+
+            return back()->withErrors(['message' => 'Failed to send message.'.$detail])->withInput();
         }
 
         $waMessageId = match ($contact->channel) {
@@ -231,13 +395,15 @@ class WhatsappController extends Controller
         $hints = $this->extractLeadHints($contact->messages()->get());
 
         $lead = Lead::create([
-            'child_name' => $hints['child_name'],
+            // A coordinator's manual entry in the Family details panel wins over
+            // the auto-detected guess - that's the whole point of letting them edit it.
+            'child_name' => $contact->child_name ?: $hints['child_name'],
             'child_age' => $hints['child_age'],
             'parent_guardian_name' => $contact->name,
             'phone' => $contact->channel === 'whatsapp' ? $contact->wa_id : null,
             'source' => ucfirst($contact->channel),
-            'interested_in' => $hints['interested_in'],
-            'insurance' => $hints['insurance'],
+            'interested_in' => $contact->interested_in ?: $hints['interested_in'],
+            'insurance' => $contact->insurance ?: $hints['insurance'],
             'status' => Lead::STATUS_NEW,
         ]);
 
@@ -262,13 +428,13 @@ class WhatsappController extends Controller
         $hints = $this->extractLeadHints($contact->messages()->get());
 
         $lead = Lead::create([
-            'child_name' => $hints['child_name'],
+            'child_name' => $contact->child_name ?: $hints['child_name'],
             'child_age' => $hints['child_age'],
             'parent_guardian_name' => $contact->name,
             'phone' => $contact->channel === 'whatsapp' ? $contact->wa_id : null,
             'source' => ucfirst($contact->channel),
-            'interested_in' => $hints['interested_in'],
-            'insurance' => $hints['insurance'],
+            'interested_in' => $contact->interested_in ?: $hints['interested_in'],
+            'insurance' => $contact->insurance ?: $hints['insurance'],
             'notes' => $message->body,
             'status' => Lead::STATUS_NEW,
         ]);
@@ -278,46 +444,59 @@ class WhatsappController extends Controller
         return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
     }
 
-    private function sendWhatsappMessage(WhatsappContact $contact, string $message)
+    /**
+     * Save a coordinator's manual edits to the Family details panel (child's name,
+     * interested in, insurance mentioned) for a conversation that hasn't been
+     * converted to a lead yet. These override extractLeadHints()'s auto-detected
+     * guesses both in the panel display and when "Convert to Lead" is eventually clicked.
+     */
+    public function updateFamilyDetails(Request $request, WhatsappContact $contact)
     {
-        $phoneNumberId = config('services.whatsapp.phone_number_id');
+        $validated = $request->validate([
+            'child_name' => ['nullable', 'string', 'max:255'],
+            'interested_in' => ['nullable', 'string', 'max:100'],
+            'insurance' => ['nullable', 'string', 'max:50'],
+        ]);
 
-        return Http::withToken(config('services.whatsapp.access_token'))
-            ->post("https://graph.facebook.com/v21.0/{$phoneNumberId}/messages", [
-                'messaging_product' => 'whatsapp',
-                'to' => $contact->wa_id,
-                'type' => 'text',
-                'text' => ['body' => $message],
-            ]);
+        $contact->update($validated);
+
+        return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
     }
 
-    private function sendInstagramMessage(WhatsappContact $contact, string $message)
+    /**
+     * Change a conversation's AI/human handoff state (AI Active / Human Assigned /
+     * Human Takeover / Closed). Acting on a conversation this way also clears any
+     * "needs human attention" flag, since a staff member looking at it is exactly
+     * what that flag was raising.
+     */
+    public function updateAiState(Request $request, WhatsappContact $contact)
     {
-        $igBusinessId = config('services.instagram.business_account_id');
+        $validated = $request->validate([
+            'ai_state' => ['required', Rule::in([
+                WhatsappContact::AI_STATE_ACTIVE,
+                WhatsappContact::AI_STATE_HUMAN_ASSIGNED,
+                WhatsappContact::AI_STATE_HUMAN_TAKEOVER,
+                WhatsappContact::AI_STATE_CLOSED,
+            ])],
+            'assigned_user_id' => ['nullable', 'exists:users,id'],
+        ]);
 
-        return Http::withToken(config('services.instagram.access_token'))
-            ->post("https://graph.facebook.com/v21.0/{$igBusinessId}/messages", [
-                'recipient' => ['id' => $contact->wa_id],
-                'message' => ['text' => $message],
-            ]);
-    }
+        $contact->update([
+            'ai_state' => $validated['ai_state'],
+            'assigned_user_id' => $validated['assigned_user_id'] ?? $contact->assigned_user_id,
+            'ai_state_changed_by' => auth()->id(),
+            'ai_state_changed_at' => now(),
+            'needs_human_attention' => false,
+        ]);
 
-    private function sendFacebookMessage(WhatsappContact $contact, string $message)
-    {
-        $apiVersion = config('services.facebook.api_version');
-
-        return Http::withToken(config('services.facebook.page_access_token'))
-            ->post("https://graph.facebook.com/{$apiVersion}/me/messages", [
-                'recipient' => ['id' => $contact->wa_id],
-                'message' => ['text' => $message],
-                'messaging_type' => 'RESPONSE',
-            ]);
+        return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
     }
 
     /**
      * Persist an inbound message, creating the contact (and an auto-captured lead) on first contact.
+     * Returns the stored message so the caller can decide whether to trigger the AI Employee.
      */
-    private function storeInboundMessage(array $message, ?array $contactPayload): void
+    private function storeInboundMessage(array $message, ?array $contactPayload): ?WhatsappMessage
     {
         $waId = $message['from'];
         $name = $contactPayload['profile']['name'] ?? null;
@@ -339,7 +518,7 @@ class WhatsappController extends Controller
             default => null,
         };
 
-        WhatsappMessage::updateOrCreate(
+        $stored = WhatsappMessage::updateOrCreate(
             ['wa_message_id' => $message['id']],
             [
                 'whatsapp_contact_id' => $contact->id,
@@ -352,10 +531,12 @@ class WhatsappController extends Controller
         );
 
         $contact->update([
-            'last_message_preview' => $body ?? '['.($message['type'] ?? 'message').']',
+            'last_message_preview' => $body ?? WhatsappMessage::fallbackLabel($message['type'] ?? 'text'),
             'last_message_at' => Carbon::createFromTimestamp((int) $message['timestamp']),
             'unread_count' => $contact->unread_count + 1,
         ]);
+
+        return $stored;
     }
 
     /**
@@ -371,25 +552,81 @@ class WhatsappController extends Controller
      * Persist an inbound Instagram DM or Facebook Page Messenger message, creating the contact
      * (and an auto-captured lead) on first contact.
      * Shape: {sender: {id}, recipient: {id}, timestamp, message: {mid, text}}.
+     * Returns the stored message so the caller can decide whether to trigger the AI Employee,
+     * or null for events that aren't a new stored message (echoes, unsends, deletes).
      */
-    private function storeInboundMessengerMessage(array $messagingItem, string $channel): void
+    private function storeInboundMessengerMessage(array $messagingItem, string $channel): ?WhatsappMessage
     {
         // Skip echoes of our own outbound messages and non-message events (delivery/read receipts).
         if (! isset($messagingItem['message']) || ($messagingItem['message']['is_echo'] ?? false)) {
-            return;
+            return null;
+        }
+
+        // Instagram sends an "unsend" event with the *same* mid as the original message,
+        // just {mid, is_deleted: true} with no text/attachments. Without this check it falls
+        // through to the normal path below and updateOrCreate() overwrites the already-stored
+        // message's real body with null, permanently losing what the contact actually sent.
+        if ($messagingItem['message']['is_deleted'] ?? false) {
+            return null;
         }
 
         $senderId = $messagingItem['sender']['id'];
         $message = $messagingItem['message'];
         $body = $message['text'] ?? null;
 
+        // Tapping "Reply" on the business's own story and sending text arrives with
+        // both the real reply text *and* this pointer back to the story - capture the
+        // story thumbnail so the bubble can show what they were replying to, without
+        // losing the actual words they typed.
+        $storyUrl = $message['reply_to']['story']['url'] ?? null;
+
         // Stickers (incl. the emoji sticker tray), images, GIFs etc. arrive as `attachments`
         // instead of `text` - there's no literal character to store, so label the type instead
         // of leaving both `type` and `body` looking like a blank/failed text message.
         $type = 'text';
-        if ($body === null && ! empty($message['attachments'])) {
-            $attachmentTypes = collect($message['attachments'])->pluck('type')->filter();
-            $type = $attachmentTypes->contains('sticker') ? 'sticker' : ($attachmentTypes->first() ?? 'attachment');
+        $stickerId = null;
+        $mediaUrl = null;
+
+        // Meta marks certain shares this way (most often a Reel/video carrying
+        // licensed music) and, deliberately, sends nothing else about it at all -
+        // no url, no text, no attachments. There's no follow-up API call that
+        // recovers the content; only the Instagram/WhatsApp app itself can show it.
+        if ($message['is_unsupported'] ?? false) {
+            $type = 'unsupported_type';
+        } elseif ($body === null && ! empty($message['attachments'])) {
+            $attachments = collect($message['attachments']);
+            $attachmentTypes = $attachments->pluck('type')->filter();
+            $stickerId = $attachments->first(fn ($a) => ($a['type'] ?? null) === 'sticker')['payload']['sticker_id'] ?? null;
+            $mediaUrl = $attachments->first()['payload']['url'] ?? null;
+
+            if ($stickerId && in_array((string) $stickerId, self::LIKE_STICKER_IDS, true)) {
+                // Messenger's quick-tap "like" thumbs-up (tapping it repeatedly sends
+                // progressively larger variants, all in this fixed set of sticker ids).
+                $type = 'like';
+                $body = '👍';
+            } elseif ($attachmentTypes->contains('sticker')) {
+                $type = 'sticker';
+            } else {
+                // image/video/audio/file arrive with a directly-usable CDN url and get
+                // their own player/preview in the bubble. "share"/"template" is a
+                // shared post or Reel - its payload.url is a permalink to view on
+                // Instagram/Facebook, not an image, so it gets a link-card instead of
+                // being shoved into an <img> tag (which would just show as broken).
+                $type = match ($attachmentTypes->first()) {
+                    'image', 'video', 'audio', 'file' => $attachmentTypes->first(),
+                    'story_mention' => 'story_mention',
+                    'share', 'template', 'ig_reel' => 'shared_post',
+                    // Meta's own literal attachment type name for "no first-class UI for
+                    // this in our app" - despite the name, the url still resolves to a
+                    // real, publicly-fetchable video file (verified against a live
+                    // payload: HTTP 200, video/mp4, no auth needed), not a dead end.
+                    'unsupported_type' => 'video',
+                    default => $attachmentTypes->first() ?? 'attachment',
+                };
+            }
+        } elseif ($storyUrl) {
+            $mediaUrl = $storyUrl;
+            $type = 'story_reply';
         }
 
         // Messenger Platform sends `timestamp` in milliseconds, unlike WhatsApp's Cloud API (seconds).
@@ -405,19 +642,21 @@ class WhatsappController extends Controller
         $contact->save();
 
         if ($isNewContact) {
-            $name = $this->fetchMessengerProfileName($senderId, $channel);
+            $profile = $this->fetchMessengerProfile($senderId, $channel);
 
-            if ($name) {
-                $contact->update(['name' => $name]);
+            if ($profile) {
+                $contact->update(array_filter($profile, fn ($v) => $v !== null));
             }
         }
 
-        WhatsappMessage::updateOrCreate(
+        $stored = WhatsappMessage::updateOrCreate(
             ['wa_message_id' => $message['mid']],
             [
                 'whatsapp_contact_id' => $contact->id,
                 'direction' => 'inbound',
                 'type' => $type,
+                'sticker_id' => $stickerId,
+                'media_url' => $mediaUrl,
                 'body' => $body,
                 'status' => 'received',
                 'sent_at' => $sentAt,
@@ -425,38 +664,63 @@ class WhatsappController extends Controller
         );
 
         $contact->update([
-            'last_message_preview' => $body ?? '['.$type.']',
+            'last_message_preview' => $body ?? WhatsappMessage::fallbackLabel($type),
             'last_message_at' => $sentAt,
             'unread_count' => $contact->unread_count + 1,
         ]);
+
+        return $stored;
     }
 
     /**
-     * Look up an Instagram or Facebook user's display name via the Graph API
-     * (not included in the webhook payload).
+     * Look up an Instagram or Facebook user's display name + profile picture via
+     * the Graph API (neither is included in the webhook payload). Returns
+     * ['name' => ?string, 'avatar_url' => ?string] or null on a failed lookup.
+     * Public so the whatsapp:refresh-profiles command can re-run it for
+     * contacts that were created before a fix to this lookup (e.g. a name that
+     * was missing a middle name), or whose cached avatar URL has expired.
      */
-    private function fetchMessengerProfileName(string $psid, string $channel): ?string
+    public function fetchMessengerProfile(string $psid, string $channel): ?array
     {
         $token = $channel === 'facebook'
             ? config('services.facebook.page_access_token')
             : config('services.instagram.access_token');
 
+        // Facebook Page Messenger tokens are only valid against graph.facebook.com.
+        // This app's Instagram connection uses the "Instagram API with Instagram
+        // Login" flow instead (see instagramOAuthCallback), whose tokens are only
+        // valid against graph.instagram.com - graph.facebook.com rejects them
+        // outright with a 401 "Cannot parse access token" error.
+        $host = $channel === 'facebook' ? 'graph.facebook.com' : 'graph.instagram.com';
+
         $response = Http::withToken($token)
-            ->get("https://graph.facebook.com/v21.0/{$psid}", [
-                'fields' => $channel === 'facebook' ? 'first_name,last_name' : 'name,username',
+            ->get("https://{$host}/v21.0/{$psid}", [
+                'fields' => $channel === 'facebook' ? 'first_name,middle_name,last_name,name,profile_pic' : 'name,username,profile_pic',
             ]);
 
         if (! $response->successful()) {
             return null;
         }
 
-        if ($channel === 'facebook') {
-            $name = trim(($response->json('first_name') ?? '').' '.($response->json('last_name') ?? ''));
+        $avatarUrl = $response->json('profile_pic');
 
-            return $name !== '' ? $name : null;
+        if ($channel === 'facebook') {
+            // Prefer the API's own full `name` field - a first_name + last_name
+            // concatenation silently drops a middle name (e.g. "Perry Philip
+            // Lozano" would collapse to "Perry Lozano"), since Facebook only
+            // includes middle_name in that pair when it's explicitly requested.
+            $name = $response->json('name') ?? trim(implode(' ', array_filter([
+                $response->json('first_name'),
+                $response->json('middle_name'),
+                $response->json('last_name'),
+            ])));
+
+            return ['name' => $name !== '' ? $name : null, 'avatar_url' => $avatarUrl];
         }
 
-        return $response->json('name') ?? $response->json('username');
+        $name = $response->json('name') ?? $response->json('username');
+
+        return ['name' => $name, 'avatar_url' => $avatarUrl];
     }
 
     /**

@@ -9,7 +9,7 @@
 @section('content')
 
 <!-- Hero -->
-<section class="py-20 md:py-28 text-center" style="background:var(--navy-deep);">
+<section class="js-hero py-20 md:py-28 text-center" style="background:var(--navy-deep);">
   <div class="max-w-3xl mx-auto px-6 lg:px-8">
     <span class="eyebrow-plain" style="color:var(--pink-mid);">Blog</span>
     <h1 class="display mt-4 text-3xl sm:text-5xl font-extrabold leading-[1.15] text-white">Resources for families and clinicians</h1>
@@ -83,10 +83,10 @@
       </div>
       <div class="p-8 lg:p-10 flex flex-col justify-center">
         @php $fa = $tagAccent[$featured['accent']]; @endphp
-        <span class="service-badge w-fit" style="background:{{ $fa['soft'] }};color:{{ $fa['color'] }};">{{ $featured['tag'] }}</span>
-        <h2 class="display mt-4 text-2xl sm:text-3xl font-extrabold text-[var(--navy)] leading-tight">{{ $featured['title'] }}</h2>
-        <p class="mt-3 text-[var(--text-secondary)] leading-relaxed">{{ $featured['excerpt'] }}</p>
-        <div class="flex items-center gap-2 mt-6 text-xs text-[var(--text-muted)]">
+        <span class="reveal-text service-badge w-fit" style="background:{{ $fa['soft'] }};color:{{ $fa['color'] }};">{{ $featured['tag'] }}</span>
+        <h2 class="reveal-heading display mt-4 text-2xl sm:text-3xl font-extrabold text-[var(--navy)] leading-tight">{{ $featured['title'] }}</h2>
+        <p class="reveal-text mt-3 text-[var(--text-secondary)] leading-relaxed">{{ $featured['excerpt'] }}</p>
+        <div class="reveal-text flex items-center gap-2 mt-6 text-xs text-[var(--text-muted)]">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">{!! $clockIcon !!}</svg>
           {{ $featured['time'] }} <span>·</span> {{ $featured['date'] }}
         </div>
@@ -98,7 +98,7 @@
 <!-- Post grid -->
 <section class="pb-16 md:pb-24 dotted">
   <div class="max-w-6xl mx-auto px-6 lg:px-8">
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+    <div class="reveal-group grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
       @foreach ($posts as $post)
         @php $pa = $tagAccent[$post['accent']]; @endphp
         <a href="#" class="card blog-card overflow-hidden block">

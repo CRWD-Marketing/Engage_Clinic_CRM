@@ -9,7 +9,7 @@
 @section('content')
 
 <!-- Hero -->
-<section class="py-20 md:py-28 text-center" style="background:var(--navy-deep);">
+<section class="js-hero py-20 md:py-28 text-center" style="background:var(--navy-deep);">
   <div class="max-w-3xl mx-auto px-6 lg:px-8">
     <span class="eyebrow-plain" style="color:var(--pink-mid);">Legal</span>
     <h1 class="display mt-4 text-3xl sm:text-5xl font-extrabold leading-[1.15] text-white">Privacy Policy</h1>

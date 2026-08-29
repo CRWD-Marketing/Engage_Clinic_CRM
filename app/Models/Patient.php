@@ -57,7 +57,26 @@ class Patient extends Model
     {
         $therapistIds = $this->calendarSessions()->distinct()->pluck('therapist_id');
 
-        return User::whereIn('id', $therapistIds)->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
+        return User::whereIn('id', $therapistIds)->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'job_title']);
+    }
+
+    /**
+     * Attendance rate over the last 30 days, same "completed / (completed +
+     * no_show)" formula the dashboard uses clinic-wide, scoped to just this
+     * patient's own sessions. Null when there's nothing to measure yet.
+     */
+    public function attendanceRate30d(): ?int
+    {
+        $sessions = $this->calendarSessions()
+            ->whereBetween('session_date', [now()->subDays(30), now()->toDateString()])
+            ->whereIn('status', ['completed', 'no_show'])
+            ->get();
+
+        if ($sessions->isEmpty()) {
+            return null;
+        }
+
+        return (int) round($sessions->where('status', 'completed')->count() / $sessions->count() * 100);
     }
 
     /**

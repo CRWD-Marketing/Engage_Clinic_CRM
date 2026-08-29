@@ -50,6 +50,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'logout'])
         ->name('logout');
 
+});
+
+Route::middleware(['auth', 'feature:users'])->group(function () {
+
     // User Management
     Route::get('/users', [CreateAccount::class, 'index'])->name('users.index');
     Route::get('/users/create', [CreateAccount::class, 'create'])->name('users.create');

@@ -19,7 +19,7 @@ use App\Http\Controllers\Lead\LeadController;
 |
 */
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'feature:leads'])
     ->prefix('admin')
     ->group(function () {
 

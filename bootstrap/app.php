@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\RoleMiddleware;
+use App\Http\Middleware\FeatureMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/whatsapp.php',
             __DIR__.'/../routes/patient.php',
             __DIR__.'/../routes/calendar.php',
+            __DIR__.'/../routes/knowledge_base.php',
         ],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
@@ -21,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => RoleMiddleware::class,
+            'feature' => FeatureMiddleware::class,
         ]);
 
         // Meta calls this directly with no Laravel session/CSRF token.

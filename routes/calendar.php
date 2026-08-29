@@ -3,7 +3,7 @@
 use App\Http\Controllers\Calendar\CalendarController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])
+Route::middleware(['auth', 'feature:calendar'])
     ->prefix('calendar')
     ->name('calendar.')
     ->group(function () {

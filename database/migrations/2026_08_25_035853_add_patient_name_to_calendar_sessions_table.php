@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('calendar_sessions', function (Blueprint $table) {
-            // Tracks whether a coordinator has followed up on a no-show; null means still pending.
-            $table->timestamp('follow_up_completed_at')->nullable()->after('status');
+            // Denormalized snapshot of the linked Lead's child_name, kept in sync by
+            // CalendarSession::booted()'s saving() hook. That hook has unconditionally
+            // written to this column since the model was written; it was simply never
+            // migrated, which breaks every session create/update with a "column not
+            // found" error the moment it runs.
+            $table->string('patient_name')->nullable()->after('patient_id');
         });
     }
 
@@ -23,7 +27,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('calendar_sessions', function (Blueprint $table) {
-            $table->dropColumn('follow_up_completed_at');
+            $table->dropColumn('patient_name');
         });
     }
 };

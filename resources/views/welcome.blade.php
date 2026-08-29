@@ -9,7 +9,7 @@
 @section('content')
 
 <!-- Hero -->
-<section id="home" class="dotted relative py-12 md:py-16 overflow-hidden">
+<section id="home" class="js-hero dotted relative py-12 md:py-16 overflow-hidden">
   <div class="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-10 items-center">
 
     <!-- Left: copy -->
@@ -118,7 +118,7 @@
 <!-- Stats -->
 <section class="py-12 border-y border-[var(--border)] bg-white">
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+    <div class="reveal-group grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
       <div><div class="stat-number">200+</div><div class="stat-label">Families Supported</div></div>
       <div><div class="stat-number">10+</div><div class="stat-label">Years of Expertise</div></div>
       <div><div class="stat-number">5</div><div class="stat-label">Evidence-Based Programs</div></div>
@@ -132,16 +132,16 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
       <div>
-        <span class="eyebrow-plain">Our Programs</span>
-        <h2 class="display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] max-w-lg">Therapy tailored to every stage of growth</h2>
+        <span class="eyebrow-plain reveal-text">Our Programs</span>
+        <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] max-w-lg">Therapy tailored to every stage of growth</h2>
       </div>
       <div class="max-w-sm">
-        <p class="text-[var(--text-secondary)] text-sm leading-relaxed">Every program is built around your child's unique strengths, delivered in-home and in-community across Abu Dhabi.</p>
+        <p class="reveal-text text-[var(--text-secondary)] text-sm leading-relaxed">Every program is built around your child's unique strengths, delivered in-home and in-community across Abu Dhabi.</p>
         <a href="{{ route('services') }}" class="inline-flex items-center gap-1.5 text-[var(--navy)] font-bold text-sm mt-3">View all services <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 18l6-6-6-6"/></svg></a>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-5" style="grid-auto-rows:170px;">
+    <div class="reveal-group grid grid-cols-1 md:grid-cols-4 gap-5" style="grid-auto-rows:170px;">
       <!-- ABA Intervention: large, 2x2 -->
       <div class="prog-card md:col-span-2 md:row-span-2" style="background:var(--indigo);">
         <span class="prog-watermark">ABA</span>
@@ -211,11 +211,11 @@
 <section class="py-16 md:py-24 bg-white border-y border-[var(--border)]">
   <div class="max-w-7xl mx-auto px-6 lg:px-8">
     <div class="max-w-2xl mx-auto text-center mb-14">
-      <span class="eyebrow-plain">Our Values</span>
-      <h2 class="display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)]">Every child is <span style="color:var(--pink);">GIFTED</span></h2>
-      <p class="mt-4 text-[var(--text-secondary)] text-lg">Our values are the operating principles behind every session, every plan, and every family relationship we build.</p>
+      <span class="eyebrow-plain reveal-text">Our Values</span>
+      <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)]">Every child is <span style="color:var(--pink);">GIFTED</span></h2>
+      <p class="reveal-text mt-4 text-[var(--text-secondary)] text-lg">Our values are the operating principles behind every session, every plan, and every family relationship we build.</p>
     </div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div class="reveal-group grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
       <div class="gifted-tile" style="background:var(--lime);color:var(--navy-deep);">
         <span class="gifted-letter">G</span>
         <span class="gifted-title">Growth</span>
@@ -255,10 +255,10 @@
   <div class="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
     <div class="relative">
       <div class="card photo-wrap rounded-[26px] overflow-hidden aspect-[4/5] relative">
-        <img src="https://images.unsplash.com/photo-1771577125646-b38ed7b14411?fm=jpg&q=80&w=800&auto=format&fit=crop" alt="Child happily listening to a therapist telling a story" class="w-full h-full object-cover">
+        <img src="{{ asset('about_us/founder.png') }}" alt="Hong Chun Tan, Founder & Clinical Director of Engage Clinic" class="w-full h-full object-cover object-top">
       </div>
-      <div class="card absolute -bottom-6 left-6 right-6 sm:right-auto sm:w-80 p-4 flex items-center gap-3 shadow-xl">
-        <div class="icon-box !rounded-full">
+      <div class="absolute -bottom-16 left-6 right-6 sm:right-auto sm:w-80 p-4 rounded-[18px] flex items-center gap-3" style="background:#F2F1EC;box-shadow:0 14px 32px -14px rgba(14,46,76,.25);">
+        <div class="icon-box" style="background:var(--pink);color:#fff;border-color:var(--pink);">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
         </div>
         <div>
@@ -269,11 +269,11 @@
     </div>
 
     <div class="mt-6 lg:mt-0">
-      <span class="eyebrow-plain">Our Approach</span>
-      <h2 class="display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)]">We don't just treat. We <span style="color:var(--pink);">ENRICH</span>.</h2>
-      <p class="mt-4 text-[var(--text-secondary)] leading-relaxed">Our ENRICH framework guides every treatment plan — ensuring progress that extends far beyond the therapy room into real life.</p>
+      <span class="eyebrow-plain reveal-text">Our Approach</span>
+      <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)]">We don't just treat. We <span style="color:var(--pink);">ENRICH</span>.</h2>
+      <p class="reveal-text mt-4 text-[var(--text-secondary)] leading-relaxed">Our ENRICH framework guides every treatment plan — ensuring progress that extends far beyond the therapy room into real life.</p>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
+      <div class="reveal-group grid grid-cols-1 sm:grid-cols-2 gap-3 mt-8">
         <div class="enrich-item"><span class="enrich-dot" style="background:var(--lime);"></span><h4>Enrich Growth</h4><p>Functional life skills and independence</p></div>
         <div class="enrich-item"><span class="enrich-dot" style="background:var(--indigo);"></span><h4>Enrich Skills</h4><p>Real-world settings — parks, cafés, community</p></div>
         <div class="enrich-item"><span class="enrich-dot" style="background:var(--pink);"></span><h4>Enrich Families</h4><p>Caregiver partnership and transparency</p></div>
@@ -286,32 +286,28 @@
 <!-- Accreditation -->
 <section class="py-16 md:py-20 bg-white border-y border-[var(--border)]">
   <div class="max-w-3xl mx-auto px-6 lg:px-8 text-center">
-    <h2 class="display text-2xl md:text-3xl font-extrabold" style="color:var(--pink);">Officially Accredited. Globally Aligned.</h2>
-    <p class="mt-4 text-[var(--text-secondary)] leading-relaxed">Our certifications reflect our unwavering commitment to global standards in special education — ensuring every child receives expert support, compassionate care, and a future built on excellence.</p>
+    <h2 class="reveal-heading display text-2xl md:text-3xl font-extrabold" style="color:var(--pink);">Officially Accredited. Globally Aligned.</h2>
+    <p class="reveal-text mt-4 text-[var(--text-secondary)] leading-relaxed">Our certifications reflect our unwavering commitment to global standards in special education — ensuring every child receives expert support, compassionate care, and a future built on excellence.</p>
 
-    <div class="flex flex-wrap items-start justify-center gap-10 mt-12">
-      <div>
-        <div class="accred-badge mx-auto">QABA<br>CREDENTIALING</div>
-        <p class="text-xs font-bold text-[var(--navy)] mt-3 max-w-[130px] mx-auto">QABA Approved Coursework Provider</p>
+    <div class="reveal-group grid grid-cols-3 items-center gap-2 sm:gap-8 md:gap-12 mt-12">
+      <div class="flex items-center justify-center h-16 sm:h-28 md:h-36">
+        <img src="{{ asset('accrediation/accrediation1.png') }}" alt="QABA Behavioral Health Credentialing — Approved Coursework Provider" class="max-w-full max-h-full object-contain">
       </div>
-      <div>
-        <div class="accred-badge shield mx-auto">QABA<br>APPROVED</div>
-        <p class="text-xs font-bold text-[var(--navy)] mt-3 max-w-[130px] mx-auto">QABA Approved Training Program</p>
+      <div class="flex items-center justify-center h-20 sm:h-36 md:h-48">
+        <img src="{{ asset('accrediation/accrediation3.png') }}" alt="QABA Approved Training Program" class="max-w-full max-h-full object-contain">
       </div>
-      <div>
-        <div class="accred-badge mx-auto">ACE<br>PROVIDER</div>
-        <p class="text-xs font-bold text-[var(--navy)] mt-3 max-w-[150px] mx-auto">BACB Authorized Continuing Education Provider</p>
+      <div class="flex items-center justify-center h-16 sm:h-28 md:h-36">
+        <img src="{{ asset('accrediation/accrediation2.png') }}" alt="ACE — BACB Authorized Continuing Education Provider" class="max-w-full max-h-full object-contain">
       </div>
     </div>
-    <p class="text-[11px] text-[var(--text-muted)] mt-8">Badges shown are placeholders — swap in your official certification artwork when available.</p>
   </div>
 </section>
 
 <!-- Testimonials -->
 <section id="testimonials" class="py-16 md:py-24 dotted">
   <div class="max-w-2xl mx-auto px-6 lg:px-8 text-center">
-    <span class="eyebrow-plain">Family Stories</span>
-    <h2 class="display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] mb-10">Words from families we serve</h2>
+    <span class="eyebrow-plain reveal-text">Family Stories</span>
+    <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] mb-10">Words from families we serve</h2>
 
     <div id="testimonialTrack">
       <div class="testimonial-slide">
@@ -345,8 +341,8 @@
 <!-- CTA banner -->
 <section class="py-16 md:py-20" style="background:var(--pink);">
   <div class="max-w-3xl mx-auto px-6 lg:px-8 text-center">
-    <h2 class="display text-3xl md:text-4xl font-extrabold text-white">Ready to start your child's journey?</h2>
-    <p class="text-white/85 mt-4 max-w-md mx-auto">Book a free 30-minute consultation. We accept health insurance and serve all of Abu Dhabi.</p>
+    <h2 class="reveal-heading display text-3xl md:text-4xl font-extrabold text-white">Ready to start your child's journey?</h2>
+    <p class="reveal-text text-white/85 mt-4 max-w-md mx-auto">Book a free 30-minute consultation. We accept health insurance and serve all of Abu Dhabi.</p>
     <div class="flex flex-wrap items-center justify-center gap-3 mt-8">
       <a href="#" onclick="event.preventDefault(); openBookingModal();" class="btn-white">Book Free Consultation →</a>
       <a href="tel:+971508846801" class="btn-outline-white">

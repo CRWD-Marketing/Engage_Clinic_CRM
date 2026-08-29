@@ -9,7 +9,7 @@
 @section('content')
 
 <!-- Hero -->
-<section class="py-20 md:py-28 text-center" style="background:var(--navy-deep);">
+<section class="js-hero py-20 md:py-28 text-center" style="background:var(--navy-deep);">
   <div class="max-w-3xl mx-auto px-6 lg:px-8">
     <span class="eyebrow-plain" style="color:var(--pink-mid);">Contact Us</span>
     <h1 class="display mt-4 text-3xl sm:text-5xl font-extrabold leading-[1.15] text-white">Let's start the conversation</h1>
@@ -62,81 +62,47 @@
 
     <!-- Right: form -->
     <div class="card p-8 lg:p-10">
-      <h3 class="display text-2xl font-extrabold text-[var(--navy)] mb-6">Book a Free Consultation</h3>
+      <h3 class="display text-2xl font-extrabold text-[var(--navy)] mb-6">Send Us a Message</h3>
 
       <div id="contactSuccess" style="display:none;background:#E4F6EB;color:#1E8A4C;padding:12px 14px;border-radius:10px;margin-bottom:15px;font-size:13.5px;font-weight:600;border:1px solid #BFE9CE;"></div>
       <div id="contactError" style="display:none;background:#FEF2F2;color:#B91C1C;padding:12px 14px;border-radius:10px;margin-bottom:15px;font-size:13.5px;font-weight:600;border:1px solid #FECACA;"></div>
 
       <form id="contactForm" class="space-y-4" onsubmit="submitContact(event)">
-        <div class="grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-4">
-          <div>
-            <label class="crm-label">Child's name *</label>
-            <input type="text" id="ct_child_name" placeholder="e.g. Hamad" class="crm-input" required>
-          </div>
-          <div>
-            <label class="crm-label">Age</label>
-            <input type="text" id="ct_child_age" placeholder="5" class="crm-input">
-          </div>
-        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="crm-label">Your Name *</label>
             <input type="text" id="ct_name" placeholder="Parent / Guardian" class="crm-input" required>
           </div>
           <div>
-            <label class="crm-label">Phone *</label>
-            <input type="tel" id="ct_phone" placeholder="+971 5x xxx xxxx" class="crm-input" required>
+            <label class="crm-label">Child's Age</label>
+            <input type="text" id="ct_child_age" placeholder="e.g. 4 years" class="crm-input">
           </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="crm-label">Email</label>
-            <input type="email" id="ct_email" placeholder="you@email.com" class="crm-input">
-          </div>
-          <div>
-            <label class="crm-label">Interested in</label>
-            <select id="ct_interested_in" class="crm-select">
-              <option value="">Select a service…</option>
-              <option value="ABA therapy">ABA therapy</option>
-              <option value="Speech therapy">Speech therapy</option>
-              <option value="Early intervention">Early intervention</option>
-              <option value="School-age support">School-age support</option>
-              <option value="Parent training">Parent training</option>
-              <option value="Behavioural assessment">Behavioural assessment</option>
-            </select>
-          </div>
+        <div>
+          <label class="crm-label">Email Address</label>
+          <input type="email" id="ct_email" placeholder="you@email.com" class="crm-input">
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="crm-label">Insurance</label>
-            <select id="ct_insurance" class="crm-select">
-              <option value="Not sure yet">Not sure yet</option>
-              <option value="Daman">Daman</option>
-              <option value="Daman Enhanced">Daman Enhanced</option>
-              <option value="Thiqa">Thiqa</option>
-              <option value="ADNIC">ADNIC</option>
-              <option value="AXA / GIG">AXA / GIG</option>
-              <option value="Self-pay">Self-pay</option>
-            </select>
-          </div>
-          <div>
-            <label class="crm-label">How did you hear about us?</label>
-            <select id="ct_source" class="crm-select">
-              <option value="Website">Website</option>
-              <option value="Google">Google</option>
-              <option value="Instagram">Instagram</option>
-              <option value="Referral">Referral</option>
-              <option value="WhatsApp">WhatsApp</option>
-              <option value="Walk-in">Walk-in</option>
-              <option value="Event">Event</option>
-            </select>
-          </div>
+        <div>
+          <label class="crm-label">Phone Number</label>
+          <input type="tel" id="ct_phone" placeholder="+971 5x xxx xxxx" class="crm-input" required>
+        </div>
+        <div>
+          <label class="crm-label">Service of Interest</label>
+          <select id="ct_interested_in" class="crm-select">
+            <option value="">Select a program…</option>
+            <option value="ABA therapy">ABA therapy</option>
+            <option value="Speech therapy">Speech therapy</option>
+            <option value="Early intervention">Early intervention</option>
+            <option value="School-age support">School-age support</option>
+            <option value="Parent training">Parent training</option>
+            <option value="Behavioural assessment">Behavioural assessment</option>
+          </select>
         </div>
         <div>
           <label class="crm-label">Tell us about your child</label>
           <textarea id="ct_message" rows="4" placeholder="Any context about your child's needs, challenges, or goals…" class="crm-input" style="resize:vertical;"></textarea>
         </div>
-        <button type="submit" class="btn-pink w-full justify-center" id="contactSubmitBtn">Send Message &amp; Book Consultation</button>
+        <button type="submit" class="btn-pink w-full justify-center" id="contactSubmitBtn">Send Message</button>
         <p class="text-center text-xs text-[var(--text-muted)]">We respond within 24 hours · Health insurance accepted</p>
       </form>
     </div>
@@ -332,28 +298,23 @@
   // ---- Inline contact form ----
   function submitContact(event) {
     event.preventDefault();
-    const childName = document.getElementById('ct_child_name').value.trim();
     const childAge = document.getElementById('ct_child_age').value.trim();
     const name = document.getElementById('ct_name').value.trim();
     const phone = document.getElementById('ct_phone').value.trim();
     const email = document.getElementById('ct_email').value.trim();
     const interestedIn = document.getElementById('ct_interested_in').value;
-    const insurance = document.getElementById('ct_insurance').value;
-    const source = document.getElementById('ct_source').value;
     const message = document.getElementById('ct_message').value.trim();
     const successBox = document.getElementById('contactSuccess');
     const errorBox = document.getElementById('contactError');
     successBox.style.display = 'none';
     errorBox.style.display = 'none';
 
-    const combinedNotes = (email ? `Email: ${email}\n` : '') + (message || '');
-
     const btn = document.getElementById('contactSubmitBtn');
     const originalText = btn.textContent;
     btn.textContent = 'Sending...';
     btn.disabled = true;
 
-    fetch('/api/leads', {
+    fetch('/api/contacts', {
       method: 'POST',
       headers: {
         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -361,14 +322,12 @@
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        child_name: childName,
         child_age: childAge,
-        parent_guardian_name: name,
+        name: name,
+        email: email,
         phone: phone,
-        source: source,
         interested_in: interestedIn,
-        insurance: insurance,
-        notes: combinedNotes,
+        message: message,
       })
     })
     .then(response => response.json())
