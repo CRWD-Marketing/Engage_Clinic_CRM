@@ -47,9 +47,17 @@ class ProcessAiEmployeeReply implements ShouldQueue
 
     public function handle(AIEmployeeService $aiEmployeeService, OutboundMessagingResolver $messagingResolver): void
     {
+        // First line logged by this job for a given message - if a message's
+        // "AI processing started" (logged at dispatch time) is never followed
+        // by this, the job never actually ran: the queue isn't being drained
+        // (no worker/cron), not anything about the AI/LLM itself.
+        Log::info('[Messaging] AI reply job picked up', ['message_id' => $this->whatsappMessageId]);
+
         $inboundMessage = WhatsappMessage::find($this->whatsappMessageId);
 
         if (! $inboundMessage || ! $inboundMessage->isEligibleForAutoReply()) {
+            Log::info('[Messaging] AI reply skipped - message not found or not eligible', ['message_id' => $this->whatsappMessageId]);
+
             return;
         }
 
@@ -57,14 +65,20 @@ class ProcessAiEmployeeReply implements ShouldQueue
         $settings = AiEmployeeSettings::current();
 
         if (! $settings->is_enabled) {
+            Log::info('[Messaging] AI reply skipped - AI Employee is OFF', ['message_id' => $inboundMessage->id]);
+
             return;
         }
 
         if (! $contact || ! $contact->isAiActive()) {
+            Log::info('[Messaging] AI reply skipped - contact is not AI-active', ['message_id' => $inboundMessage->id, 'contact_id' => $contact?->id]);
+
             return;
         }
 
         if ($inboundMessage->ai_processing_status === WhatsappMessage::AI_STATUS_COMPLETED) {
+            Log::info('[Messaging] AI reply skipped - already completed', ['message_id' => $inboundMessage->id]);
+
             return; // already handled - defends against a duplicate dispatch/queue redelivery
         }
 
@@ -101,6 +115,8 @@ class ProcessAiEmployeeReply implements ShouldQueue
             ->exists();
 
         if ($hasNewerInboundMessage) {
+            Log::info('[Messaging] AI reply skipped - newer message will answer instead', ['message_id' => $inboundMessage->id]);
+
             $inboundMessage->update(['ai_processing_status' => WhatsappMessage::AI_STATUS_SKIPPED]);
 
             return;
@@ -109,7 +125,11 @@ class ProcessAiEmployeeReply implements ShouldQueue
         $inboundMessage->update(['ai_processing_status' => WhatsappMessage::AI_STATUS_PROCESSING]);
 
         try {
+            Log::info('[Messaging] AI reply - calling LLM', ['message_id' => $inboundMessage->id]);
+
             $result = $aiEmployeeService->respondTo($contact, $inboundMessage);
+
+            Log::info('[Messaging] AI reply - LLM responded', ['message_id' => $inboundMessage->id, 'escalate' => $result->escalate]);
 
             // Escalation means a human should also follow up - it does NOT
             // mean the customer gets left with silence instead of the AI's
@@ -157,6 +177,13 @@ class ProcessAiEmployeeReply implements ShouldQueue
 
             $inboundMessage->update(['ai_processing_status' => WhatsappMessage::AI_STATUS_COMPLETED]);
 
+            Log::info('[Messaging] AI reply sent successfully', [
+                'message_id' => $inboundMessage->id,
+                'outbound_message_id' => $outbound->id,
+                'channel' => $contact->channel,
+                'escalate' => $result->escalate,
+            ]);
+
             AiEmployeeLog::create([
                 'whatsapp_contact_id' => $contact->id,
                 'inbound_message_id' => $inboundMessage->id,
@@ -166,7 +193,12 @@ class ProcessAiEmployeeReply implements ShouldQueue
                 'status' => $result->escalate ? AiEmployeeLog::STATUS_ESCALATED : AiEmployeeLog::STATUS_SUCCESS,
             ]);
         } catch (\Throwable $e) {
-            Log::error('AI Employee reply failed', ['message_id' => $this->whatsappMessageId, 'exception' => $e]);
+            Log::error('[Messaging] AI reply failed', [
+                'message_id' => $this->whatsappMessageId,
+                'attempt' => $this->attempts(),
+                'error' => $e->getMessage(),
+                'exception' => $e,
+            ]);
 
             $inboundMessage->update([
                 'ai_processing_status' => WhatsappMessage::AI_STATUS_FAILED,
@@ -183,6 +215,11 @@ class ProcessAiEmployeeReply implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
+        Log::error('[Messaging] AI reply gave up after all retries', [
+            'message_id' => $this->whatsappMessageId,
+            'error' => $exception->getMessage(),
+        ]);
+
         $inboundMessage = WhatsappMessage::find($this->whatsappMessageId);
 
         if (! $inboundMessage) {

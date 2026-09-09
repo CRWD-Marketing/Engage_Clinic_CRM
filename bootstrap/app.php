@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/patient.php',
             __DIR__.'/../routes/calendar.php',
             __DIR__.'/../routes/knowledge_base.php',
+            __DIR__.'/../routes/voice.php',
+            __DIR__.'/../routes/settings.php',
+            __DIR__.'/../routes/packages.php',
         ],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
@@ -26,9 +29,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'feature' => FeatureMiddleware::class,
         ]);
 
-        // Meta calls this directly with no Laravel session/CSRF token.
+        // Meta/Twilio/the voice bridge call these directly with no Laravel
+        // session/CSRF token.
         $middleware->validateCsrfTokens(except: [
             'whatsapp/webhook',
+            'voice/twilio/incoming',
+            'voice/bridge/call-start',
+            'voice/bridge/turn',
+            'voice/bridge/call-end',
         ]);
 
     })

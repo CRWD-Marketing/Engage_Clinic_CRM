@@ -301,7 +301,7 @@
                             @foreach ($patients as $patient)
                                 <option value="{{ $patient->id }}"
                                     data-guardian="{{ $patient->lead->parent_guardian_name }}"
-                                    data-insurance="{{ $patient->insurance_provider }}">
+                                    data-insurance="{{ $patient->primaryAuthorization()->payer_name ?? '' }}">
                                     {{ $patient->lead->child_name }}
                                 </option>
                             @endforeach

@@ -11,14 +11,10 @@ class Patient extends Model
         'diagnosis',
         'programme',
         'treatment_plan_review_due_at',
-        'insurance_provider',
-        'authorized_sessions_total',
-        'authorization_renews_at',
         'enrolled_at',
     ];
 
     protected $casts = [
-        'authorization_renews_at' => 'date',
         'treatment_plan_review_due_at' => 'date',
         'enrolled_at' => 'datetime',
     ];
@@ -45,6 +41,33 @@ class Patient extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class)->latest('issue_date');
+    }
+
+    /**
+     * A patient can have more than one concurrent insurance authorization
+     * (e.g. one payer covering ABA/Speech, another covering OT/Assessments).
+     * Ordered by sort_order - the first one is the "primary" shown on the
+     * patient list page.
+     */
+    public function authorizations()
+    {
+        return $this->hasMany(PatientAuthorization::class)->orderBy('sort_order');
+    }
+
+    /**
+     * The primary (first) authorization, for compact display like the
+     * patient list's Insurance/Authorization columns.
+     */
+    public function primaryAuthorization(): ?PatientAuthorization
+    {
+        return $this->relationLoaded('authorizations')
+            ? $this->authorizations->first()
+            : $this->authorizations()->first();
+    }
+
+    public function documents()
+    {
+        return $this->hasMany(PatientDocument::class)->latest();
     }
 
     /**
@@ -111,8 +134,7 @@ class Patient extends Model
     {
         return ! $this->diagnosis
             || ! $this->programme
-            || ! $this->insurance_provider
-            || ! $this->authorized_sessions_total
+            || ! $this->authorizations()->exists()
             || ! optional($this->lead)->phone;
     }
 
@@ -126,8 +148,7 @@ class Patient extends Model
         if (! $this->diagnosis) $missing[] = 'diagnosis';
         if (! $this->programme) $missing[] = 'programme';
         if (! optional($this->lead)->phone) $missing[] = 'contact number';
-        if (! $this->insurance_provider) $missing[] = 'insurance';
-        if (! $this->authorized_sessions_total) $missing[] = 'authorized hours';
+        if (! $this->authorizations()->exists()) $missing[] = 'insurance authorization';
 
         return implode(', ', $missing);
     }

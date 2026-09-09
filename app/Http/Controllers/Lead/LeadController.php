@@ -58,6 +58,17 @@ class LeadController extends Controller
             ->orderBy('first_name')
             ->get(['id', 'first_name', 'last_name']);
 
+        $services = \App\Models\Service::where('is_active', true)->orderBy('name')->get();
+
+        $clinicians = \App\Models\User::where('role', 'THERAPIST')
+            ->where('is_active', true)
+            ->orderBy('first_name')
+            ->get(['id', 'first_name', 'last_name']);
+
+        $intakeLocations = \App\Models\Location::where('is_active', true)->orderBy('name')->get();
+
+        $packages = \App\Models\Package::with('service')->where('is_active', true)->orderBy('name')->get();
+
         return view('lead.index', compact(
             'leads',
             'statuses',
@@ -66,7 +77,11 @@ class LeadController extends Controller
             'unassignedCount',
             'followUpCount',
             'terminatedCount',
-            'assignableUsers'
+            'assignableUsers',
+            'services',
+            'clinicians',
+            'intakeLocations',
+            'packages'
         ));
     }
 
@@ -135,13 +150,14 @@ class LeadController extends Controller
     public function show(Request $request, Lead $lead)
     {
         if ($request->ajax() || $request->wantsJson()) {
-            $lead->load(['owner', 'notesLog.user', 'assignmentLog.user']);
+            $lead->load(['owner', 'notesLog.user', 'assignmentLog.user', 'assessmentClinician', 'packageLocation']);
 
             return response()->json([
                 'success' => true,
                 'lead' => $lead,
                 'notes_log' => $lead->notesLog,
                 'assignment_log' => $lead->assignmentLog,
+                'agreed_packages' => $lead->packages()->get(),
             ]);
         }
         return view('lead.show', compact('lead'));
@@ -165,6 +181,7 @@ class LeadController extends Controller
             'child_age' => 'nullable|string|max:10',
             'parent_guardian_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
             'source' => 'nullable|string|max:50',
             'interested_in' => 'nullable|string|max:100',
             'insurance' => 'nullable|string|max:50',
@@ -173,6 +190,64 @@ class LeadController extends Controller
             'status' => 'nullable|string|in:new,contacted,assessment_booked,assessment_done,enrolled,terminated',
             'assigned_to' => 'nullable|exists:users,id',
             'follow_up_due_at' => 'nullable|date',
+
+            // Intake checklist - which step this save belongs to (if any), so
+            // its *_completed_at can be stamped. Not itself a Lead column.
+            'intake_step' => 'nullable|string|in:'.implode(',', array_keys(Lead::INTAKE_STEPS)),
+
+            // Step 1: Parent contact verified
+            'parent_relationship' => 'nullable|string|max:50',
+            'parent_alternate_phone' => 'nullable|string|max:20',
+            'preferred_language' => 'nullable|string|max:20',
+
+            // Step 2: Child details complete
+            'child_date_of_birth' => 'nullable|date',
+            'child_gender' => 'nullable|string|max:20',
+            'child_emirates_id' => 'nullable|string|max:30',
+            'child_emirates_id_expiry' => 'nullable|date',
+            'diagnosis_suspected' => 'nullable|string|max:255',
+            'nursery_school' => 'nullable|string|max:255',
+            'main_concern' => 'nullable|string|max:255',
+
+            // Step 3: Intake form received
+            'intake_form_received_on' => 'nullable|date',
+            'intake_form_received_via' => 'nullable|string|max:30',
+            'allergies' => 'nullable|string',
+            'medical_history' => 'nullable|string',
+
+            // Step 4: Consultation / assessment done
+            'assessment_date' => 'nullable|date',
+            'assessment_clinician_id' => 'nullable|exists:users,id',
+            'assessment_tool' => 'nullable|string|max:50',
+            'assessment_report_reference' => 'nullable|string|max:255',
+            'assessment_report_summary' => 'nullable|string',
+
+            // Step 5: Funding confirmed
+            'funding_type' => 'nullable|string|max:50',
+            'funding_insurer' => 'nullable|string|max:100',
+            'funding_policy_number' => 'nullable|string|max:100',
+            'funding_approval_valid_until' => 'nullable|date',
+            // Submitted as a JSON string (built from dynamic pill-button rows
+            // that aren't real named inputs), not a native array field -
+            // decoded and normalized below, before mass update.
+            'funding_services_needed' => 'nullable|string',
+            'funding_notes' => 'nullable|string',
+
+            // Step 6: Package agreed
+            'package_location_id' => 'nullable|exists:locations,id',
+            'package_ids' => 'nullable|array',
+            'package_ids.*' => 'integer|exists:packages,id',
+            'package_start_date' => 'nullable|date',
+            'package_sessions_per_week' => 'nullable|integer|min:0|max:255',
+            'package_agreed_by' => 'nullable|string|max:255',
+            'package_scheduling_notes' => 'nullable|string',
+
+            // Step 7: Consent & terms signed
+            'consent_signed_date' => 'nullable|date',
+            'consent_signed_by' => 'nullable|string|max:255',
+            'consent_data_photo' => 'nullable|string|max:10',
+            'consent_signature_method' => 'nullable|string|max:30',
+            'consent_notes' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -190,6 +265,11 @@ class LeadController extends Controller
         // Clean estimated_value - only numbers and decimals
         if (isset($data['estimated_value'])) {
             $data['estimated_value'] = $this->cleanEstimatedValue($data['estimated_value']);
+        }
+
+        if (array_key_exists('funding_services_needed', $data)) {
+            $decoded = json_decode((string) $data['funding_services_needed'], true);
+            $data['funding_services_needed'] = is_array($decoded) && count($decoded) > 0 ? $decoded : null;
         }
 
         // A lead needs an owner before it can move to Contacted - check the value
@@ -210,6 +290,13 @@ class LeadController extends Controller
             }
             return back()->withErrors(['assigned_to' => $message])->withInput();
         }
+
+        // Saving a step's modal marks it complete - re-saving just refreshes
+        // the timestamp, which is fine, that's "last confirmed/edited at".
+        if ($step = ($data['intake_step'] ?? null)) {
+            $data[Lead::INTAKE_STEPS[$step]] = now();
+        }
+        unset($data['intake_step']);
 
         $previousAssignedTo = $lead->assigned_to;
 
@@ -480,8 +567,13 @@ class LeadController extends Controller
      */
     private function normalizeNullableFields(array $data): array
     {
-        foreach (['assigned_to', 'follow_up_due_at'] as $field) {
-            if (array_key_exists($field, $data) && $data[$field] === '') {
+        // Blank form fields (date inputs left empty, unselected selects, etc.)
+        // arrive as '' - every one of these columns is nullable and none
+        // treats '' as meaningfully different from "not set", so this is
+        // simpler and safer than maintaining a fixed field list (a date-cast
+        // column in particular would choke trying to parse '').
+        foreach ($data as $field => $value) {
+            if ($value === '') {
                 $data[$field] = null;
             }
         }

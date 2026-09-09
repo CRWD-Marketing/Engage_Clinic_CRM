@@ -37,6 +37,7 @@ class WhatsappMessage extends Model
         'ai_processing_status',
         'triggered_by_message_id',
         'ai_error',
+        'voice_call_session_id',
     ];
 
     protected $casts = [
@@ -57,6 +58,18 @@ class WhatsappMessage extends Model
     public function triggeringMessage()
     {
         return $this->belongsTo(WhatsappMessage::class, 'triggered_by_message_id');
+    }
+
+    /**
+     * Set only for a voice-call turn (type='voice_turn') - links a transcribed
+     * customer utterance or spoken AI reply back to its call. Voice messages
+     * never flow through isEligibleForAutoReply()/dispatchAiReplyIfEligible():
+     * VoiceTurnService calls AIEmployeeService::respondTo() directly and
+     * synchronously per turn instead of via the delayed chat queue.
+     */
+    public function voiceCallSession()
+    {
+        return $this->belongsTo(VoiceCallSession::class);
     }
 
     public function isEligibleForAutoReply(): bool

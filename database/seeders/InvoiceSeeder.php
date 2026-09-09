@@ -27,8 +27,8 @@ class InvoiceSeeder extends Seeder
 
         $sequence = 1;
 
-        Patient::with('lead')->get()->each(function (Patient $patient) use ($services, $therapists, $biller, &$sequence) {
-            $payer = $patient->insurance_provider ?: 'Self-pay';
+        Patient::with(['lead', 'authorizations'])->get()->each(function (Patient $patient) use ($services, $therapists, $biller, &$sequence) {
+            $payer = $patient->primaryAuthorization()->payer_name ?? 'Self-pay';
             $coveragePercent = $payer === 'Self-pay' ? 0 : [80, 85, 90][array_rand([80, 85, 90])];
 
             for ($monthsAgo = 2; $monthsAgo >= 0; $monthsAgo--) {
@@ -81,10 +81,22 @@ class InvoiceSeeder extends Seeder
 
                 $coverageAmount = round($subtotal * $coveragePercent / 100, 2);
 
+                // Payment collection is independent of the claim's own status:
+                // fully settled invoices are always paid in full; a submitted
+                // claim is sometimes already partly collected from the family
+                // while the insurance portion is still pending.
+                [$amountPaid, $paymentMethod] = match (true) {
+                    $status === 'paid' => [$subtotal, $payer !== 'Self-pay' ? 'Insurance remittance' : 'Card'],
+                    $status === 'submitted' && random_int(0, 1) === 1 => [round($subtotal * 0.4, 2), 'Bank transfer'],
+                    default => [0, null],
+                };
+
                 $invoice->update([
                     'subtotal' => $subtotal,
                     'insurance_coverage_amount' => $coverageAmount,
                     'patient_responsibility' => $subtotal - $coverageAmount,
+                    'amount_paid' => $amountPaid,
+                    'payment_method' => $paymentMethod,
                 ]);
             }
         });

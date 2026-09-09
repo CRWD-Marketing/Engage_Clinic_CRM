@@ -55,8 +55,13 @@ class AIEmployeeService
         $channelLabel = match ($contact->channel) {
             'instagram' => 'Instagram Direct Message',
             'facebook' => 'Facebook Messenger',
+            'voice' => 'a live phone call',
             default => 'WhatsApp',
         };
+
+        $voiceLine = $contact->channel === 'voice'
+            ? "\nThis is a live spoken phone call, not text - a text-to-speech system reads your reply aloud verbatim. Keep sentences short, avoid markdown/lists/URLs, and speak numbers naturally (e.g. \"eleven hundred dirhams\" instead of \"AED 1,100\")."
+            : '';
 
         $knowledgeBlock = $kbEntries->isEmpty()
             ? "(No matching knowledge base entries were found for this question - you likely need to escalate rather than answer from general knowledge.)"
@@ -138,7 +143,7 @@ CLINIC KNOWLEDGE (use only this - do not invent anything beyond it):
 {$knowledgeBlock}
 
 CONVERSATION CONTEXT:
-This conversation is happening on {$channelLabel}. {$contactLine}
+This conversation is happening on {$channelLabel}. {$contactLine}{$voiceLine}
 PROMPT;
     }
 

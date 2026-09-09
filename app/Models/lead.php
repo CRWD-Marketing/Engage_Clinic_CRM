@@ -42,7 +42,13 @@ class Lead extends Model
         'child_age',
         'parent_guardian_name',
         'phone',
+        'email',
         'source',
+        'campaign',
+        'ad_name',
+        'lead_form_name',
+        'city',
+        'child_age_band',
         'interested_in',
         'insurance',
         'estimated_value',
@@ -50,6 +56,63 @@ class Lead extends Model
         'status',
         'assigned_to',
         'follow_up_due_at',
+
+        // Step 1: Parent contact verified
+        'parent_contact_completed_at',
+        'parent_relationship',
+        'parent_alternate_phone',
+        'preferred_language',
+
+        // Step 2: Child details complete
+        'child_details_completed_at',
+        'child_date_of_birth',
+        'child_gender',
+        'child_emirates_id',
+        'child_emirates_id_expiry',
+        'diagnosis_suspected',
+        'nursery_school',
+        'main_concern',
+
+        // Step 3: Intake form received
+        'intake_form_completed_at',
+        'intake_form_received_on',
+        'intake_form_received_via',
+        'allergies',
+        'medical_history',
+
+        // Step 4: Consultation / assessment done
+        'assessment_completed_at',
+        'assessment_date',
+        'assessment_clinician_id',
+        'assessment_tool',
+        'assessment_report_reference',
+        'assessment_report_summary',
+
+        // Step 5: Funding confirmed
+        'funding_completed_at',
+        'funding_type',
+        'funding_insurer',
+        'funding_policy_number',
+        'funding_approval_valid_until',
+        'funding_services_needed',
+        'funding_notes',
+
+        // Step 6: Package agreed
+        'package_completed_at',
+        'package_location_id',
+        'package_ids',
+        'package_start_date',
+        'package_sessions_per_week',
+        'package_agreed_by',
+        'package_scheduling_notes',
+
+        // Step 7: Consent & terms signed
+        'consent_completed_at',
+        'consent_signed_date',
+        'consent_signed_by',
+        'consent_data_photo',
+        'consent_signature_method',
+        'consent_notes',
     ];
 
     /**
@@ -62,7 +125,48 @@ class Lead extends Model
         'updated_at' => 'datetime',
         'estimated_value' => 'decimal:2',
         'follow_up_due_at' => 'datetime',
+
+        'parent_contact_completed_at' => 'datetime',
+        'child_details_completed_at' => 'datetime',
+        'child_date_of_birth' => 'date',
+        'child_emirates_id_expiry' => 'date',
+        'intake_form_completed_at' => 'datetime',
+        'intake_form_received_on' => 'date',
+        'assessment_completed_at' => 'datetime',
+        'assessment_date' => 'date',
+        'funding_completed_at' => 'datetime',
+        'funding_approval_valid_until' => 'date',
+        'funding_services_needed' => 'array',
+        'package_completed_at' => 'datetime',
+        'package_ids' => 'array',
+        'package_start_date' => 'date',
+        'consent_completed_at' => 'datetime',
+        'consent_signed_date' => 'date',
     ];
+
+    /**
+     * The 7 intake-checklist steps, in display order, mapped to the request
+     * flag ("intake_step") that marks each one complete and the model column
+     * that records when. Drives both the "N of 7 complete" progress count and
+     * routes each step's modal save through the same update() endpoint.
+     */
+    const INTAKE_STEPS = [
+        'parent_contact' => 'parent_contact_completed_at',
+        'child_details' => 'child_details_completed_at',
+        'intake_form' => 'intake_form_completed_at',
+        'assessment' => 'assessment_completed_at',
+        'funding' => 'funding_completed_at',
+        'package' => 'package_completed_at',
+        'consent' => 'consent_completed_at',
+    ];
+
+    /**
+     * How many of the 7 intake steps are marked complete.
+     */
+    public function getIntakeStepsCompleteAttribute(): int
+    {
+        return collect(self::INTAKE_STEPS)->filter(fn ($column) => $this->{$column} !== null)->count();
+    }
 
     /**
      * Always include the assignee's display name in JSON output, so the
@@ -70,7 +174,7 @@ class Lead extends Model
      *
      * @var array<int, string>
      */
-    protected $appends = ['assigned_to_name'];
+    protected $appends = ['assigned_to_name', 'intake_steps_complete'];
 
     /**
      * The calendar sessions booked for this child.
@@ -120,6 +224,24 @@ class Lead extends Model
         }
 
         return $this->owner ? trim($this->owner->first_name.' '.$this->owner->last_name) : null;
+    }
+
+    public function assessmentClinician()
+    {
+        return $this->belongsTo(User::class, 'assessment_clinician_id');
+    }
+
+    public function packageLocation()
+    {
+        return $this->belongsTo(Location::class, 'package_location_id');
+    }
+
+    /**
+     * The Package rows referenced by package_ids (step 6, "pick one or more").
+     */
+    public function packages()
+    {
+        return Package::whereIn('id', $this->package_ids ?? []);
     }
 
     /**

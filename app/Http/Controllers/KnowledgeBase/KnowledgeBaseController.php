@@ -62,9 +62,13 @@ class KnowledgeBaseController extends Controller
             'max_kb_entries' => ['required', 'integer', 'min:1', 'max:20'],
             'response_delay_seconds' => ['required', 'integer', 'min:0', 'max:600'],
             'system_prompt_override' => ['nullable', 'string'],
+            'voice_enabled' => ['nullable', 'boolean'],
+            'voice_greeting' => ['nullable', 'string', 'max:2000'],
+            'human_handoff_phone_number' => ['nullable', 'string', 'max:32'],
         ]);
 
         $validated['is_enabled'] = $request->boolean('is_enabled');
+        $validated['voice_enabled'] = $request->boolean('voice_enabled');
 
         AiEmployeeSettings::current()->update($validated);
         AiEmployeeSettings::forgetCache();

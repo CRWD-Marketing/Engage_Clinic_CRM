@@ -13,7 +13,7 @@
 <style>
   :root{
     --bg:#FFFF;
-    --dot:#DFDACD;
+    --dot:rgba(223,218,205,0.5);
     --card:#FFFFFF;
     --border:#E2DACE;
     --navy:#16436E;
@@ -114,8 +114,7 @@
   .trust-pill.on-dark svg{color:#fff;}
 
   /* Hero gallery — synced, animated carousel */
-  .hero-gallery{display:flex;gap:14px;overflow-x:auto;scrollbar-width:none;height:clamp(420px,54vw,620px);}
-  .hero-gallery::-webkit-scrollbar{display:none;}
+  .hero-gallery{display:flex;gap:14px;overflow:hidden;height:clamp(420px,54vw,620px);}
 
   /* Hero copy crossfade — snappy exit, eased+staggered entrance */
   #heroEyebrow, #heroHeading, #heroParagraph, #heroBookBtn{will-change:opacity, transform;}
@@ -130,11 +129,10 @@
   }
 
   .hero-slide-item{
-    position:relative;flex:0 0 auto;min-width:80px;border-radius:24px;overflow:hidden;cursor:pointer;
-    flex-basis:min(18%,110px);
-    transition:flex-basis .55s cubic-bezier(.4,0,.2,1), min-width .55s cubic-bezier(.4,0,.2,1);
+    position:relative;flex:1 1 0%;min-width:0;border-radius:24px;overflow:hidden;cursor:pointer;
+    transition:flex-grow .55s cubic-bezier(.4,0,.2,1);
   }
-  .hero-slide-item.is-active{flex-basis:min(46%,420px);min-width:260px;cursor:default;}
+  .hero-slide-item.is-active{flex:6 1 0%;cursor:default;}
   .hero-slide-item img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   .hero-slide-item .scrim{position:absolute;inset:0;background:linear-gradient(0deg,rgba(14,46,76,.82) 0%,rgba(14,46,76,.3) 40%,rgba(14,46,76,0) 62%);transition:opacity .4s ease;}
   .hero-slide-item:not(.is-active) .scrim{background:linear-gradient(0deg,rgba(14,46,76,.75) 0%,rgba(14,46,76,0) 45%);}
@@ -320,6 +318,54 @@
   #mobile-menu a:last-of-type{border-bottom:none;}
 
   @media (prefers-reduced-motion: reduce){ .marquee-track{animation:none;} }
+
+  /* ABAT Training Program promo popup — shared across every landing page */
+  .promo-popup {
+    position: fixed; right: 18px; bottom: 18px; z-index: 55; width: min(280px, calc(100vw - 36px));
+    animation: promo-in .5s cubic-bezier(.22,.61,.36,1) .3s both;
+  }
+  @keyframes promo-in { from { opacity: 0; transform: translateY(16px) scale(.96); } to { opacity: 1; transform: none; } }
+
+  .promo-tab {
+    display: flex; align-items: center; gap: 8px; margin-left: auto; border: none; cursor: pointer;
+    background: var(--navy-deep); color: #fff; font: 700 12px 'Nunito Sans'; white-space: nowrap;
+    padding: 10px 16px; border-radius: 999px; box-shadow: 0 6px 20px rgba(22,42,60,.3);
+    transition: background .15s ease;
+  }
+  .promo-tab:hover { background: var(--pink); }
+  .promo-tab-chevron { transition: transform .25s ease; flex-shrink: 0; }
+  .promo-popup.open .promo-tab-chevron { transform: rotate(180deg); }
+
+  .promo-panel {
+    overflow: hidden; max-height: 0; opacity: 0; margin-top: 0;
+    transition: max-height .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, margin-top .35s cubic-bezier(.4,0,.2,1);
+  }
+  .promo-popup.open .promo-panel { max-height: 600px; opacity: 1; margin-top: 10px; }
+
+  .promo-image-btn {
+    display: block; width: 100%; padding: 0; border: none; background: none; cursor: pointer;
+    border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(22,42,60,.28); line-height: 0;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .promo-image-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(22,42,60,.34); }
+  .promo-image-btn img { width: 100%; height: auto; display: block; }
+
+  .promo-lightbox {
+    display: none; position: fixed; inset: 0; z-index: 9998; background: rgba(14,46,76,.82);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .promo-lightbox.open { display: flex; }
+  .promo-lightbox img { max-width: min(560px, 100%); max-height: 88vh; width: auto; border-radius: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .promo-lightbox-close {
+    position: fixed; top: 22px; right: 22px; width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.3); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .promo-lightbox-close:hover { background: rgba(255,255,255,.22); }
+
+  @media (max-width: 640px) {
+    .promo-popup { right: 12px; bottom: 12px; width: min(200px, calc(100vw - 24px)); }
+  }
 </style>
 @stack('head')
 </head>
@@ -338,7 +384,7 @@
 
 <!-- Navigation -->
 <header class="sticky top-0 z-50 bg-white border-b border-[var(--border)]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
     <a href="/" class="flex items-center shrink-0">
       <img src="{{ asset('uploads/engage.png') }}" alt="Engage Clinic logo" class="h-14 w-auto object-contain">
     </a>
@@ -381,15 +427,15 @@
 
 <!-- Footer -->
 <footer class="footer-dark pt-16 pb-8">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr] gap-10">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr] gap-10">
     <div>
       <img src="{{ asset('uploads/engage.png') }}" alt="Engage Clinic logo" class="h-20 w-auto object-contain" style="filter:brightness(0) invert(1);">
       <p class="text-sm mt-4 max-w-xs" style="color:rgba(255,255,255,.65);">Empowering children and families to thrive every day through flexible, evidence-based ABA therapy across Abu Dhabi, UAE.</p>
       <div class="flex items-center gap-2.5 mt-5">
-        <a href="#" class="social-btn" aria-label="Instagram"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
-        <a href="#" class="social-btn" aria-label="LinkedIn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4V8h4v1.5A6 6 0 0 1 16 8z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-        <a href="#" class="social-btn" aria-label="Facebook"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
-        <a href="#" class="social-btn" aria-label="YouTube"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3z"/></svg></a>
+        <a href="https://www.instagram.com/engageclinicuae?igsi=MXhsdXNvemJ1a3pxZQ%3D%3D&amp;utm_source=qr" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Instagram"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
+        <a href="https://www.linkedin.com/company/engageclinic/" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="LinkedIn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4V8h4v1.5A6 6 0 0 1 16 8z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
+        <a href="https://www.facebook.com/engageBL/" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Facebook"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></a>
+        <a href="https://www.tiktok.com/@engageclinicuae?_r=1&amp;_t=ZS-99Reo1xrcCW" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="TikTok"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg></a>
       </div>
     </div>
 
@@ -415,11 +461,63 @@
     </div>
   </div>
 
-  <div class="max-w-7xl mx-auto px-6 lg:px-8 mt-12 pt-6 flex flex-col md:flex-row justify-between gap-2 text-xs" style="border-top:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8 mt-12 pt-6 flex flex-col md:flex-row justify-between gap-2 text-xs" style="border-top:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);">
     <span>© 2026 Engage Behavioral Development Clinic LLC. All rights reserved.</span>
     <span>Designed &amp; Developed by <a href="#" class="underline hover:text-white">CRWD Dubai</a></span>
   </div>
 </footer>
+
+<!-- ABAT Training Program promo popup -->
+<div class="promo-popup open" id="promoPopup">
+  <button type="button" class="promo-tab" id="promoToggle">
+    <span>🎓 ABAT Training Program</span>
+    <svg class="promo-tab-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+  <div class="promo-panel">
+    <button type="button" class="promo-image-btn" id="promoOpen" aria-label="View ABAT Training Program flyer">
+      <img src="{{ asset('uploads/ABAT.png') }}" alt="ABAT Training Program — Applied Behavior Analysis Technician, Engage Clinic">
+    </button>
+  </div>
+</div>
+
+<!-- Lightbox for the full-size flyer -->
+<div class="promo-lightbox" id="promoLightbox">
+  <button type="button" class="promo-lightbox-close" id="promoLightboxClose" aria-label="Close">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
+  </button>
+  <img src="{{ asset('uploads/ABAT.png') }}" alt="ABAT Training Program — Applied Behavior Analysis Technician, Engage Clinic">
+</div>
+
+<script>
+  // ABAT Training Program promo popup — shared across every page
+  (function () {
+    var popup = document.getElementById('promoPopup');
+    var toggleBtn = document.getElementById('promoToggle');
+    var openBtn = document.getElementById('promoOpen');
+    var lightbox = document.getElementById('promoLightbox');
+    var lightboxClose = document.getElementById('promoLightboxClose');
+    if (!popup) return;
+
+    // Remembers collapsed/expanded across page loads within this browser
+    // session, rather than always resetting to open.
+    if (sessionStorage.getItem('abatPromoCollapsed') === '1') {
+      popup.classList.remove('open');
+    }
+
+    toggleBtn.addEventListener('click', function () {
+      var isOpen = popup.classList.toggle('open');
+      sessionStorage.setItem('abatPromoCollapsed', isOpen ? '0' : '1');
+    });
+
+    function openLightbox() { lightbox.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closeLightbox() { lightbox.classList.remove('open'); document.body.style.overflow = ''; }
+
+    openBtn.addEventListener('click', openLightbox);
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', function (e) { if (e.target === lightbox) closeLightbox(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && lightbox.classList.contains('open')) closeLightbox(); });
+  })();
+</script>
 
 <script>
   // Mobile menu toggle — shared across every page

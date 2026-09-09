@@ -330,9 +330,113 @@
         }
         .ap-btn-convert:hover { background: #0F3255; box-shadow: 0 4px 16px rgba(22,67,110,0.36); }
 
+        /* "Where this lead came from" info grid */
+        .ap-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+        .ap-info-label { font: 800 10px 'Nunito Sans'; text-transform: uppercase; letter-spacing: 0.05em; color: #98897A; }
+        .ap-info-value { font: 700 12.5px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px; }
+
+        /* Intake checklist */
+        .ic-progress { font: 800 11.5px 'Nunito Sans'; color: #98897A; }
+        .ic-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+        .ic-row {
+            display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #EBE4DA;
+            border-radius: 10px; background: #fff;
+        }
+        .ic-row.is-done { background: #F6FBF8; border-color: #D7ECDF; }
+        .ic-num {
+            width: 22px; height: 22px; border-radius: 50%; border: 1px solid #D9CDBD; color: #98897A;
+            font: 800 11px 'Nunito Sans'; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .ic-row.is-done .ic-num { background: #2E7D5B; border-color: #2E7D5B; color: #fff; }
+        .ic-title { font: 800 12.5px 'Nunito Sans'; color: #2B3A4C; }
+        .ic-sub { font: 600 11px 'Nunito Sans'; color: #98897A; margin-top: 1px; }
+        .ic-fillin {
+            flex-shrink: 0; background: #C8355F; color: #fff; border: none; border-radius: 8px; padding: 8px 13px;
+            font: 800 11.5px 'Nunito Sans'; cursor: pointer;
+        }
+        .ic-fillin:hover { background: #A82348; }
+        .ic-row.is-done .ic-fillin { background: #fff; color: #16436E; border: 1px solid #E2DACE; }
+        .ic-row.is-done .ic-fillin:hover { background: #F6F3EE; }
+
+        /* Shared intake-step modal */
+        .ic-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(22, 42, 60, 0.45);
+            align-items: center; justify-content: center; z-index: 10000; padding: 16px;
+        }
+        .ic-modal-box {
+            width: 480px; max-width: 100%; max-height: 88vh; overflow-y: auto; background: #FFFDFA;
+            border-radius: 18px; padding: 26px 28px; display: flex; flex-direction: column; gap: 16px;
+            box-shadow: 0 20px 60px rgba(22,42,60,0.3);
+        }
+        .ic-modal-header { display: flex; align-items: flex-start; gap: 12px; }
+        .ic-modal-header > div:first-child { flex: 1; }
+        .ic-modal-title { font: 600 19px 'Baloo 2'; color: #16436E; }
+        .ic-modal-subtitle { font: 600 12px 'Nunito Sans'; color: #98897A; margin-top: 3px; }
+        .ic-modal-close {
+            width: 30px; height: 30px; border-radius: 9px; border: 1px solid #E2DACE; background: #fff;
+            color: #5A6B7E; font: 800 14px/1 'Nunito Sans'; cursor: pointer; flex-shrink: 0;
+        }
+        .ic-modal-close:hover { background: #F6F3EE; }
+        .ic-field-label { font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .ic-field-input {
+            width: 100%; padding: 9px 11px; border: 1px solid #E2DACE; border-radius: 8px;
+            background: #F6F3EE; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C; outline: none; box-sizing: border-box;
+        }
+        .ic-field-input:focus { border-color: #C8355F; }
+        .ic-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .ic-modal-footer { display: flex; align-items: center; gap: 10px; }
+        .ic-modal-hint { flex: 1; font: 600 11px 'Nunito Sans'; color: #A79C8E; }
+        .ic-btn-save {
+            background: #16436E; color: #fff; border: none; border-radius: 10px; padding: 11px 22px;
+            font: 800 12.5px 'Nunito Sans'; cursor: pointer; flex-shrink: 0;
+        }
+        .ic-btn-save:hover { background: #0F3255; }
+
+        /* Pill-toggle button groups (service/payer pickers, funding-type, etc.) */
+        .ic-pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ic-pill {
+            background: #F6F3EE; color: #5A6B7E; border: 1px solid #E2DACE; border-radius: 999px; padding: 6px 12px;
+            font: 800 11.5px 'Nunito Sans'; cursor: pointer;
+        }
+        .ic-pill.is-selected { background: #16436E; color: #fff; border-color: #16436E; }
+
+        /* Repeatable "services needed" rows */
+        .ic-service-row { border: 1px solid #EBE4DA; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .ic-service-row-head { display: flex; align-items: center; gap: 8px; }
+        .ic-service-row-title { flex: 1; font: 800 12.5px 'Nunito Sans'; color: #16436E; }
+        .ic-service-status { font: 800 10.5px 'Nunito Sans'; padding: 3px 9px; border-radius: 999px; background: #FBF0DC; color: #8A5A10; }
+        .ic-service-status.is-ok { background: #E3F1E9; color: #2E7D5B; }
+        .ic-remove-row {
+            width: 22px; height: 22px; border-radius: 7px; border: 1px solid #EFC7C2; background: #FBEAE8; color: #B3261E;
+            font: 800 11px/1 'Nunito Sans'; cursor: pointer; flex-shrink: 0;
+        }
+        .ic-dashed-btn {
+            background: #fff; border: 1px dashed #D9CDBD; border-radius: 9px; padding: 9px; text-align: center;
+            font: 800 12px 'Nunito Sans'; color: #C8355F; cursor: pointer;
+        }
+        .ic-dashed-btn:hover { background: #FBF3E4; }
+
+        /* Multi-select package picker */
+        .ic-multiselect { position: relative; }
+        .ic-multiselect-trigger {
+            width: 100%; text-align: left; padding: 9px 11px; border: 1px solid #E2DACE; border-radius: 8px;
+            background: #F6F3EE; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C; cursor: pointer;
+        }
+        .ic-multiselect-panel {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff;
+            border: 1px solid #E2DACE; border-radius: 10px; box-shadow: 0 10px 30px rgba(22,42,60,0.15);
+            z-index: 10; max-height: 260px; overflow-y: auto; padding: 8px;
+        }
+        .ic-multiselect-panel.is-open { display: block; }
+        .ic-package-option { display: flex; align-items: flex-start; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; }
+        .ic-package-option:hover { background: #F6F3EE; }
+        .ic-package-name { font: 800 12px 'Nunito Sans'; color: #2B3A4C; }
+        .ic-package-summary { font: 600 10.5px 'Nunito Sans'; color: #98897A; margin-top: 1px; }
+
         @media (max-width: 480px) {
             .ap-panel { width: 100%; }
             .ap-actions { flex-wrap: wrap; }
+            .ic-grid-2col { grid-template-columns: 1fr; }
         }
 
         /* ===========================
@@ -546,12 +650,9 @@
                     <div>
                         <div class="field-label">Interested In</div>
                         <select id="editInterest" name="interested_in" class="field-select">
-                            <option value="ABA therapy">ABA therapy</option>
-                            <option value="Speech therapy">Speech therapy</option>
-                            <option value="Occupational therapy">Occupational therapy</option>
-                            <option value="Diagnostic assessment">Diagnostic assessment</option>
-                            <option value="Early intervention">Early intervention</option>
-                            <option value="Combined program">Combined program</option>
+                            @foreach ($services as $service)
+                                <option value="{{ $service->name }}">{{ $service->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div>
@@ -651,6 +752,117 @@
                 </div>
 
                 <div>
+                    <div class="ap-section-label">Where this lead came from</div>
+                    <div class="ap-info-grid" style="margin-top: 8px;">
+                        <div>
+                            <div class="ap-info-label">Channel</div>
+                            <div class="ap-info-value" id="apInfoChannel">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Created</div>
+                            <div class="ap-info-value" id="apInfoCreated">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Campaign</div>
+                            <div class="ap-info-value" id="apInfoCampaign">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Ad</div>
+                            <div class="ap-info-value" id="apInfoAd">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Lead form</div>
+                            <div class="ap-info-value" id="apInfoLeadForm">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">City</div>
+                            <div class="ap-info-value" id="apInfoCity">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Child age band</div>
+                            <div class="ap-info-value" id="apInfoAgeBand">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Main concern</div>
+                            <div class="ap-info-value" id="apInfoMainConcern">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Phone</div>
+                            <div class="ap-info-value" id="apInfoPhone">—</div>
+                        </div>
+                        <div>
+                            <div class="ap-info-label">Email</div>
+                            <div class="ap-info-value" id="apInfoEmail">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="ap-section-label">
+                        Intake checklist before conversion
+                        <span class="ic-progress" id="icProgress">0 of 7 complete</span>
+                    </div>
+                    <div class="ic-list">
+                        <div class="ic-row" id="icRow-parent_contact">
+                            <div class="ic-num">1</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Parent contact verified</div>
+                                <div class="ic-sub">Phone and email confirmed with the parent</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('parent_contact')">Fill in</button>
+                        </div>
+                        <div class="ic-row" id="icRow-child_details">
+                            <div class="ic-num">2</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Child details complete</div>
+                                <div class="ic-sub">Full name, date of birth, diagnosis / concern</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('child_details')">Fill in</button>
+                        </div>
+                        <div class="ic-row" id="icRow-intake_form">
+                            <div class="ic-num">3</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Intake form received</div>
+                                <div class="ic-sub">Signed intake form returned by the family</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('intake_form')">Fill in</button>
+                        </div>
+                        <div class="ic-row" id="icRow-assessment">
+                            <div class="ic-num">4</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Consultation / assessment done</div>
+                                <div class="ic-sub">Clinical report filed against the child</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('assessment')">Fill in</button>
+                        </div>
+                        <div class="ic-row" id="icRow-funding">
+                            <div class="ic-num">5</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Funding confirmed</div>
+                                <div class="ic-sub">Insurance approval or self-pay agreed in writing</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('funding')">Fill in</button>
+                        </div>
+                        <div class="ic-row" id="icRow-package">
+                            <div class="ic-num">6</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Package agreed</div>
+                                <div class="ic-sub">Hours, location and rate signed off by the parent</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('package')">Fill in</button>
+                        </div>
+                        <div class="ic-row" id="icRow-consent">
+                            <div class="ic-num">7</div>
+                            <div style="flex:1;">
+                                <div class="ic-title">Consent & terms signed</div>
+                                <div class="ic-sub">Service agreement and data consent on file</div>
+                            </div>
+                            <button type="button" class="ic-fillin" onclick="icOpenModal('consent')">Fill in</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
                     <div class="ap-section-label">
                         Assigned to
                         <span class="ap-section-link" id="apAssignmentLogToggle" onclick="toggleAssignmentLog()">Assignment log (0)</span>
@@ -695,6 +907,384 @@
                 <button type="button" class="ap-btn-terminate" id="apTerminateBtn" onclick="terminateApLead()">Terminate</button>
                 <button type="button" class="ap-btn-convert" id="apConvertBtn" onclick="convertApLead()" style="display: none;">Convert to client</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Intake checklist step modals -->
+    <div id="icModal-parent_contact" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Parent contact verified</div>
+                    <div class="ic-modal-subtitle" id="icSub-parent_contact">Phone and email confirmed with the parent</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('parent_contact')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'parent_contact')">
+                <div class="ic-grid-2col">
+                    <div>
+                        <div class="ic-field-label">Parent / guardian name *</div>
+                        <input type="text" name="parent_guardian_name" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Relationship *</div>
+                        <select name="parent_relationship" class="ic-field-input" required>
+                            <option value="">Select relationship…</option>
+                            <option value="Mother">Mother</option>
+                            <option value="Father">Father</option>
+                            <option value="Guardian">Guardian</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Mobile number *</div>
+                        <input type="text" name="phone" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Alternate number</div>
+                        <input type="text" name="parent_alternate_phone" class="ic-field-input">
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Email *</div>
+                        <input type="email" name="email" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Preferred language *</div>
+                        <select name="preferred_language" class="ic-field-input" required>
+                            <option value="">Select preferred language…</option>
+                            <option value="Arabic">Arabic</option>
+                            <option value="English">English</option>
+                            <option value="Both">Both</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="icModal-child_details" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Child details complete</div>
+                    <div class="ic-modal-subtitle" id="icSub-child_details">Full name, date of birth, diagnosis / concern</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('child_details')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'child_details')">
+                <div class="ic-grid-2col">
+                    <div>
+                        <div class="ic-field-label">Child full name *</div>
+                        <input type="text" name="child_name" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Date of birth *</div>
+                        <input type="date" name="child_date_of_birth" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Gender *</div>
+                        <select name="child_gender" class="ic-field-input" required>
+                            <option value="">Select gender…</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Emirates ID number *</div>
+                        <input type="text" name="child_emirates_id" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Emirates ID expiry</div>
+                        <input type="date" name="child_emirates_id_expiry" class="ic-field-input">
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Diagnosis / suspected *</div>
+                        <input type="text" name="diagnosis_suspected" class="ic-field-input" required>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Nursery / school</div>
+                        <input type="text" name="nursery_school" class="ic-field-input">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Main concern *</div>
+                        <textarea name="main_concern" class="ic-field-input" rows="3" style="resize: vertical;" required></textarea>
+                    </div>
+                </div>
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="icModal-intake_form" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Intake form received</div>
+                    <div class="ic-modal-subtitle" id="icSub-intake_form">Signed intake form returned by the family</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('intake_form')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'intake_form')">
+                <div class="ic-grid-2col">
+                    <div>
+                        <div class="ic-field-label">Form received on *</div>
+                        <input type="date" name="intake_form_received_on" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Received via *</div>
+                        <select name="intake_form_received_via" class="ic-field-input" required>
+                            <option value="">Select received via…</option>
+                            <option value="Email">Email</option>
+                            <option value="WhatsApp">WhatsApp</option>
+                            <option value="In person">In person</option>
+                        </select>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Allergies</div>
+                        <input type="text" name="allergies" class="ic-field-input">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Medical history *</div>
+                        <textarea name="medical_history" class="ic-field-input" rows="3" style="resize: vertical;" required></textarea>
+                    </div>
+                </div>
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="icModal-assessment" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Consultation / assessment done</div>
+                    <div class="ic-modal-subtitle" id="icSub-assessment">Clinical report filed against the child</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('assessment')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'assessment')">
+                <div class="ic-grid-2col">
+                    <div>
+                        <div class="ic-field-label">Assessment date *</div>
+                        <input type="date" name="assessment_date" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Clinician *</div>
+                        <select name="assessment_clinician_id" class="ic-field-input" required>
+                            <option value="">Select clinician…</option>
+                            @foreach ($clinicians as $clinician)
+                                <option value="{{ $clinician->id }}">{{ trim($clinician->first_name.' '.$clinician->last_name) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Assessment tool *</div>
+                        <select name="assessment_tool" class="ic-field-input" required>
+                            <option value="">Select assessment tool…</option>
+                            <option value="ADOS-2">ADOS-2</option>
+                            <option value="VB-MAPP">VB-MAPP</option>
+                            <option value="PLS-5">PLS-5</option>
+                            <option value="Clinical observation">Clinical observation</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Report reference</div>
+                        <input type="text" name="assessment_report_reference" class="ic-field-input">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Report summary *</div>
+                        <textarea name="assessment_report_summary" class="ic-field-input" rows="3" style="resize: vertical;" required></textarea>
+                    </div>
+                </div>
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="icModal-funding" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Funding confirmed</div>
+                    <div class="ic-modal-subtitle" id="icSub-funding">Insurance approval or self-pay agreed in writing</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('funding')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'funding')">
+                <div>
+                    <div class="ic-field-label">Funding type *</div>
+                    <input type="hidden" name="funding_type" id="icFundingType" required>
+                    <div class="ic-pill-group" id="icFundingTypePills">
+                        <button type="button" class="ic-pill" data-value="Insurance" onclick="icSelectPill(this, 'icFundingType')">Insurance</button>
+                        <button type="button" class="ic-pill" data-value="Self pay" onclick="icSelectPill(this, 'icFundingType')">Self pay</button>
+                        <button type="button" class="ic-pill" data-value="Mixed — insurance + self pay" onclick="icSelectPill(this, 'icFundingType')">Mixed — insurance + self pay</button>
+                    </div>
+                </div>
+                <div class="ic-grid-2col" style="margin-top: 12px;">
+                    <div>
+                        <div class="ic-field-label">Insurer / payer</div>
+                        <select name="funding_insurer" class="ic-field-input">
+                            <option value="">Select insurer / payer…</option>
+                            <option value="Daman Enhanced">Daman Enhanced</option>
+                            <option value="Daman Basic">Daman Basic</option>
+                            <option value="Thiqa">Thiqa</option>
+                            <option value="ADNIC">ADNIC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Approval valid until</div>
+                        <input type="date" name="funding_approval_valid_until" class="ic-field-input">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Policy number</div>
+                        <input type="text" name="funding_policy_number" class="ic-field-input">
+                    </div>
+                </div>
+
+                <div style="margin-top: 14px;">
+                    <div class="ic-field-label">Services needed — who pays for each *</div>
+                    <input type="hidden" name="funding_services_needed" id="icServicesNeededInput">
+                    <div id="icServiceRows" style="display:flex; flex-direction:column; gap:10px; margin-top:6px;"></div>
+                    <button type="button" class="ic-dashed-btn" style="margin-top:8px; width:100%;" onclick="icAddServiceRow()">+ Add another service</button>
+                </div>
+
+                <div style="margin-top: 14px;">
+                    <div class="ic-field-label">Funding notes</div>
+                    <textarea name="funding_notes" class="ic-field-input" rows="2" style="resize: vertical;"></textarea>
+                </div>
+
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="icModal-package" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Package agreed</div>
+                    <div class="ic-modal-subtitle" id="icSub-package">Hours, location and rate signed off by the parent</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('package')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'package')">
+                <div>
+                    <div class="ic-field-label">Location *</div>
+                    <select name="package_location_id" id="icPackageLocation" class="ic-field-input" required>
+                        <option value="">Select location…</option>
+                        @foreach ($intakeLocations as $location)
+                            <option value="{{ $location->id }}">{{ $location->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div style="margin-top: 12px;">
+                    <div class="ic-field-label">Package(s) agreed — pick one or more *</div>
+                    <div class="ic-multiselect">
+                        <button type="button" class="ic-multiselect-trigger" id="icPackageTrigger" onclick="icTogglePackagePanel()">Select package(s)…</button>
+                        <div class="ic-multiselect-panel" id="icPackagePanel">
+                            <input type="text" class="ic-field-input" placeholder="Search packages…" style="margin-bottom:6px;" oninput="icFilterPackages(this.value)">
+                            @foreach ($packages as $package)
+                                <label class="ic-package-option" data-name="{{ strtolower($package->name) }}">
+                                    <input type="checkbox" name="package_ids[]" value="{{ $package->id }}" onchange="icSyncPackageSelection()">
+                                    <div>
+                                        <div class="ic-package-name">{{ $package->name }}</div>
+                                        <div class="ic-package-summary">{{ $package->summaryLabel() }}</div>
+                                    </div>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ic-grid-2col" style="margin-top: 12px;">
+                    <div>
+                        <div class="ic-field-label">Start date *</div>
+                        <input type="date" name="package_start_date" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Sessions / week *</div>
+                        <input type="number" min="0" name="package_sessions_per_week" class="ic-field-input" required>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Agreed by (parent) *</div>
+                        <input type="text" name="package_agreed_by" class="ic-field-input" required>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Scheduling notes</div>
+                        <textarea name="package_scheduling_notes" class="ic-field-input" rows="2" style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="icModal-consent" class="ic-modal-overlay">
+        <div class="ic-modal-box">
+            <div class="ic-modal-header">
+                <div>
+                    <div class="ic-modal-title">Consent & terms signed</div>
+                    <div class="ic-modal-subtitle" id="icSub-consent">Service agreement and data consent on file</div>
+                </div>
+                <button type="button" class="ic-modal-close" onclick="icCloseModal('consent')">✕</button>
+            </div>
+            <form onsubmit="return icSubmitStep(event, 'consent')">
+                <div class="ic-grid-2col">
+                    <div>
+                        <div class="ic-field-label">Service agreement signed *</div>
+                        <input type="date" name="consent_signed_date" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Signed by *</div>
+                        <input type="text" name="consent_signed_by" class="ic-field-input" required>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Data & photo consent *</div>
+                        <select name="consent_data_photo" class="ic-field-input" required>
+                            <option value="">Select data & photo consent…</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="ic-field-label">Signature method</div>
+                        <select name="consent_signature_method" class="ic-field-input">
+                            <option value="">Select signature method…</option>
+                            <option value="In person">In person</option>
+                            <option value="e-Sign">e-Sign</option>
+                            <option value="Scanned copy">Scanned copy</option>
+                        </select>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <div class="ic-field-label">Notes</div>
+                        <textarea name="consent_notes" class="ic-field-input" rows="2" style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="ic-modal-footer" style="margin-top: 16px;">
+                    <div class="ic-modal-hint">Fill every field marked * to complete this step</div>
+                    <button type="submit" class="ic-btn-save">Save & close</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -750,12 +1340,9 @@
                     <div>
                         <div class="field-label">Interested in</div>
                         <select id="leadInterest" name="interested_in" class="field-select">
-                            <option value="ABA therapy">ABA therapy</option>
-                            <option value="Speech therapy">Speech therapy</option>
-                            <option value="Occupational therapy">Occupational therapy</option>
-                            <option value="Diagnostic assessment">Diagnostic assessment</option>
-                            <option value="Early intervention">Early intervention</option>
-                            <option value="Combined program">Combined program</option>
+                            @foreach ($services as $service)
+                                <option value="{{ $service->name }}">{{ $service->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>
@@ -882,6 +1469,8 @@
         'Phone call': { bg: '#E3F1E9', color: '#2E7D5B' },
         'Event': { bg: '#F7EEDD', color: '#8A5A10' }
     };
+
+    const intakeStepColumns = @json(\App\Models\Lead::INTAKE_STEPS);
 
     const nextStatusMap = {
         'new': 'contacted',
@@ -1297,6 +1886,7 @@
             apLead = data.lead;
             apLead.notes_log = data.notes_log || [];
             apLead.assignment_log = data.assignment_log || [];
+            apLead.agreed_packages = data.agreed_packages || [];
 
             document.getElementById('apName').textContent = (apLead.child_name || 'N/A') + ' · ' + (apLead.child_age || 'N/A');
 
@@ -1326,6 +1916,9 @@
             renderApNotes(apLead.notes_log);
             document.getElementById('apNoteBody').value = '';
 
+            renderApInfoGrid();
+            icRenderChecklist();
+
             refreshApActions();
         })
         .catch(error => {
@@ -1339,6 +1932,265 @@
         document.getElementById('actionPanel').style.display = 'none';
         document.body.style.overflow = '';
         apLead = null;
+    }
+
+    // ---- "Where this lead came from" info grid ----
+    function apDateLabel(dateStr) {
+        if (!dateStr) return '—';
+        return new Date(dateStr).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderApInfoGrid() {
+        document.getElementById('apInfoChannel').textContent = apLead.source || '—';
+        document.getElementById('apInfoCreated').textContent = apDateLabel(apLead.created_at);
+        document.getElementById('apInfoCampaign').textContent = apLead.campaign || '—';
+        document.getElementById('apInfoAd').textContent = apLead.ad_name || '—';
+        document.getElementById('apInfoLeadForm').textContent = apLead.lead_form_name || '—';
+        document.getElementById('apInfoCity').textContent = apLead.city || '—';
+        document.getElementById('apInfoAgeBand').textContent = apLead.child_age_band || '—';
+        document.getElementById('apInfoMainConcern').textContent = apLead.main_concern || '—';
+        document.getElementById('apInfoPhone').textContent = apLead.phone || '—';
+        document.getElementById('apInfoEmail').textContent = apLead.email || '—';
+    }
+
+    // ---- Intake checklist ----
+    function icRenderChecklist() {
+        if (!apLead) return;
+
+        let done = 0;
+        Object.keys(intakeStepColumns).forEach(step => {
+            const column = intakeStepColumns[step];
+            const isDone = !!apLead[column];
+            if (isDone) done++;
+
+            const row = document.getElementById('icRow-' + step);
+            if (!row) return;
+            row.classList.toggle('is-done', isDone);
+            row.querySelector('.ic-fillin').textContent = isDone ? 'Edit' : 'Fill in';
+        });
+
+        document.getElementById('icProgress').textContent = done + ' of 7 complete';
+    }
+
+    function icPopulateForm(step) {
+        const form = document.querySelector('#icModal-' + step + ' form');
+        if (!form || !apLead) return;
+
+        form.querySelectorAll('input[name], select[name], textarea[name]').forEach(field => {
+            const value = apLead[field.name];
+            if (value === undefined || value === null) return;
+            if (field.type === 'date' && typeof value === 'string') {
+                field.value = value.slice(0, 10);
+            } else {
+                field.value = value;
+            }
+        });
+
+        if (step === 'funding') {
+            icSetPill('icFundingTypePills', 'icFundingType', apLead.funding_type);
+            icRenderServiceRows(apLead.funding_services_needed || []);
+        }
+
+        if (step === 'package') {
+            const ids = (apLead.package_ids || []).map(String);
+            document.querySelectorAll('#icPackagePanel input[type="checkbox"]').forEach(cb => {
+                cb.checked = ids.includes(cb.value);
+            });
+            icSyncPackageSelection();
+        }
+    }
+
+    function icOpenModal(step) {
+        if (!apLead) return;
+
+        if (step === 'funding' && document.getElementById('icServiceRows').children.length === 0) {
+            icAddServiceRow();
+        }
+
+        icPopulateForm(step);
+        document.getElementById('icModal-' + step).style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function icCloseModal(step) {
+        document.getElementById('icModal-' + step).style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    function icSubmitStep(event, step) {
+        event.preventDefault();
+        if (!apLead) return false;
+
+        if (step === 'funding') {
+            document.getElementById('icServicesNeededInput').value = JSON.stringify(icCollectServiceRows());
+        }
+
+        const form = event.target;
+        const formData = new FormData(form);
+        formData.append('_method', 'PUT');
+        formData.append('intake_step', step);
+
+        const saveBtn = form.querySelector('.ic-btn-save');
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+
+        fetch(updateLeadUrl.replace('__LEAD_ID__', apLead.id), {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+
+            if (!data.success) {
+                const errorMsg = data.errors ? Object.values(data.errors).flat().join(', ') : 'Could not save.';
+                showNotification(errorMsg, 'error');
+                return;
+            }
+
+            Object.assign(apLead, data.lead);
+            renderApInfoGrid();
+            icRenderChecklist();
+            icCloseModal(step);
+            showNotification('Saved.', 'success');
+        })
+        .catch(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+            showNotification('Network error. Please try again.', 'error');
+        });
+
+        return false;
+    }
+
+    // ---- Pill-toggle groups (funding type) ----
+    function icSelectPill(btn, hiddenInputId) {
+        btn.parentElement.querySelectorAll('.ic-pill').forEach(p => p.classList.remove('is-selected'));
+        btn.classList.add('is-selected');
+        document.getElementById(hiddenInputId).value = btn.dataset.value;
+    }
+
+    function icSetPill(groupId, hiddenInputId, value) {
+        const group = document.getElementById(groupId);
+        group.querySelectorAll('.ic-pill').forEach(p => p.classList.toggle('is-selected', p.dataset.value === value));
+        document.getElementById(hiddenInputId).value = value || '';
+    }
+
+    // ---- Repeatable "services needed" rows (funding step) ----
+    function icAddServiceRow(existing) {
+        const wrap = document.getElementById('icServiceRows');
+        const row = document.createElement('div');
+        row.className = 'ic-service-row';
+
+        const servicePills = @json($services->pluck('name'))
+            .map(name => `<button type="button" class="ic-pill" data-value="${name}" onclick="icPickServiceRowValue(this, 'service')">${name}</button>`)
+            .join('');
+
+        row.innerHTML = `
+            <div class="ic-service-row-head">
+                <div class="ic-service-row-title">Service ${wrap.children.length + 1}</div>
+                <span class="ic-service-status">Needs service, hours and payer</span>
+                <button type="button" class="ic-remove-row" onclick="icRemoveServiceRow(this)">✕</button>
+            </div>
+            <div>
+                <div class="ic-field-label">Service / therapy</div>
+                <div class="ic-pill-group" data-role="service">${servicePills}</div>
+            </div>
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                <div style="flex:1; min-width:140px;">
+                    <div class="ic-field-label">Paid by</div>
+                    <div class="ic-pill-group" data-role="payer">
+                        <button type="button" class="ic-pill" data-value="Insurance" onclick="icPickServiceRowValue(this, 'payer')">Insurance</button>
+                        <button type="button" class="ic-pill" data-value="Self pay" onclick="icPickServiceRowValue(this, 'payer')">Self pay</button>
+                    </div>
+                </div>
+                <div style="width:120px;">
+                    <div class="ic-field-label">Hours / week</div>
+                    <input type="number" min="0" class="ic-field-input" data-role="hours" oninput="icUpdateServiceRowStatus(this)">
+                </div>
+            </div>
+        `;
+        wrap.appendChild(row);
+
+        if (existing) {
+            if (existing.service) {
+                row.querySelectorAll('[data-role="service"] .ic-pill').forEach(p => p.classList.toggle('is-selected', p.dataset.value === existing.service));
+            }
+            if (existing.payer) {
+                row.querySelectorAll('[data-role="payer"] .ic-pill').forEach(p => p.classList.toggle('is-selected', p.dataset.value === existing.payer));
+            }
+            if (existing.hours_per_week) {
+                row.querySelector('[data-role="hours"]').value = existing.hours_per_week;
+            }
+            icUpdateServiceRowStatus(row.querySelector('[data-role="hours"]'));
+        }
+    }
+
+    function icPickServiceRowValue(btn, role) {
+        const group = btn.closest('.ic-pill-group');
+        group.querySelectorAll('.ic-pill').forEach(p => p.classList.remove('is-selected'));
+        btn.classList.add('is-selected');
+        icUpdateServiceRowStatus(btn);
+    }
+
+    function icUpdateServiceRowStatus(el) {
+        const row = el.closest('.ic-service-row');
+        const service = row.querySelector('[data-role="service"] .is-selected');
+        const payer = row.querySelector('[data-role="payer"] .is-selected');
+        const hours = row.querySelector('[data-role="hours"]').value;
+        const status = row.querySelector('.ic-service-status');
+
+        const complete = service && payer && hours;
+        status.textContent = complete ? 'Complete' : 'Needs service, hours and payer';
+        status.classList.toggle('is-ok', !!complete);
+    }
+
+    function icRemoveServiceRow(btn) {
+        btn.closest('.ic-service-row').remove();
+        document.querySelectorAll('#icServiceRows .ic-service-row').forEach((row, idx) => {
+            row.querySelector('.ic-service-row-title').textContent = 'Service ' + (idx + 1);
+        });
+    }
+
+    function icRenderServiceRows(rows) {
+        document.getElementById('icServiceRows').innerHTML = '';
+        if (!rows.length) {
+            icAddServiceRow();
+            return;
+        }
+        rows.forEach(row => icAddServiceRow(row));
+    }
+
+    function icCollectServiceRows() {
+        return Array.from(document.querySelectorAll('#icServiceRows .ic-service-row')).map(row => ({
+            service: row.querySelector('[data-role="service"] .is-selected')?.dataset.value || null,
+            payer: row.querySelector('[data-role="payer"] .is-selected')?.dataset.value || null,
+            hours_per_week: row.querySelector('[data-role="hours"]').value || null,
+        })).filter(r => r.service || r.payer || r.hours_per_week);
+    }
+
+    // ---- Package multi-select (package step) ----
+    function icTogglePackagePanel() {
+        document.getElementById('icPackagePanel').classList.toggle('is-open');
+    }
+
+    function icFilterPackages(term) {
+        term = term.trim().toLowerCase();
+        document.querySelectorAll('#icPackagePanel .ic-package-option').forEach(opt => {
+            opt.style.display = !term || opt.dataset.name.includes(term) ? 'flex' : 'none';
+        });
+    }
+
+    function icSyncPackageSelection() {
+        const checked = Array.from(document.querySelectorAll('#icPackagePanel input[type="checkbox"]:checked'));
+
+        const trigger = document.getElementById('icPackageTrigger');
+        trigger.textContent = checked.length
+            ? checked.length + ' package' + (checked.length > 1 ? 's' : '') + ' selected'
+            : 'Select package(s)…';
     }
 
     function toggleAssignmentLog() {
@@ -1788,11 +2640,29 @@
             });
         }
 
+        Object.keys(intakeStepColumns).forEach(step => {
+            const overlay = document.getElementById('icModal-' + step);
+            if (overlay) {
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === this) icCloseModal(step);
+                });
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const multiselect = document.querySelector('.ic-multiselect');
+            const panel = document.getElementById('icPackagePanel');
+            if (panel && multiselect && !multiselect.contains(e.target)) {
+                panel.classList.remove('is-open');
+            }
+        });
+
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeViewLeadModal();
                 closeLeadModal();
                 closeActionPanel();
+                Object.keys(intakeStepColumns).forEach(step => icCloseModal(step));
             }
         });
     });

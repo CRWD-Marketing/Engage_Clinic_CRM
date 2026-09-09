@@ -682,6 +682,12 @@
             </a>
             @endif
 
+            @if(Auth::user()->canAccessFeature('voice'))
+            <a href="{{ route('voice_calls.index') }}" class="sidebar-link {{ request()->routeIs('voice_calls.*') ? 'active' : '' }}" title="Voice Calls">
+                <i class="fas fa-phone-volume"></i> <span class="link-label">Voice Calls</span>
+            </a>
+            @endif
+
             @if(Auth::user()->canAccessFeature('knowledge_base'))
             <a href="{{ route('knowledge_base.index') }}" class="sidebar-link {{ request()->routeIs('knowledge_base.*') ? 'active' : '' }}" title="Knowledge Base">
                 <i class="fas fa-robot"></i> <span class="link-label">AI Employee</span>
@@ -706,6 +712,21 @@
             </a>
             @endif
 
+            @if(Auth::user()->canAccessFeature('careers'))
+            <a href="{{ route('job-applications.index') }}" class="sidebar-link {{ request()->routeIs('job-applications.*') || request()->routeIs('job-postings.*') ? 'active' : '' }}" title="Job Application">
+                <i class="fas fa-briefcase"></i> <span class="link-label">Job Application</span>
+                @php
+                    $applicationCount = \App\Models\JobApplication::where('status', 'new')->count();
+                @endphp
+                @if($applicationCount > 0)
+                    <span class="badge badge-pulse">{{ $applicationCount }}</span>
+                    <span class="collapsed-dot"></span>
+                @else
+                    <span class="badge badge-zero">0</span>
+                @endif
+            </a>
+            @endif
+
             @if(Auth::user()->canAccessFeature('users'))
             <a href="{{ route('users.index') }}" class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}" title="User Management">
                 <i class="fas fa-user-shield"></i> <span class="link-label">User Management</span>
@@ -721,6 +742,18 @@
             @if(Auth::user()->canAccessFeature('reports'))
             <a href="{{ route('reports.index') }}" class="sidebar-link {{ request()->routeIs('reports.index') ? 'active' : '' }}" title="Reports">
                 <i class="fas fa-chart-bar"></i> <span class="link-label">Reports</span>
+            </a>
+            @endif
+
+            @if(Auth::user()->canAccessFeature('packages'))
+            <a href="{{ route('packages.index') }}" class="sidebar-link {{ request()->routeIs('packages.*') ? 'active' : '' }}" title="Packages">
+                <i class="fas fa-box-open"></i> <span class="link-label">Packages</span>
+            </a>
+            @endif
+
+            @if(Auth::user()->canAccessFeature('settings'))
+            <a href="{{ route('settings.index') }}" class="sidebar-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" title="Settings">
+                <i class="fas fa-cog"></i> <span class="link-label">Settings</span>
             </a>
             @endif
         </div>
@@ -762,9 +795,6 @@
                 <div id="desktopDropdownMenu" class="dropdown-menu">
                     <a href="{{ route('profile.index') }}" class="dropdown-item">
                         <i class="fas fa-user-circle" style="width: 17px;"></i> My Profile
-                    </a>
-                    <a href="{{ route('profile.index') }}" class="dropdown-item">
-                        <i class="fas fa-cog" style="width: 17px;"></i> Settings
                     </a>
                     <div class="dropdown-divider"></div>
                     <form action="{{ route('logout') }}" method="POST" style="margin: 0;">
@@ -904,6 +934,25 @@
                         });
                     })
                     .catch(error => console.error('Error updating contact count:', error));
+            }
+
+            const applicationBadges = document.querySelectorAll('.sidebar-link[href*="job-applications"] .badge');
+            if (applicationBadges.length > 0) {
+                fetch('{{ route("job-applications.count") }}')
+                    .then(response => response.json())
+                    .then(data => {
+                        applicationBadges.forEach(badge => {
+                            badge.textContent = data.count || 0;
+                            if (data.count > 0) {
+                                badge.classList.remove('badge-zero');
+                                badge.classList.add('badge-pulse');
+                            } else {
+                                badge.classList.add('badge-zero');
+                                badge.classList.remove('badge-pulse');
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Error updating application count:', error));
             }
         }, 30000);
     </script>

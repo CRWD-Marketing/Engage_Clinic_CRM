@@ -52,7 +52,9 @@ class WhatsappController extends Controller
             }
         }
 
-        return view('whatsapp.index', compact('contacts', 'activeContact', 'messages', 'leadHints'));
+        $services = \App\Models\Service::where('is_active', true)->orderBy('name')->get();
+
+        return view('whatsapp.index', compact('contacts', 'activeContact', 'messages', 'leadHints', 'services'));
     }
 
     /**
@@ -87,7 +89,15 @@ class WhatsappController extends Controller
                         'activeContact' => $activeContact,
                     ])->render())->implode('');
 
-                    $latestMessageId = $newMessages->last()->id;
+                    // max(id), not the sent_at-ordered last item's id: a webhook
+                    // delivered slightly out of order (Meta doesn't guarantee
+                    // delivery order) can insert an older-timestamped message
+                    // after a newer one already exists, giving it a higher id
+                    // despite an earlier sent_at. Cursoring on the sent_at-order
+                    // "last" id would then regress the cursor backwards, causing
+                    // the next poll to re-fetch and re-render messages already
+                    // on screen.
+                    $latestMessageId = (int) $newMessages->max('id');
 
                     // The conversation is open in front of the user right now, so
                     // anything that just arrived counts as read immediately.
@@ -208,6 +218,13 @@ class WhatsappController extends Controller
 
         $object = $request->input('object');
 
+        Log::info('[Messaging] Incoming event received', ['object' => $object, 'entry_count' => count($request->input('entry', []))]);
+        Log::info('[Messaging] Platform identified', ['platform' => match ($object) {
+            'instagram' => 'instagram',
+            'page' => 'facebook',
+            default => 'whatsapp',
+        }]);
+
         foreach ($request->input('entry', []) as $entry) {
             if ($object === 'instagram') {
                 // Instagram's `messages` field webhook: entry[].changes[].value = {sender, recipient, timestamp, message}.
@@ -304,7 +321,20 @@ class WhatsappController extends Controller
      */
     private function dispatchAiReplyIfEligible(?WhatsappMessage $message): void
     {
+        // This runs strictly after the message above has already been
+        // persisted and committed - nothing past this point can undo that.
+        // AI eligibility/settings/dispatch failures are caught by the same
+        // safely() wrapper this is called from, so they can never take the
+        // stored client message down with them.
         if (! $message || ! $message->isEligibleForAutoReply()) {
+            return;
+        }
+
+        $settings = AiEmployeeSettings::current();
+
+        Log::info('[Messaging] AI enabled/disabled', ['message_id' => $message->id, 'ai_enabled' => (bool) $settings->is_enabled]);
+
+        if (! $settings->is_enabled) {
             return;
         }
 
@@ -312,7 +342,9 @@ class WhatsappController extends Controller
         // this is a deliberate pacing requirement, not just anti-spam: each
         // message independently waits response_delay_seconds before the AI
         // replies to it, not a one-time delay for the whole conversation.
-        $delaySeconds = AiEmployeeSettings::current()->response_delay_seconds;
+        $delaySeconds = $settings->response_delay_seconds;
+
+        Log::info('[Messaging] AI processing started', ['message_id' => $message->id, 'delay_seconds' => $delaySeconds]);
 
         ProcessAiEmployeeReply::dispatch($message->id)->delay(now()->addSeconds($delaySeconds));
     }
@@ -509,6 +541,8 @@ class WhatsappController extends Controller
 
         $contact->save();
 
+        Log::info('[Messaging] Contact identified', ['contact_id' => $contact->id, 'channel' => 'whatsapp']);
+
         $body = match ($message['type'] ?? 'text') {
             'text' => $message['text']['body'] ?? null,
             'button' => $message['button']['text'] ?? null,
@@ -517,6 +551,10 @@ class WhatsappController extends Controller
                 ?? null,
             default => null,
         };
+
+        Log::info('[Messaging] Message identified', ['wa_message_id' => $message['id'], 'type' => $message['type'] ?? 'text']);
+
+        $wasExisting = WhatsappMessage::where('wa_message_id', $message['id'])->exists();
 
         $stored = WhatsappMessage::updateOrCreate(
             ['wa_message_id' => $message['id']],
@@ -529,6 +567,12 @@ class WhatsappController extends Controller
                 'sent_at' => Carbon::createFromTimestamp((int) $message['timestamp']),
             ]
         );
+
+        if ($wasExisting) {
+            Log::info('[Messaging] Message already exists / duplicate', ['wa_message_id' => $message['id'], 'message_id' => $stored->id]);
+        } else {
+            Log::info('[Messaging] Message saved successfully', ['message_id' => $stored->id, 'contact_id' => $contact->id]);
+        }
 
         $contact->update([
             'last_message_preview' => $body ?? WhatsappMessage::fallbackLabel($message['type'] ?? 'text'),
@@ -641,13 +685,25 @@ class WhatsappController extends Controller
 
         $contact->save();
 
-        if ($isNewContact) {
-            $profile = $this->fetchMessengerProfile($senderId, $channel);
+        Log::info('[Messaging] Contact identified', ['contact_id' => $contact->id, 'channel' => $channel, 'is_new' => $isNewContact]);
 
-            if ($profile) {
-                $contact->update(array_filter($profile, fn ($v) => $v !== null));
-            }
-        }
+        Log::info('[Messaging] Message identified', ['wa_message_id' => $message['mid'], 'type' => $type]);
+
+        // Message storage is the critical path and must complete before, and
+        // regardless of, the best-effort profile (name/avatar) lookup below.
+        //
+        // ROOT CAUSE (fixed here): this used to run AFTER fetchMessengerProfile()'s
+        // Graph API call. That call has no error handling of its own - a timeout,
+        // DNS failure, rate limit, or expired/invalid access token throws a
+        // ConnectionException that propagated straight out of this method, so the
+        // message below never got saved at all. Because handleWebhook()'s safely()
+        // wrapper catches it, the webhook still returned HTTP 200 to Meta - meaning
+        // Meta considered the delivery successful and never retried, so the
+        // client's message was silently and permanently lost, not just delayed.
+        // Confirmed against production logs: two Instagram DMs logged as received
+        // on 2026-08-19 have no corresponding contact or message row in the
+        // database to this day.
+        $wasExisting = WhatsappMessage::where('wa_message_id', $message['mid'])->exists();
 
         $stored = WhatsappMessage::updateOrCreate(
             ['wa_message_id' => $message['mid']],
@@ -663,11 +719,38 @@ class WhatsappController extends Controller
             ]
         );
 
+        if ($wasExisting) {
+            Log::info('[Messaging] Message already exists / duplicate', ['wa_message_id' => $message['mid'], 'message_id' => $stored->id]);
+        } else {
+            Log::info('[Messaging] Message saved successfully', ['message_id' => $stored->id, 'contact_id' => $contact->id, 'type' => $type]);
+        }
+
         $contact->update([
             'last_message_preview' => $body ?? WhatsappMessage::fallbackLabel($type),
             'last_message_at' => $sentAt,
             'unread_count' => $contact->unread_count + 1,
         ]);
+
+        // Best-effort profile enrichment (display name + avatar), now strictly
+        // after the message is already safely stored above. Isolated in its own
+        // try/catch so a Graph API failure here can only ever cost the contact
+        // their display name/avatar for now (fixed on the next inbound message,
+        // or by the whatsapp:refresh-profiles command) - never the message itself.
+        if ($isNewContact) {
+            try {
+                $profile = $this->fetchMessengerProfile($senderId, $channel);
+
+                if ($profile) {
+                    $contact->update(array_filter($profile, fn ($v) => $v !== null));
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[Messaging] Profile lookup failed for new contact - message already saved, continuing', [
+                    'contact_id' => $contact->id,
+                    'channel' => $channel,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return $stored;
     }

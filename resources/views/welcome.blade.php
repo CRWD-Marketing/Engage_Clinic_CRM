@@ -10,7 +10,7 @@
 
 <!-- Hero -->
 <section id="home" class="js-hero dotted relative py-12 md:py-16 overflow-hidden">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-10 items-center">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-10 items-center">
 
     <!-- Left: copy -->
     <div>
@@ -24,7 +24,7 @@
 
       <div class="flex flex-wrap items-center gap-3 mt-8">
         <a href="#" id="heroBookBtn" onclick="event.preventDefault(); openBookingModal();" class="btn-pink">Book Free Consultation →</a>
-        <a href="#programmes" class="btn-ghost">Explore Services</a>
+        <a href="{{ route('services') }}" class="btn-ghost">Explore Services</a>
       </div>
 
       <div class="flex flex-wrap gap-2.5 mt-7">
@@ -117,7 +117,7 @@
 
 <!-- Stats -->
 <section class="py-12 border-y border-[var(--border)] bg-white">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8">
     <div class="reveal-group grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
       <div><div class="stat-number">200+</div><div class="stat-label">Families Supported</div></div>
       <div><div class="stat-number">10+</div><div class="stat-label">Years of Expertise</div></div>
@@ -129,7 +129,7 @@
 
 <!-- Programmes (bento) -->
 <section id="programmes" class="py-16 md:py-24 dotted">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8">
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
       <div>
         <span class="eyebrow-plain reveal-text">Our Programs</span>
@@ -209,7 +209,7 @@
 
 <!-- GIFTED values -->
 <section class="py-16 md:py-24 bg-white border-y border-[var(--border)]">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8">
     <div class="max-w-2xl mx-auto text-center mb-14">
       <span class="eyebrow-plain reveal-text">Our Values</span>
       <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)]">Every child is <span style="color:var(--pink);">GIFTED</span></h2>
@@ -252,7 +252,7 @@
 
 <!-- Approach: We ENRICH -->
 <section id="about" class="py-16 md:py-24 dotted">
-  <div class="max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
+  <div class="max-w-[1440px] mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
     <div class="relative">
       <div class="card photo-wrap rounded-[26px] overflow-hidden aspect-[4/5] relative">
         <img src="{{ asset('about_us/founder.png') }}" alt="Hong Chun Tan, Founder & Clinical Director of Engage Clinic" class="w-full h-full object-cover object-top">
@@ -328,12 +328,54 @@
         <p class="font-bold text-[var(--navy)] mt-6">Layla H.</p>
         <p class="text-sm text-[var(--text-muted)]">Parent of an 8-year-old</p>
       </div>
+      <div class="testimonial-slide hidden">
+        <div class="flex justify-center gap-1 text-[var(--orange)] mb-5">★★★★★</div>
+        <p class="text-lg text-[var(--navy)] italic leading-relaxed">"We've seen so much growth since starting therapy. The team is caring, patient, and genuinely understands our child's needs."</p>
+        <p class="font-bold text-[var(--navy)] mt-6">Maya R.</p>
+        <p class="text-sm text-[var(--text-muted)]">Parent of a 6-year-old</p>
+      </div>
+      <div class="testimonial-slide hidden">
+        <div class="flex justify-center gap-1 text-[var(--orange)] mb-5">★★★★★</div>
+        <p class="text-lg text-[var(--navy)] italic leading-relaxed">"The therapists make every session feel positive and encouraging. Our son looks forward to seeing his therapist each week."</p>
+        <p class="font-bold text-[var(--navy)] mt-6">Sarah M.</p>
+        <p class="text-sm text-[var(--text-muted)]">Parent of a 5-year-old</p>
+      </div>
+      <div class="testimonial-slide hidden">
+        <div class="flex justify-center gap-1 text-[var(--orange)] mb-5">★★★★★</div>
+        <p class="text-lg text-[var(--navy)] italic leading-relaxed">"What we appreciate most is how involved we are. The team listens to our concerns and keeps us updated every step of the way."</p>
+        <p class="font-bold text-[var(--navy)] mt-6">Noura A.</p>
+        <p class="text-sm text-[var(--text-muted)]">Parent of a 7-year-old</p>
+      </div>
+      <div class="testimonial-slide hidden">
+        <div class="flex justify-center gap-1 text-[var(--orange)] mb-5">★★★★★</div>
+        <p class="text-lg text-[var(--navy)] italic leading-relaxed">"Having therapy at home has made such a difference. Our child feels comfortable in a familiar environment, and we can see the progress happening every day."</p>
+        <p class="font-bold text-[var(--navy)] mt-6">Daniel M.</p>
+        <p class="text-sm text-[var(--text-muted)]">Parent of a 4-year-old</p>
+      </div>
+      <div class="testimonial-slide hidden">
+        <div class="flex justify-center gap-1 text-[var(--orange)] mb-5">★★★★★</div>
+        <p class="text-lg text-[var(--navy)] italic leading-relaxed">"The team treats our child with so much respect and patience. We feel supported, informed, and confident in the care he receives."</p>
+        <p class="font-bold text-[var(--navy)] mt-6">Hana S.</p>
+        <p class="text-sm text-[var(--text-muted)]">Parent of a 9-year-old</p>
+      </div>
+      <div class="testimonial-slide hidden">
+        <div class="flex justify-center gap-1 text-[var(--orange)] mb-5">★★★★★</div>
+        <p class="text-lg text-[var(--navy)] italic leading-relaxed">"From our first conversation, we felt heard. The team took the time to understand our child and created a plan that truly works for our family."</p>
+        <p class="font-bold text-[var(--navy)] mt-6">Aisha K.</p>
+        <p class="text-sm text-[var(--text-muted)]">Parent of a 6-year-old</p>
+      </div>
     </div>
 
     <div class="flex items-center justify-center gap-1.5 mt-8" id="testimonialDots">
       <button class="carousel-dot active" onclick="goToTestimonial(0)" aria-label="Story 1"></button>
       <button class="carousel-dot" onclick="goToTestimonial(1)" aria-label="Story 2"></button>
       <button class="carousel-dot" onclick="goToTestimonial(2)" aria-label="Story 3"></button>
+      <button class="carousel-dot" onclick="goToTestimonial(3)" aria-label="Story 4"></button>
+      <button class="carousel-dot" onclick="goToTestimonial(4)" aria-label="Story 5"></button>
+      <button class="carousel-dot" onclick="goToTestimonial(5)" aria-label="Story 6"></button>
+      <button class="carousel-dot" onclick="goToTestimonial(6)" aria-label="Story 7"></button>
+      <button class="carousel-dot" onclick="goToTestimonial(7)" aria-label="Story 8"></button>
+      <button class="carousel-dot" onclick="goToTestimonial(8)" aria-label="Story 9"></button>
     </div>
   </div>
 </section>
@@ -466,12 +508,9 @@
             <label class="crm-label">Service of interest</label>
             <select id="bk_service" class="crm-select">
               <option value="">Select a service…</option>
-              <option value="ABA therapy">ABA therapy</option>
-              <option value="Speech therapy">Speech therapy</option>
-              <option value="Early intervention">Early intervention</option>
-              <option value="School-age support">School-age support</option>
-              <option value="Parent training">Parent training</option>
-              <option value="Behavioural assessment">Behavioural assessment</option>
+              @foreach ($publicServices as $service)
+                <option value="{{ $service->name }}">{{ $service->name }}</option>
+              @endforeach
             </select>
           </div>
           <div>
@@ -490,24 +529,6 @@
       </div>
 
     </div>
-  </div>
-</div>
-
-<!-- Floating soft-opening countdown widget -->
-<div class="float-widget">
-  <button class="float-toggle" id="floatToggle" onclick="toggleFloatPanel()">
-    ✦ SOFT OPENING&nbsp;Aug 22, 2026
-    <svg id="floatChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg>
-  </button>
-  <div class="float-panel" id="floatPanel">
-    <p>Counting down to our grand soft opening in Abu Dhabi!</p>
-    <div class="countdown-grid" id="countdownGrid">
-      <div class="countdown-box"><div class="num" id="cdDays">00</div><div class="unit">Days</div></div>
-      <div class="countdown-box"><div class="num" id="cdHrs">00</div><div class="unit">Hrs</div></div>
-      <div class="countdown-box"><div class="num" id="cdMin">00</div><div class="unit">Min</div></div>
-      <div class="countdown-box"><div class="num" id="cdSec">00</div><div class="unit">Sec</div></div>
-    </div>
-    <p class="float-address">Office 1203, ADCP Commercial Tower-C<br>Electra Street, Abu Dhabi, UAE</p>
   </div>
 </div>
 
@@ -573,29 +594,6 @@
     currentSlide = i;
   }
   setInterval(() => { goToTestimonial((currentSlide + 1) % slides.length); }, 6000);
-
-  // Floating soft-opening panel + countdown
-  const floatPanel = document.getElementById('floatPanel');
-  const floatChevron = document.getElementById('floatChevron');
-  function toggleFloatPanel() {
-    floatPanel.classList.toggle('open');
-    floatChevron.style.transform = floatPanel.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
-  }
-  const openingDate = new Date('2026-08-22T00:00:00+04:00').getTime();
-  function updateCountdown() {
-    const diff = openingDate - Date.now();
-    if (diff <= 0) { return; }
-    const days = Math.floor(diff / 86400000);
-    const hrs = Math.floor((diff % 86400000) / 3600000);
-    const min = Math.floor((diff % 3600000) / 60000);
-    const sec = Math.floor((diff % 60000) / 1000);
-    document.getElementById('cdDays').textContent = String(days).padStart(2, '0');
-    document.getElementById('cdHrs').textContent = String(hrs).padStart(2, '0');
-    document.getElementById('cdMin').textContent = String(min).padStart(2, '0');
-    document.getElementById('cdSec').textContent = String(sec).padStart(2, '0');
-  }
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
 
   // ---- Booking modal ----
   const bookingState = { date: null, time: null, monthOffset: 0 };

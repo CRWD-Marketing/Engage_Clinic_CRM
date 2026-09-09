@@ -41,28 +41,6 @@
     'sparkle' => '<path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>',
   ];
 
-  $positions = [
-    [
-      'title' => 'Board Certified Behavior Analyst (BCBA)', 'type' => 'Full-time · Abu Dhabi',
-      'desc' => 'Lead individualized ABA programs, conduct FBAs, supervise RBTs, and collaborate with families. BCBA certification required. Visa sponsorship available.',
-      'reqs' => ['Active BCBA certification', '2+ years clinical experience', 'Strong family collaboration skills', 'Arabic preferred, not required'],
-    ],
-    [
-      'title' => 'Registered Behavior Technician (RBT)', 'type' => 'Full-time / Part-time · Abu Dhabi',
-      'desc' => 'Implement individualized ABA therapy plans under BCBA supervision in home and community settings. RBT certification required or in process.',
-      'reqs' => ['RBT certification or in progress', 'Passion for working with children', 'Reliable transportation', 'Empathy and patience'],
-    ],
-    [
-      'title' => 'Early Intervention Specialist', 'type' => 'Full-time · Abu Dhabi',
-      'desc' => 'Design and deliver intensive programs for children ages 2–6. Collaborate with families and BCBAs to target developmental milestones and school readiness.',
-      'reqs' => ['BCaBA or BCBA preferred', 'Experience with young children', 'Knowledge of early childhood development', 'Strong communication skills'],
-    ],
-    [
-      'title' => 'Parent Training Coordinator', 'type' => 'Part-time · Flexible',
-      'desc' => 'Facilitate structured parent training sessions, collect feedback, and provide guidance on behavior management strategies in the home environment.',
-      'reqs' => ['Background in ABA or education', 'Experience facilitating workshops', 'Empathetic and organized', 'Bilingual a plus'],
-    ],
-  ];
 @endphp
 
 <!-- Why join -->
@@ -91,30 +69,44 @@
     <h2 class="reveal-heading display mt-3 text-3xl md:text-4xl font-extrabold text-[var(--navy)] mb-10">Current opportunities</h2>
 
     <div class="reveal-group space-y-4">
-      @foreach ($positions as $job)
+      @forelse ($jobPostings as $job)
         <details class="job-item">
           <summary class="flex items-center justify-between gap-4">
             <div>
-              <h4 class="font-bold text-[var(--navy)]">{{ $job['title'] }}</h4>
-              <p class="job-type mt-1">{{ $job['type'] }}</p>
+              <h4 class="font-bold text-[var(--navy)]">{{ $job->title }}</h4>
+              @php
+                $jobTypeLocation = collect([$job->employment_type, $job->location])->filter()->implode(' · ');
+              @endphp
+              @if ($jobTypeLocation)
+                <p class="job-type mt-1">{{ $jobTypeLocation }}</p>
+              @endif
             </div>
             <svg class="job-chevron shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg>
           </summary>
           <div class="job-body">
-            <p class="text-[var(--text-secondary)] text-sm leading-relaxed">{{ $job['desc'] }}</p>
-            <p class="job-req-label">Requirements</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-6">
-              @foreach ($job['reqs'] as $req)
-                <div class="service-check">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                  {{ $req }}
-                </div>
-              @endforeach
-            </div>
-            <a href="mailto:careers@engagebehavior.com?subject={{ rawurlencode('Application: ' . $job['title']) }}" class="btn-pink !text-sm">Apply Now →</a>
+            @if ($job->description)
+              <p class="text-[var(--text-secondary)] text-sm leading-relaxed">{{ $job->description }}</p>
+            @endif
+            @if (!empty($job->requirements))
+              <p class="job-req-label">Requirements</p>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 mb-6">
+                @foreach ($job->requirements as $req)
+                  <div class="service-check">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pink)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    {{ $req }}
+                  </div>
+                @endforeach
+              </div>
+            @endif
+            <button type="button" class="btn-pink !text-sm" onclick="openApplyModal({{ $job->id }}, @js($job->title))">Apply Now →</button>
           </div>
         </details>
-      @endforeach
+      @empty
+        <div class="text-center py-10 text-[var(--text-secondary)] text-sm">
+          No open positions right now — check back soon, or reach out at
+          <a href="mailto:careers@engagebehavior.com" class="font-bold" style="color: var(--pink);">careers@engagebehavior.com</a>.
+        </div>
+      @endforelse
     </div>
   </div>
 </section>
@@ -232,12 +224,9 @@
             <label class="crm-label">Service of interest</label>
             <select id="bk_service" class="crm-select">
               <option value="">Select a service…</option>
-              <option value="ABA therapy">ABA therapy</option>
-              <option value="Speech therapy">Speech therapy</option>
-              <option value="Early intervention">Early intervention</option>
-              <option value="School-age support">School-age support</option>
-              <option value="Parent training">Parent training</option>
-              <option value="Behavioural assessment">Behavioural assessment</option>
+              @foreach ($publicServices as $service)
+                <option value="{{ $service->name }}">{{ $service->name }}</option>
+              @endforeach
             </select>
           </div>
           <div>
@@ -259,21 +248,62 @@
   </div>
 </div>
 
-<!-- Floating soft-opening countdown widget -->
-<div class="float-widget">
-  <button class="float-toggle" id="floatToggle" onclick="toggleFloatPanel()">
-    ✦ SOFT OPENING&nbsp;Aug 22, 2026
-    <svg id="floatChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg>
-  </button>
-  <div class="float-panel" id="floatPanel">
-    <p>Counting down to our grand soft opening in Abu Dhabi!</p>
-    <div class="countdown-grid" id="countdownGrid">
-      <div class="countdown-box"><div class="num" id="cdDays">00</div><div class="unit">Days</div></div>
-      <div class="countdown-box"><div class="num" id="cdHrs">00</div><div class="unit">Hrs</div></div>
-      <div class="countdown-box"><div class="num" id="cdMin">00</div><div class="unit">Min</div></div>
-      <div class="countdown-box"><div class="num" id="cdSec">00</div><div class="unit">Sec</div></div>
+<!-- Apply modal -->
+<div class="modal-overlay" id="applyOverlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <h3 class="display">Apply Now</h3>
+        <p id="applyJobTitle">&nbsp;</p>
+      </div>
+      <button type="button" class="modal-close" onclick="closeApplyModal()" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
     </div>
-    <p class="float-address">Office 1203, ADCP Commercial Tower-C<br>Electra Street, Abu Dhabi, UAE</p>
+
+    <div class="modal-body">
+      <div id="applySuccess" style="display:none;background:#E4F6EB;color:#1E8A4C;padding:12px 14px;border-radius:10px;margin:0 0 15px;font-size:13.5px;font-weight:600;border:1px solid #BFE9CE;"></div>
+      <div id="applyError" style="display:none;background:#FEF2F2;color:#B91C1C;padding:12px 14px;border-radius:10px;margin:0 0 15px;font-size:13.5px;font-weight:600;border:1px solid #FECACA;"></div>
+
+      <form id="applyForm" class="space-y-4" onsubmit="submitApplication(event)">
+        <input type="hidden" id="ap_job_id" name="job_posting_id">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="crm-label">First name *</label>
+            <input type="text" id="ap_first_name" name="first_name" placeholder="Jane" class="crm-input" required>
+          </div>
+          <div>
+            <label class="crm-label">Last name *</label>
+            <input type="text" id="ap_last_name" name="last_name" placeholder="Doe" class="crm-input" required>
+          </div>
+        </div>
+        <div>
+          <label class="crm-label">Email address *</label>
+          <input type="email" id="ap_email" name="email" placeholder="you@gmail.com" class="crm-input" required>
+        </div>
+        <div>
+          <label class="crm-label">Years of experience</label>
+          <input type="text" id="ap_years_experience" name="years_experience" placeholder="e.g. 3" class="crm-input">
+        </div>
+        <div>
+          <label class="crm-label">Resume *</label>
+          <input type="file" id="ap_resume" name="resume" accept=".pdf,.doc,.docx" class="crm-input" required>
+          <p class="text-xs mt-1.5" style="color: var(--text-muted);">PDF, DOC, or DOCX — max 5MB.</p>
+        </div>
+        <div>
+          <label class="crm-label">Cover letter (optional)</label>
+          <textarea id="ap_cover_letter" name="cover_letter" rows="3" placeholder="Tell us why you'd be a great fit…" class="crm-input" style="resize:vertical;"></textarea>
+        </div>
+        <div class="modal-footer !border-t-0 !pt-0">
+          <span></span>
+          <button type="submit" class="btn-pink" id="submitApplyBtn">
+            Submit Application
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -294,30 +324,7 @@
 
 @push('scripts')
 <script>
-  // Floating soft-opening panel + countdown
-  const floatPanel = document.getElementById('floatPanel');
-  const floatChevron = document.getElementById('floatChevron');
-  function toggleFloatPanel() {
-    floatPanel.classList.toggle('open');
-    floatChevron.style.transform = floatPanel.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
-  }
-  const openingDate = new Date('2026-08-22T00:00:00+04:00').getTime();
-  function updateCountdown() {
-    const diff = openingDate - Date.now();
-    if (diff <= 0) { return; }
-    const days = Math.floor(diff / 86400000);
-    const hrs = Math.floor((diff % 86400000) / 3600000);
-    const min = Math.floor((diff % 3600000) / 60000);
-    const sec = Math.floor((diff % 60000) / 1000);
-    document.getElementById('cdDays').textContent = String(days).padStart(2, '0');
-    document.getElementById('cdHrs').textContent = String(hrs).padStart(2, '0');
-    document.getElementById('cdMin').textContent = String(min).padStart(2, '0');
-    document.getElementById('cdSec').textContent = String(sec).padStart(2, '0');
-  }
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
-
-  // ---- Booking modal ----
+// ---- Booking modal ----
   const bookingState = { date: null, time: null, monthOffset: 0 };
   const TIME_SLOTS = ['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'];
   const WEEKDAY_FMT = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
@@ -480,6 +487,91 @@
         document.getElementById('bookingForm').style.display = 'none';
         successBox.style.display = 'block';
         successBox.textContent = `✅ Booking request received for ${dateStr} at ${bookingState.time}. We'll confirm within 24 hours.`;
+      } else {
+        errorBox.style.display = 'block';
+        const errors = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Something went wrong. Please try again.');
+        errorBox.textContent = '❌ ' + errors;
+      }
+    })
+    .catch(() => {
+      errorBox.style.display = 'block';
+      errorBox.textContent = '❌ Network error. Please check your connection and try again.';
+    })
+    .finally(() => {
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    });
+  }
+
+  // ---- Apply modal ----
+  const applyOverlay = document.getElementById('applyOverlay');
+
+  function openApplyModal(jobId, jobTitle) {
+    if (typeof mobileMenu !== 'undefined' && mobileMenu) mobileMenu.classList.add('hidden');
+    document.getElementById('ap_job_id').value = jobId;
+    document.getElementById('applyJobTitle').textContent = jobTitle;
+    document.getElementById('applyForm').reset();
+    document.getElementById('ap_job_id').value = jobId;
+    document.getElementById('applySuccess').style.display = 'none';
+    document.getElementById('applyError').style.display = 'none';
+    document.getElementById('applyForm').style.display = '';
+    applyOverlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeApplyModal() {
+    applyOverlay.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  applyOverlay.addEventListener('click', (e) => {
+    if (e.target.id === 'applyOverlay') closeApplyModal();
+  });
+
+  function submitApplication(event) {
+    event.preventDefault();
+    const successBox = document.getElementById('applySuccess');
+    const errorBox = document.getElementById('applyError');
+    successBox.style.display = 'none';
+    errorBox.style.display = 'none';
+
+    const resumeInput = document.getElementById('ap_resume');
+    const resumeFile = resumeInput.files[0];
+    if (resumeFile) {
+      const allowedExt = ['pdf', 'doc', 'docx'];
+      const ext = resumeFile.name.split('.').pop().toLowerCase();
+      if (!allowedExt.includes(ext)) {
+        errorBox.style.display = 'block';
+        errorBox.textContent = '❌ Please upload a PDF, DOC, or DOCX file.';
+        return;
+      }
+      if (resumeFile.size > 5 * 1024 * 1024) {
+        errorBox.style.display = 'block';
+        errorBox.textContent = '❌ Resume must be smaller than 5MB.';
+        return;
+      }
+    }
+
+    const form = document.getElementById('applyForm');
+    const formData = new FormData(form);
+    const btn = document.getElementById('submitApplyBtn');
+    const originalHTML = btn.innerHTML;
+    btn.textContent = 'Submitting...';
+    btn.disabled = true;
+
+    fetch('/api/job-applications', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Accept': 'application/json',
+      },
+      body: formData,
+    })
+    .then(async (response) => {
+      const data = await response.json();
+      if (data.success) {
+        form.style.display = 'none';
+        successBox.style.display = 'block';
+        successBox.textContent = '✅ Application received! We\'ll be in touch soon.';
       } else {
         errorBox.style.display = 'block';
         const errors = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Something went wrong. Please try again.');

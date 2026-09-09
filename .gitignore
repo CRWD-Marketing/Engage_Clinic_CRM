@@ -13,6 +13,8 @@
 /.zed
 /auth.json
 /node_modules
+/voice-bridge/node_modules
+/voice-bridge/.env
 /public/build
 /public/hot
 /public/storage

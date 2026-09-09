@@ -22,6 +22,8 @@ class Invoice extends Model
         'subtotal',
         'insurance_coverage_amount',
         'patient_responsibility',
+        'amount_paid',
+        'payment_method',
         'created_by',
     ];
 
@@ -35,6 +37,7 @@ class Invoice extends Model
             'subtotal' => 'decimal:2',
             'insurance_coverage_amount' => 'decimal:2',
             'patient_responsibility' => 'decimal:2',
+            'amount_paid' => 'decimal:2',
         ];
     }
 
@@ -68,5 +71,23 @@ class Invoice extends Model
             'rejected' => 'Rejected',
             default => ucfirst($this->status),
         };
+    }
+
+    /**
+     * Payment-collection status (Paid/Partly paid/Unpaid), derived purely from
+     * amount_paid vs subtotal - independent of the claims-lifecycle `status`
+     * column above, which tracks the insurance claim, not cash collected.
+     */
+    public function paymentStatusLabel(): string
+    {
+        if ((float) $this->amount_paid <= 0) {
+            return 'Unpaid';
+        }
+
+        if ((float) $this->amount_paid >= (float) $this->subtotal) {
+            return 'Paid';
+        }
+
+        return 'Partly paid';
     }
 }

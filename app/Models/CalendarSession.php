@@ -96,6 +96,14 @@ class CalendarSession extends Model
     }
 
     /**
+     * Patient goals marked as worked on during this session.
+     */
+    public function goals()
+    {
+        return $this->belongsToMany(PatientGoal::class, 'session_goals');
+    }
+
+    /**
      * Scope a query to only include sessions for a given therapist.
      */
     public function scopeForTherapist(Builder $query, $therapistId): Builder

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Career\JobPostingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -20,9 +21,7 @@ Route::get('/about-us', function () {
     return view('landing_page.about_us');
 })->name('about-us');
 
-Route::get('/careers', function () {
-    return view('landing_page.careers');
-})->name('careers');
+Route::get('/careers', [JobPostingController::class, 'publicIndex'])->name('careers');
 
 Route::get('/blog', function () {
     return view('landing_page.blog');
@@ -45,6 +44,7 @@ require __DIR__.'/auth.php';
 require __DIR__.'/dashboard.php';
 require __DIR__.'/lead.php';
 require __DIR__.'/contact.php';
+require __DIR__.'/career.php';
 require __DIR__.'/patient.php';
 require __DIR__.'/therapist.php';
 require __DIR__.'/billing.php';

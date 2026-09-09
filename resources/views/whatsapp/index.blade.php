@@ -156,7 +156,7 @@
                 </div>
 
                 <!-- Messages -->
-                <div id="wa-messages" class="wa-messages" data-last-message-id="{{ $messages->last()->id ?? 0 }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px;">
+                <div id="wa-messages" class="wa-messages" data-last-message-id="{{ (int) $messages->max('id') }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px;">
                     @php $lastMsgDate = null; @endphp
                     @forelse ($messages as $message)
                         @php
@@ -315,12 +315,9 @@
                             <label style="{{ $fieldLabelStyle }}">Interested in</label>
                             <select name="interested_in" style="{{ $fieldInputStyle }}">
                                 <option value="">—</option>
-                                <option value="ABA therapy" @selected(old('interested_in', $interestedIn) === 'ABA therapy')>ABA therapy</option>
-                                <option value="Speech therapy" @selected(old('interested_in', $interestedIn) === 'Speech therapy')>Speech therapy</option>
-                                <option value="Occupational therapy" @selected(old('interested_in', $interestedIn) === 'Occupational therapy')>Occupational therapy</option>
-                                <option value="Diagnostic assessment" @selected(old('interested_in', $interestedIn) === 'Diagnostic assessment')>Diagnostic assessment</option>
-                                <option value="Early intervention" @selected(old('interested_in', $interestedIn) === 'Early intervention')>Early intervention</option>
-                                <option value="Combined program" @selected(old('interested_in', $interestedIn) === 'Combined program')>Combined program</option>
+                                @foreach ($services as $service)
+                                    <option value="{{ $service->name }}" @selected(old('interested_in', $interestedIn) === $service->name)>{{ $service->name }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">

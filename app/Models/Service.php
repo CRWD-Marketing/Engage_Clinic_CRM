@@ -11,12 +11,14 @@ class Service extends Model
         'cpt_code',
         'description',
         'default_rate',
+        'is_active',
     ];
 
     protected function casts(): array
     {
         return [
             'default_rate' => 'decimal:2',
+            'is_active' => 'boolean',
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Models\CalendarSession;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Patient;
+use App\Models\PatientAuthorization;
 use App\Models\PatientNote;
 use App\Models\User;
 use App\Models\Waitlist;
@@ -190,10 +191,10 @@ class DashboardController extends Controller
             : null;
         $waitlistNextUp = $waitingEntries->take(3);
 
-        $authorizationsExpiring = Patient::with('lead')
-            ->whereNotNull('authorization_renews_at')
-            ->where('authorization_renews_at', '<=', now()->addDays(45))
-            ->orderBy('authorization_renews_at')
+        $authorizationsExpiring = PatientAuthorization::with('patient.lead')
+            ->whereNotNull('renews_at')
+            ->where('renews_at', '<=', now()->addDays(45))
+            ->orderBy('renews_at')
             ->take(4)
             ->get();
 

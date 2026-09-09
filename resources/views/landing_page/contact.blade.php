@@ -55,8 +55,14 @@
         </div>
       </div>
 
-      <div class="card photo-wrap rounded-[26px] overflow-hidden aspect-[4/3] mt-10">
-        <img src="https://images.unsplash.com/photo-1572780789900-43ef70568a0f?fm=jpg&q=80&w=900&auto=format&fit=crop" alt="Engage Clinic office" class="w-full h-full object-cover">
+      <div class="card rounded-[26px] overflow-hidden aspect-[4/3] mt-10">
+        <iframe
+          src="https://www.google.com/maps?q=Office+no.+1203,+ADCP+Commercial+Tower-C,+Electra+Street,+Abu+Dhabi,+UAE&output=embed"
+          class="w-full h-full border-0"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          title="Engage Clinic office location — ADCP Commercial Tower-C, Electra Street, Abu Dhabi">
+        </iframe>
       </div>
     </div>
 
@@ -90,12 +96,9 @@
           <label class="crm-label">Service of Interest</label>
           <select id="ct_interested_in" class="crm-select">
             <option value="">Select a program…</option>
-            <option value="ABA therapy">ABA therapy</option>
-            <option value="Speech therapy">Speech therapy</option>
-            <option value="Early intervention">Early intervention</option>
-            <option value="School-age support">School-age support</option>
-            <option value="Parent training">Parent training</option>
-            <option value="Behavioural assessment">Behavioural assessment</option>
+            @foreach ($publicServices as $service)
+              <option value="{{ $service->name }}">{{ $service->name }}</option>
+            @endforeach
           </select>
         </div>
         <div>
@@ -223,12 +226,9 @@
             <label class="crm-label">Service of interest</label>
             <select id="bk_service" class="crm-select">
               <option value="">Select a service…</option>
-              <option value="ABA therapy">ABA therapy</option>
-              <option value="Speech therapy">Speech therapy</option>
-              <option value="Early intervention">Early intervention</option>
-              <option value="School-age support">School-age support</option>
-              <option value="Parent training">Parent training</option>
-              <option value="Behavioural assessment">Behavioural assessment</option>
+              @foreach ($publicServices as $service)
+                <option value="{{ $service->name }}">{{ $service->name }}</option>
+              @endforeach
             </select>
           </div>
           <div>
@@ -250,52 +250,11 @@
   </div>
 </div>
 
-<!-- Floating soft-opening countdown widget -->
-<div class="float-widget">
-  <button class="float-toggle" id="floatToggle" onclick="toggleFloatPanel()">
-    ✦ SOFT OPENING&nbsp;Aug 22, 2026
-    <svg id="floatChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="transition:transform .2s;"><path d="M6 9l6 6 6-6"/></svg>
-  </button>
-  <div class="float-panel" id="floatPanel">
-    <p>Counting down to our grand soft opening in Abu Dhabi!</p>
-    <div class="countdown-grid" id="countdownGrid">
-      <div class="countdown-box"><div class="num" id="cdDays">00</div><div class="unit">Days</div></div>
-      <div class="countdown-box"><div class="num" id="cdHrs">00</div><div class="unit">Hrs</div></div>
-      <div class="countdown-box"><div class="num" id="cdMin">00</div><div class="unit">Min</div></div>
-      <div class="countdown-box"><div class="num" id="cdSec">00</div><div class="unit">Sec</div></div>
-    </div>
-    <p class="float-address">Office 1203, ADCP Commercial Tower-C<br>Electra Street, Abu Dhabi, UAE</p>
-  </div>
-</div>
-
 @endsection
 
 @push('scripts')
 <script>
-  // Floating soft-opening panel + countdown
-  const floatPanel = document.getElementById('floatPanel');
-  const floatChevron = document.getElementById('floatChevron');
-  function toggleFloatPanel() {
-    floatPanel.classList.toggle('open');
-    floatChevron.style.transform = floatPanel.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
-  }
-  const openingDate = new Date('2026-08-22T00:00:00+04:00').getTime();
-  function updateCountdown() {
-    const diff = openingDate - Date.now();
-    if (diff <= 0) { return; }
-    const days = Math.floor(diff / 86400000);
-    const hrs = Math.floor((diff % 86400000) / 3600000);
-    const min = Math.floor((diff % 3600000) / 60000);
-    const sec = Math.floor((diff % 60000) / 1000);
-    document.getElementById('cdDays').textContent = String(days).padStart(2, '0');
-    document.getElementById('cdHrs').textContent = String(hrs).padStart(2, '0');
-    document.getElementById('cdMin').textContent = String(min).padStart(2, '0');
-    document.getElementById('cdSec').textContent = String(sec).padStart(2, '0');
-  }
-  updateCountdown();
-  setInterval(updateCountdown, 1000);
-
-  // ---- Inline contact form ----
+// ---- Inline contact form ----
   function submitContact(event) {
     event.preventDefault();
     const childAge = document.getElementById('ct_child_age').value.trim();

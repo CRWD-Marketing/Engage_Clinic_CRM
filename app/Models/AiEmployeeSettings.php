@@ -18,6 +18,9 @@ class AiEmployeeSettings extends Model
         'max_kb_entries',
         'response_delay_seconds',
         'system_prompt_override',
+        'voice_greeting',
+        'human_handoff_phone_number',
+        'voice_enabled',
     ];
 
     protected $casts = [
@@ -25,6 +28,7 @@ class AiEmployeeSettings extends Model
         'max_history_messages' => 'integer',
         'max_kb_entries' => 'integer',
         'response_delay_seconds' => 'integer',
+        'voice_enabled' => 'boolean',
     ];
 
     /**

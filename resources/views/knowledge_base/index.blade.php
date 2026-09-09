@@ -169,6 +169,33 @@
                 <span class="kb-field-hint">Optional - fully replaces the built-in prompt when set</span>
             </div>
 
+            <hr class="kb-divider">
+
+            <div class="kb-toggle-row">
+                <label class="kb-switch">
+                    <input type="checkbox" name="voice_enabled" value="1" onchange="this.form.querySelector('.kb-toggle-label-voice').textContent = this.checked ? 'Voice calling is ON' : 'Voice calling is OFF';" {{ $settings->voice_enabled ? 'checked' : '' }}>
+                    <span class="kb-switch-track"></span>
+                    <span class="kb-switch-thumb"></span>
+                </label>
+                <div>
+                    <div class="kb-toggle-label kb-toggle-label-voice">Voice calling is {{ $settings->voice_enabled ? 'ON' : 'OFF' }}</div>
+                    <div class="kb-toggle-sub">Separate switch from chat - answer inbound phone calls with a live AI conversation</div>
+                </div>
+            </div>
+
+            <div class="kb-row">
+                <div class="kb-field">
+                    <label for="voice_greeting">Voice greeting</label>
+                    <textarea id="voice_greeting" name="voice_greeting" rows="2" placeholder="Thanks for calling. How can I help you today?">{{ $settings->voice_greeting }}</textarea>
+                    <span class="kb-field-hint">Spoken automatically when the AI answers a call</span>
+                </div>
+                <div class="kb-field">
+                    <label for="human_handoff_phone_number">Human handoff number</label>
+                    <input type="text" id="human_handoff_phone_number" name="human_handoff_phone_number" value="{{ $settings->human_handoff_phone_number }}" placeholder="+971501234567">
+                    <span class="kb-field-hint">Live calls transfer here on escalation. Leave blank to end the call with a follow-up message instead of transferring.</span>
+                </div>
+            </div>
+
             <button type="submit" class="kb-btn">💾 Save settings</button>
         </form>
     </div>

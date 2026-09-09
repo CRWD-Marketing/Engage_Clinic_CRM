@@ -75,12 +75,12 @@ class BillingController extends Controller
             ->latest('issue_date')
             ->first();
 
-        $patients = Patient::with('lead')->get()
+        $patients = Patient::with(['lead', 'authorizations'])->get()
             ->filter(fn ($p) => $p->lead)
             ->sortBy(fn ($p) => $p->lead->child_name)
             ->values();
 
-        $services = Service::orderBy('name')->get();
+        $services = Service::where('is_active', true)->orderBy('name')->get();
         $therapists = User::where('role', 'THERAPIST')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
 
         return view('billing.index', compact(

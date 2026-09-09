@@ -202,16 +202,16 @@
                     <div style="font: 600 12px 'Nunito Sans'; color: #8A5A10;">No authorizations expiring in the next 45 days.</div>
                 @else
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                        @foreach ($authorizationsExpiring as $patient)
+                        @foreach ($authorizationsExpiring as $auth)
                             @php
-                                $sessionsLeft = max(0, ($patient->authorized_sessions_total ?? 0) - $patient->authorized_sessions_used);
-                                $daysToRenew = today()->diffInDays($patient->authorization_renews_at, false);
+                                $hoursLeft = max(0, ($auth->authorized_hours_total ?? 0) - $auth->hoursUsed());
+                                $daysToRenew = today()->diffInDays($auth->renews_at, false);
                             @endphp
                             <div style="display: flex; justify-content: space-between; gap: 10px;">
-                                <div style="font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">{{ $patient->lead->child_name ?? 'Unknown' }}</div>
+                                <div style="font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">{{ $auth->patient->lead->child_name ?? 'Unknown' }}</div>
                                 <div style="font: 600 12px 'Nunito Sans'; color: #8A5A10;">
-                                    {{ $patient->insurance_provider ?? 'Insurance' }} · {{ $sessionsLeft }} sessions left ·
-                                    {{ $daysToRenew >= 0 ? 'renews ' . $patient->authorization_renews_at->format('d M') : 'renewal overdue ' . abs($daysToRenew) . 'd' }}
+                                    {{ $auth->payer_name ?? 'Insurance' }} · {{ $hoursLeft }} hours left ·
+                                    {{ $daysToRenew >= 0 ? 'renews ' . $auth->renews_at->format('d M') : 'renewal overdue ' . abs($daysToRenew) . 'd' }}
                                 </div>
                             </div>
                         @endforeach
