@@ -84,10 +84,21 @@ class WhatsappController extends Controller
                 $newMessages = $activeContact->messages()->where('id', '>', $afterMessageId)->orderBy('sent_at')->get();
 
                 if ($newMessages->isNotEmpty()) {
-                    $messagesHtml = $newMessages->map(fn ($message) => view('whatsapp.partials.message', [
-                        'message' => $message,
+                    // Whatever was last shown on screen before this batch, so the
+                    // shared date-divider logic can tell whether the first new
+                    // message here needs one - without this, a message that
+                    // arrives after the conversation has been open a while (or
+                    // into a new day) would render with no divider at all.
+                    $previousMessage = $activeContact->messages()
+                        ->where('id', '<=', $afterMessageId)
+                        ->orderByDesc('sent_at')
+                        ->first();
+
+                    $messagesHtml = view('whatsapp.partials.messages', [
+                        'messages' => $newMessages,
                         'activeContact' => $activeContact,
-                    ])->render())->implode('');
+                        'previousSentAt' => $previousMessage?->sent_at,
+                    ])->render();
 
                     // max(id), not the sent_at-ordered last item's id: a webhook
                     // delivered slightly out of order (Meta doesn't guarantee

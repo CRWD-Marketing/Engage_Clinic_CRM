@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/voice.php',
             __DIR__.'/../routes/settings.php',
             __DIR__.'/../routes/packages.php',
+            __DIR__.'/../routes/user.php',
         ],
         commands: __DIR__.'/../routes/console.php',
         health: '/up',

@@ -26,6 +26,7 @@ Route::middleware(['auth', 'feature:contacts'])
         Route::get('contacts/count', [ContactController::class, 'getContactCount'])->name('contacts.count');
         Route::patch('contacts/{contact}', [ContactController::class, 'update'])->name('contacts.update');
         Route::patch('contacts/{contact}/status', [ContactController::class, 'updateStatus'])->name('contacts.update-status');
+        Route::post('contacts/{contact}/send-email', [ContactController::class, 'sendStatusEmail'])->name('contacts.send-email');
         Route::post('contacts/{contact}/convert-to-lead', [ContactController::class, 'convertToLead'])->name('contacts.convert-to-lead');
         Route::delete('contacts/{contact}', [ContactController::class, 'destroy'])->name('contacts.destroy');
 

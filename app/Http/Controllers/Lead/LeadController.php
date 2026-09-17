@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\LeadActivity;
 use App\Models\Patient;
-use App\Models\PatientNote;
+use App\Models\User;
+use App\Notifications\LeadAssigned;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -69,6 +70,8 @@ class LeadController extends Controller
 
         $packages = \App\Models\Package::with('service')->where('is_active', true)->orderBy('name')->get();
 
+        $insurances = \App\Models\Insurance::where('is_active', true)->orderBy('name')->get();
+
         return view('lead.index', compact(
             'leads',
             'statuses',
@@ -81,7 +84,8 @@ class LeadController extends Controller
             'services',
             'clinicians',
             'intakeLocations',
-            'packages'
+            'packages',
+            'insurances'
         ));
     }
 
@@ -190,6 +194,8 @@ class LeadController extends Controller
             'status' => 'nullable|string|in:new,contacted,assessment_booked,assessment_done,enrolled,terminated',
             'assigned_to' => 'nullable|exists:users,id',
             'follow_up_due_at' => 'nullable|date',
+            'termination_reason' => 'nullable|string|in:'.implode(',', Lead::TERMINATION_REASONS),
+            'termination_note' => 'nullable|string',
 
             // Intake checklist - which step this save belongs to (if any), so
             // its *_completed_at can be stamped. Not itself a Lead column.
@@ -293,17 +299,93 @@ class LeadController extends Controller
 
         // Saving a step's modal marks it complete - re-saving just refreshes
         // the timestamp, which is fine, that's "last confirmed/edited at".
-        if ($step = ($data['intake_step'] ?? null)) {
-            $data[Lead::INTAKE_STEPS[$step]] = now();
-        }
+        $step = $data['intake_step'] ?? null;
         unset($data['intake_step']);
+
+        // An unchecked checkbox group submits nothing at all, so unchecking
+        // every package on this step's form and saving would otherwise leave
+        // $data without a package_ids key - and update() only touches keys
+        // that are present, so the lead's old package_ids would silently
+        // survive. Since this request came from the Package step's own form,
+        // its absence here unambiguously means "no packages checked", so
+        // force the key onto $data to actually clear it.
+        if ($step === 'package' && ! array_key_exists('package_ids', $data)) {
+            $data['package_ids'] = null;
+        }
 
         $previousAssignedTo = $lead->assigned_to;
 
+        // Per-action access (Roles & access): owning/re-owning a lead and
+        // terminating one are separate grants from editing its details.
+        $me = auth()->user();
+        if (array_key_exists('assigned_to', $data) && (int) $data['assigned_to'] !== (int) $previousAssignedTo) {
+            $needed = $previousAssignedTo ? 'reassign_lead_owner' : 'assign_lead_owner';
+            if (! $me->canDo($needed)) {
+                $message = $previousAssignedTo ? 'Your access level can’t reassign a lead owner.' : 'Your access level can’t assign a lead owner.';
+                return $request->ajax() || $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message, 'errors' => ['assigned_to' => [$message]]], 403)
+                    : back()->withErrors(['assigned_to' => $message])->withInput();
+            }
+        }
+        $isNewlyTerminated = ($data['status'] ?? null) === Lead::STATUS_TERMINATED && $lead->status !== Lead::STATUS_TERMINATED;
+
+        if ($isNewlyTerminated && ! $me->canDo('terminate_lead')) {
+            $message = 'Your access level can’t terminate a lead.';
+            return $request->ajax() || $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message, 'errors' => ['status' => [$message]]], 403)
+                : back()->withErrors(['status' => $message])->withInput();
+        }
+
+        if ($isNewlyTerminated) {
+            if (empty($data['termination_reason'])) {
+                $message = 'Select a reason before terminating this lead.';
+                return $request->ajax() || $request->wantsJson()
+                    ? response()->json(['success' => false, 'message' => $message, 'errors' => ['termination_reason' => [$message]]], 422)
+                    : back()->withErrors(['termination_reason' => $message])->withInput();
+            }
+
+            // status becomes "terminated" below, so the stage it was lost
+            // from - shown as "Lost at" in the history panel, and where
+            // Restore sends it back to - has to be captured here first.
+            $data['status_before_termination'] = $lead->status;
+            $data['terminated_at'] = now();
+        }
+
         $lead->update($data);
 
+        // wasChanged() only reflects the most recent save, so capture the
+        // assignment-log check before the second update() below (for the
+        // completed_at stamp) overwrites it.
         if ($lead->wasChanged('assigned_to')) {
             $this->logAssignmentChange($lead, $previousAssignedTo, $lead->assigned_to);
+        }
+
+        // The package (checkbox group) and funding (hidden pill/JSON inputs)
+        // steps have a required field that HTML's native validation can't
+        // enforce - an unchecked checkbox group and a hidden input are both
+        // skipped during constraint validation - so a step could otherwise
+        // get marked complete without ever picking a package or funding
+        // type. Still save whatever else was filled in on this step's form
+        // (nothing here is discarded) - just stamp *_completed_at only while
+        // that field genuinely has a value, and clear it back to null (so
+        // the step reverts to "Fill in" and drops out of the 7/7 count) the
+        // moment it's unchecked/cleared again, even if it was set before.
+        if ($step) {
+            $requiredFieldMet = match ($step) {
+                'package' => ! empty($lead->package_ids),
+                'funding' => ! empty($lead->funding_type),
+                default => true,
+            };
+
+            $lead->update([Lead::INTAKE_STEPS[$step] => $requiredFieldMet ? now() : null]);
+        }
+
+        // Finishing the 7th intake step (from any earlier stage, most commonly
+        // Initial assessment) auto-advances the lead straight to Enrolled -
+        // a fully-intaked lead shouldn't need a separate manual "Success" click
+        // just to unlock the Convert-to-client action.
+        if ($lead->intake_steps_complete === 7 && ! in_array($lead->status, [Lead::STATUS_ENROLLED, Lead::STATUS_TERMINATED], true)) {
+            $lead->update(['status' => Lead::STATUS_ENROLLED]);
         }
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -377,6 +459,8 @@ class LeadController extends Controller
      */
     public function addNote(Request $request, Lead $lead)
     {
+        abort_unless(auth()->user()->canDo('add_lead_notes'), 403, 'Your access level can’t add lead notes.');
+
         $validator = Validator::make($request->all(), [
             'body' => 'required|string|max:2000',
         ]);
@@ -411,31 +495,83 @@ class LeadController extends Controller
     {
         // Same reasoning as destroy() - conversion is a pipeline-ownership
         // decision, outside a Coordinator's "limited" lead access.
-        abort_if(auth()->user()->role === 'COORDINATOR', 403, 'Coordinators cannot convert leads to patients.');
+        abort_unless(auth()->user()->canDo('convert_to_client'), 403, 'Your access level can’t convert leads to clients.');
 
         if (! $lead->canConvertToPatient()) {
-            $message = $lead->status !== Lead::STATUS_ENROLLED
-                ? 'Only enrolled leads can be converted to a patient.'
-                : 'This lead has already been converted to a patient.';
+            $message = match (true) {
+                $lead->status !== Lead::STATUS_ENROLLED => 'Only enrolled leads can be converted to a patient.',
+                $lead->intake_steps_complete !== count(Lead::INTAKE_STEPS) => 'Finish the remaining intake checklist steps before converting this lead.',
+                default => 'This lead has already been converted to a patient.',
+            };
 
             return response()->json(['success' => false, 'message' => $message], 422);
         }
 
         $patient = Patient::create([
             'lead_id' => $lead->id,
+            'diagnosis' => $lead->diagnosis_suspected,
+            'programme' => optional($lead->packages()->first())->name,
             'enrolled_at' => now(),
         ]);
 
-        PatientNote::create([
-            'patient_id' => $patient->id,
-            'user_id' => auth()->id(),
-            'body' => 'Converted from lead — '.($lead->notes ?: 'no enquiry notes on file'),
-        ]);
+        // Carry the intake's Funding step over as the patient's first
+        // authorization - self-pay isn't a payer authorization (that's the
+        // separate prepaid-hours top-up flow), so only insurance-funded
+        // leads get one.
+        if ($lead->funding_insurer && stripos((string) $lead->funding_type, 'insurance') !== false) {
+            // funding_services_needed is a list of {service, payer, hours_per_week,
+            // approved_hours, approval_reference} rows from the Funding step's
+            // pill-button picker, not the plain activity-type strings
+            // (ABA/Speech/OT) covers_services expects - pull out just the
+            // service name from each row. Only rows actually paid by
+            // insurance count toward the authorization's approved hours -
+            // a mixed lead's self-pay services aren't part of it.
+            $insuranceRows = collect($lead->funding_services_needed ?? [])
+                ->filter(fn ($row) => is_array($row) && ($row['payer'] ?? null) === 'Insurance');
+
+            $coversServices = $insuranceRows
+                ->map(fn ($row) => $row['service'] ?? null)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $patient->authorizations()->create([
+                'payer_name' => $lead->funding_insurer,
+                'coverage_percent' => \App\Models\Insurance::where('name', $lead->funding_insurer)->value('default_coverage_percent') ?? 0,
+                'covers_services' => $coversServices,
+                'policy_number' => $lead->funding_policy_number,
+                'approval_reference' => $insuranceRows->map(fn ($row) => $row['approval_reference'] ?? null)->filter()->first(),
+                'authorized_hours_total' => (int) $insuranceRows->sum(fn ($row) => (float) ($row['approved_hours'] ?? 0)),
+                'renews_at' => $lead->funding_approval_valid_until,
+                'sort_order' => 0,
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'message' => 'Converted to patient.',
-            'redirect' => route('patient.index', ['patient' => $patient->id]),
+            'redirect' => route('patient.show', $patient),
+        ]);
+    }
+
+    /**
+     * Bring a terminated lead back into the active pipeline, at the stage it
+     * was lost from - used by the "Restore" button in the terminated-leads
+     * history panel.
+     */
+    public function restore(Lead $lead)
+    {
+        abort_unless(auth()->user()->canDo('terminate_lead'), 403, 'Your access level can’t restore a terminated lead.');
+
+        if (! $lead->restore()) {
+            return response()->json(['success' => false, 'message' => 'This lead is not terminated.'], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Lead restored.',
+            'lead' => $lead,
         ]);
     }
 
@@ -458,6 +594,10 @@ class LeadController extends Controller
             'type' => LeadActivity::TYPE_ASSIGNMENT,
             'body' => $body,
         ]);
+
+        if ($newUserId && (int) $newUserId !== (int) auth()->id()) {
+            User::find($newUserId)?->notify(new LeadAssigned($lead));
+        }
     }
 
     /**

@@ -20,6 +20,22 @@ class Lead extends Model
     const STATUS_TERMINATED = 'terminated';
 
     /**
+     * Fixed reason list for the "Terminate lead" modal - kept short and
+     * closed-ended so the termination history stays reportable/filterable
+     * rather than accumulating one-off free-text reasons.
+     */
+    const TERMINATION_REASONS = [
+        'Fees / budget',
+        'No insurance coverage',
+        'Chose another provider',
+        'Unreachable — no response',
+        'Distance / relocated',
+        'Not a fit for our services',
+        'Duplicate enquiry',
+        'Other',
+    ];
+
+    /**
      * The linear forward pipeline, used for advance()/moveBack()/progress calculations.
      * Deliberately excludes STATUS_TERMINATED - termination is a side branch a lead can
      * be moved to from any stage, not a step in the normal forward progression.
@@ -56,6 +72,10 @@ class Lead extends Model
         'status',
         'assigned_to',
         'follow_up_due_at',
+        'termination_reason',
+        'termination_note',
+        'terminated_at',
+        'status_before_termination',
 
         // Step 1: Parent contact verified
         'parent_contact_completed_at',
@@ -125,6 +145,7 @@ class Lead extends Model
         'updated_at' => 'datetime',
         'estimated_value' => 'decimal:2',
         'follow_up_due_at' => 'datetime',
+        'terminated_at' => 'datetime',
 
         'parent_contact_completed_at' => 'datetime',
         'child_details_completed_at' => 'datetime',
@@ -194,11 +215,14 @@ class Lead extends Model
 
     /**
      * Whether this lead is eligible to be converted to a patient - must be
-     * enrolled, and not already converted.
+     * enrolled, have every intake-checklist step actually complete, and not
+     * already converted.
      */
     public function canConvertToPatient(): bool
     {
-        return $this->status === self::STATUS_ENROLLED && ! $this->patient()->exists();
+        return $this->status === self::STATUS_ENROLLED
+            && $this->intake_steps_complete === count(self::INTAKE_STEPS)
+            && ! $this->patient()->exists();
     }
 
     /**
@@ -478,13 +502,35 @@ class Lead extends Model
     public function moveBack(): bool
     {
         $previousStatus = $this->getPreviousStatus();
-        
+
         if ($previousStatus) {
             $this->update(['status' => $previousStatus]);
             return true;
         }
-        
+
         return false;
+    }
+
+    /**
+     * Bring a terminated lead back into the active pipeline, at the stage it
+     * was lost from (status_before_termination), or STATUS_NEW if that
+     * wasn't recorded (e.g. a lead terminated before this column existed).
+     */
+    public function restore(): bool
+    {
+        if (! $this->isTerminated()) {
+            return false;
+        }
+
+        $this->update([
+            'status' => $this->status_before_termination ?: self::STATUS_NEW,
+            'termination_reason' => null,
+            'termination_note' => null,
+            'terminated_at' => null,
+            'status_before_termination' => null,
+        ]);
+
+        return true;
     }
 
     /**

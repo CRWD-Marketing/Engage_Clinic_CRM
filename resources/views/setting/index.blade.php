@@ -158,6 +158,42 @@
     </table>
 </div>
 
+<div class="st-card">
+    <div class="st-card-header">
+        <div>
+            <div class="st-card-title">Insurances</div>
+            <div class="st-card-sub">{{ $insurances->where('is_active', true)->count() }} active · {{ $insurances->count() }} total · payers and their default coverage % for new authorizations</div>
+        </div>
+        <button type="button" class="st-add-btn" onclick="stOpenModal('insurance')">+ Add insurance</button>
+    </div>
+    <table class="st-table">
+        <thead><tr><th>Insurance</th><th>Default coverage</th><th style="text-align:right;">Status</th></tr></thead>
+        <tbody>
+            @forelse ($insurances as $insurance)
+                <tr>
+                    <td>{{ $insurance->name }}</td>
+                    <td>{{ $insurance->default_coverage_percent }}%</td>
+                    <td>
+                        <div class="st-status-cell">
+                            <form action="{{ route('settings.insurances.toggle', $insurance) }}" method="POST" style="display:inline;">
+                                @csrf @method('PATCH')
+                                <button type="submit" class="st-badge {{ $insurance->is_active ? 'active' : 'paused' }}">{{ $insurance->is_active ? 'Active' : 'Paused' }}</button>
+                            </form>
+                            <button type="button" class="st-edit-btn" title="Edit" onclick="stOpenEditModal('insurance', {{ Js::from($insurance->name) }}, {{ Js::from(route('settings.insurances.update', $insurance)) }}, {{ Js::from($insurance->default_coverage_percent) }})">✎</button>
+                            <form action="{{ route('settings.insurances.destroy', $insurance) }}" method="POST" style="display:inline;" onsubmit="return confirm('Remove this insurance?');">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="st-remove-btn">✕</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="3" class="st-empty">No insurances yet.</td></tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
 <div id="stServiceModal" class="st-modal-overlay">
     <div class="st-modal-box">
         <div class="st-modal-title">Add service</div>
@@ -188,6 +224,23 @@
     </div>
 </div>
 
+<div id="stInsuranceModal" class="st-modal-overlay">
+    <div class="st-modal-box">
+        <div class="st-modal-title">Add insurance</div>
+        <form action="{{ route('settings.insurances.store') }}" method="POST">
+            @csrf
+            <div class="st-field-label">Name</div>
+            <input type="text" name="name" class="st-field-input" placeholder="e.g. Daman Enhanced" required>
+            <div class="st-field-label" style="margin-top:10px;">Default coverage %</div>
+            <input type="number" name="default_coverage_percent" class="st-field-input" placeholder="e.g. 80" min="0" max="100" required>
+            <div class="st-modal-actions">
+                <button type="submit" class="st-btn-save">Add insurance</button>
+                <button type="button" class="st-btn-cancel" onclick="stCloseModal('insurance')">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="stEditModal" class="st-modal-overlay">
     <div class="st-modal-box">
         <div class="st-modal-title" id="stEditModalTitle">Edit</div>
@@ -196,6 +249,10 @@
             @method('PUT')
             <div class="st-field-label">Name</div>
             <input type="text" name="name" id="stEditNameInput" class="st-field-input" required>
+            <div id="stEditCoverageWrap" style="display:none;">
+                <div class="st-field-label" style="margin-top:10px;">Default coverage %</div>
+                <input type="number" name="default_coverage_percent" id="stEditCoverageInput" class="st-field-input" min="0" max="100">
+            </div>
             <div class="st-modal-actions">
                 <button type="submit" class="st-btn-save">Save</button>
                 <button type="button" class="st-btn-cancel" onclick="stCloseModal('edit')">Cancel</button>
@@ -206,20 +263,36 @@
 
 @push('scripts')
 <script>
-    function stOpenEditModal(kind, name, url) {
-        document.getElementById('stEditModalTitle').textContent = kind === 'service' ? 'Edit service' : 'Edit location';
+    const stModalIds = { service: 'stServiceModal', location: 'stLocationModal', insurance: 'stInsuranceModal' };
+    const stEditTitles = { service: 'Edit service', location: 'Edit location', insurance: 'Edit insurance' };
+
+    function stOpenEditModal(kind, name, url, coveragePercent) {
+        document.getElementById('stEditModalTitle').textContent = stEditTitles[kind] || 'Edit';
         document.getElementById('stEditForm').action = url;
         document.getElementById('stEditNameInput').value = name;
+
+        const coverageWrap = document.getElementById('stEditCoverageWrap');
+        const coverageInput = document.getElementById('stEditCoverageInput');
+        if (kind === 'insurance') {
+            coverageWrap.style.display = 'block';
+            coverageInput.required = true;
+            coverageInput.value = coveragePercent;
+        } else {
+            coverageWrap.style.display = 'none';
+            coverageInput.required = false;
+            coverageInput.value = '';
+        }
+
         document.getElementById('stEditModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
 
     function stOpenModal(kind) {
-        document.getElementById(kind === 'service' ? 'stServiceModal' : 'stLocationModal').style.display = 'flex';
+        document.getElementById(stModalIds[kind]).style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
     function stCloseModal(kind) {
-        const id = kind === 'service' ? 'stServiceModal' : kind === 'location' ? 'stLocationModal' : 'stEditModal';
+        const id = kind === 'edit' ? 'stEditModal' : stModalIds[kind];
         document.getElementById(id).style.display = 'none';
         document.body.style.overflow = '';
     }

@@ -21,9 +21,9 @@
     <style>
         .db-topbar { display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-bottom: 1px solid #EBE4DA; background: #FFFDFA; margin: -22px -28px 18px -28px; }
         .db-topbar-btn { background: #C8355F; color: white; border: none; border-radius: 10px; padding: 11px 18px; font: 800 13px 'Nunito Sans'; cursor: pointer; text-decoration: none; display: inline-block; white-space: nowrap; }
-        .db-stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 18px; }
+        .db-stats-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
         .db-stat-card { background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 14px 16px; min-width: 0; }
-        .db-main-grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 18px; align-items: start; }
+        .db-main-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 18px; align-items: start; }
         .db-schedule-row { display: flex; align-items: center; gap: 14px; padding: 11px 20px; border-top: 1px solid #F3EDE3; flex-wrap: wrap; }
         .db-card-head { flex-wrap: wrap; row-gap: 4px; }
 
@@ -54,6 +54,11 @@
             <div style="font: 600 21px/1.2 'Baloo 2'; color: #16436E;">Good morning, {{ $user->full_name }}</div>
             <div style="font: 600 12.5px 'Nunito Sans'; color: #98897A;">{{ date('l, j F Y') }} · Khalifa City, Abu Dhabi</div>
         </div>
+        <input
+            type="text"
+            placeholder="Search families, leads, appointments…"
+            class="db-topbar-search"
+        >
         <a href="{{ route('leads.index') }}" class="db-topbar-btn">+ New Lead</a>
     </div>
 

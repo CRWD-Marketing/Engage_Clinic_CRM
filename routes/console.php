@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('careers:purge-applications')->daily();
 
+// The Supervisor only ever touches a session *before* it happens (reschedule,
+// cancel, mark a no-show) - nothing left "scheduled" once its time passes is
+// meant to be logged as attended manually, this just catches the status up.
+Schedule::command('calendar:auto-complete-sessions')->everyFifteenMinutes();
+
 // Drains the queue (AI Employee replies, etc.) every minute via the same cron
 // tick that runs the scheduler - shared hosting (Hostinger) generally can't
 // keep a persistent `queue:work` daemon alive, so jobs otherwise dispatch

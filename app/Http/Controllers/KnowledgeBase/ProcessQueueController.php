@@ -29,7 +29,10 @@ class ProcessQueueController extends Controller
             abort(403);
         }
 
-        Log::info('AI Employee queue processor triggered externally.');
+        // Distinct from the "[Messaging]" prefix used by the inbound webhook path -
+        // this line fires on every cron ping (~every 60s) regardless of whether any
+        // message came in, and is unrelated to whether one was received/stored.
+        Log::info('[AI Queue] Delayed AI-reply queue drained by external cron ping (unrelated to message receiving).');
 
         Artisan::call('queue:work', [
             '--stop-when-empty' => true,

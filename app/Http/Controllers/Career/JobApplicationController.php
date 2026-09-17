@@ -25,9 +25,11 @@ class JobApplicationController extends Controller
             ? $allApplications->where('status', $status)->values()
             : $allApplications;
 
+        // The details modal should open only after the user picks a row -
+        // defaulting to the first application made it pop open on every load.
         $activeApplication = $request->filled('application')
             ? $allApplications->firstWhere('id', (int) $request->query('application'))
-            : $applications->first();
+            : null;
 
         $statuses = JobApplication::getStatuses();
         $newCount = $allApplications->where('status', JobApplication::STATUS_NEW)->count();

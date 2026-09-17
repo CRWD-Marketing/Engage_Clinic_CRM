@@ -13,7 +13,11 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             UserSeeder::class,
+            RoleTemplateSeeder::class,
             ServiceSeeder::class,
+            LocationSeeder::class,
+            InsuranceSeeder::class,
+            PackageSeeder::class,
 
             LeadSeeder::class,
             LeadActivitySeeder::class,
@@ -22,6 +26,8 @@ class DatabaseSeeder extends Seeder
             PatientNoteSeeder::class,
             PatientGoalSeeder::class,
             CalendarSessionSeeder::class,
+            CalendarExtrasSeeder::class,
+            StaffLeaveSeeder::class,
             InvoiceSeeder::class,
             WaitlistSeeder::class,
             ContactSeeder::class,

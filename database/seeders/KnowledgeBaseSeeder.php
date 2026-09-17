@@ -9,10 +9,11 @@ class KnowledgeBaseSeeder extends Seeder
 {
     /**
      * Seed the AI Employee's knowledge base with the clinic's own publicly
-     * stated facts (pulled from the landing pages and the billing service
-     * catalog), not invented copy. Where the clinic doesn't publish something
-     * (e.g. a cancellation policy), the entry says so explicitly, so the AI
-     * escalates to a human instead of guessing.
+     * stated facts (pulled from the landing pages), not invented copy. Where
+     * the clinic doesn't publish something (e.g. a cancellation policy), the
+     * entry says so explicitly, so the AI escalates to a human instead of
+     * guessing. Pricing is deliberately excluded - the AI Employee never
+     * quotes prices; it always defers to the free consultation.
      */
     public function run(): void
     {
@@ -69,7 +70,7 @@ class KnowledgeBaseSeeder extends Seeder
                 'title' => 'Session Pricing',
                 'category' => 'Pricing',
                 'priority' => 2,
-                'content' => 'Approximate session rates (AED): ABA therapy 1:1 session, 120 minutes - AED 1,100. BCBA supervision & program update - AED 1,400. Speech therapy, individual session, 45 minutes - AED 450. Parent training session, 60 minutes - AED 600. The initial 30-minute consultation is free. Rates may change - confirm current pricing with our team before quoting a family a final number.',
+                'content' => "Engage Clinic does not publish or quote session prices through the AI Employee, on any channel. If a family asks how much something costs, never state a number, a range, or a per-session/per-package rate for any service, even an approximate one. Pricing depends on the child's individual plan, so the answer is always: pricing is discussed with our team during the free, no-obligation 30-minute consultation. The initial 30-minute consultation itself is free - that fact may be shared. Always offer to arrange the free consultation.",
             ],
             [
                 'title' => 'Location & Address',
@@ -81,7 +82,7 @@ class KnowledgeBaseSeeder extends Seeder
                 'title' => 'Contact Information',
                 'category' => 'Contact',
                 'priority' => 1,
-                'content' => 'Phone / WhatsApp: +971 50 884 6801. General enquiries email: info@engagebehavior.com. Careers email: careers@engagebehavior.com.',
+                'content' => "Phone / WhatsApp: +971 50 884 6801. General enquiries email: info@engagebehavior.com. Careers email: careers@engagebehavior.com. Office address: Office No. 1203, ADCP Commercial Tower-C, Electra Street, Abu Dhabi, UAE.",
             ],
             [
                 'title' => 'Free Consultation & Booking Process',

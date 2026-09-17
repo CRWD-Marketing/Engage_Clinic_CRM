@@ -23,6 +23,17 @@
         </div>
     @endif
 
+    {{-- Rate-limiting (too many rapid submits) flashes under the 'message'
+         key rather than 'email'/'password', since it isn't a field-level
+         validation error - shown here so a throttled attempt doesn't look
+         like the page silently did nothing. --}}
+    @error('message')
+        <div class="error-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+            <span>{{ $message }}</span>
+        </div>
+    @enderror
+
     <form action="{{ route('login.submit') }}" method="POST" novalidate>
         @csrf
 

@@ -82,6 +82,7 @@ class CalendarSessionSeeder extends Seeder
                             'duration_minutes' => $durations[array_rand($durations)],
                             'room' => $rooms[array_rand($rooms)],
                             'status' => $status,
+                            'cancel_reason' => $status === 'cancelled' ? (random_int(0, 1) ? 'family' : 'clinic') : null,
                             'follow_up_completed_at' => $status === 'no_show' && random_int(0, 1) === 1 ? now() : null,
                             'notes' => null,
                             'created_by' => $coordinator?->id,

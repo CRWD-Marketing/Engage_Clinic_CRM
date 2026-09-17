@@ -728,14 +728,24 @@
     errorBox.style.display = 'none';
 
     const dateStr = bookingState.date ? bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT) : '';
-    const combinedNotes = `Requested: ${dateStr} at ${bookingState.time} (30-min free consultation)\nEmail: ${email}` + (notes ? `\n${notes}` : '');
+    // Y-M-D in local time, not toISOString() (which would shift the date
+    // near midnight for GST/UTC+4 users) - this is what the admin list sorts
+    // and displays as the requested consultation slot.
+    const bookingDateIso = bookingState.date
+      ? `${bookingState.date.getFullYear()}-${String(bookingState.date.getMonth() + 1).padStart(2, '0')}-${String(bookingState.date.getDate()).padStart(2, '0')}`
+      : null;
+    // A booking request is an enquiry, not a qualified lead yet - it goes to
+    // Contacts like every other website submission, for a staff member to
+    // review and manually convert. Contact has no separate child-name field,
+    // so it's folded into the message alongside the requested slot.
+    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)\nChild: ${childName}` + (notes ? `\n${notes}` : '');
 
     const btn = document.getElementById('confirmBookingBtn');
     const originalHTML = btn.innerHTML;
     btn.textContent = 'Booking...';
     btn.disabled = true;
 
-    fetch('/api/leads', {
+    fetch('/api/contacts', {
       method: 'POST',
       headers: {
         'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -743,13 +753,14 @@
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        child_name: childName,
+        name: name,
         child_age: childAge,
-        parent_guardian_name: name,
+        email: email,
         phone: phone,
-        source: 'Website',
         interested_in: service,
-        notes: combinedNotes,
+        message: combinedNotes,
+        booking_date: bookingDateIso,
+        booking_time: bookingState.time,
       })
     })
     .then(response => response.json())

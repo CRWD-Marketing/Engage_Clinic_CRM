@@ -84,15 +84,18 @@ class Patient extends Model
     }
 
     /**
-     * Attendance rate over the last 30 days, same "completed / (completed +
-     * no_show)" formula the dashboard uses clinic-wide, scoped to just this
-     * patient's own sessions. Null when there's nothing to measure yet.
+     * All-time attendance rate: completed / (completed + no_show + family
+     * cancellations), across every session this patient has ever had. A
+     * clinic-initiated cancellation isn't the family's fault and stays
+     * excluded entirely; a family cancellation counts against them the same
+     * way it does in the billing cancellation policy. Null when there's
+     * nothing to measure yet.
      */
-    public function attendanceRate30d(): ?int
+    public function attendanceRate(): ?int
     {
         $sessions = $this->calendarSessions()
-            ->whereBetween('session_date', [now()->subDays(30), now()->toDateString()])
-            ->whereIn('status', ['completed', 'no_show'])
+            ->where(fn ($q) => $q->whereIn('status', ['completed', 'no_show'])
+                ->orWhere(fn ($q2) => $q2->where('status', 'cancelled')->where('cancel_reason', 'family')))
             ->get();
 
         if ($sessions->isEmpty()) {
@@ -110,7 +113,13 @@ class Patient extends Model
      */
     public function calendarSessions()
     {
-        return CalendarSession::where('patient_id', $this->lead_id);
+        $leadId = $this->lead_id;
+
+        // Group bookings carry every child in patient_ids rather than a single
+        // patient_id, so a child's sessions are those matching either.
+        return CalendarSession::where(fn ($q) => $q
+            ->where('patient_id', $leadId)
+            ->orWhereJsonContains('patient_ids', $leadId));
     }
 
     /**

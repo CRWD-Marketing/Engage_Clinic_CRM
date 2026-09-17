@@ -3,9 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class WhatsappMessage extends Model
 {
+    /**
+     * A conversation left open for a while gets a divider even without a
+     * calendar-day change - long enough that "5 minutes ago you said X"
+     * would be a stretch to read as continuous.
+     */
+    const DATE_DIVIDER_GAP_MINUTES = 180;
+
     const AI_STATUS_PENDING = 'pending';
 
     const AI_STATUS_PROCESSING = 'processing';
@@ -82,6 +90,41 @@ class WhatsappMessage extends Model
     /**
      * Delivery-status tick SVG for an outbound bubble (sent/delivered/read/failed).
      */
+    /**
+     * Whether a message needs a date/time divider above it - shown before
+     * the very first message in a conversation, whenever the calendar day
+     * changes from the previous message, or after a long enough gap in an
+     * otherwise same-day conversation (DATE_DIVIDER_GAP_MINUTES). Shared by
+     * the initial page load and the live poll endpoint via
+     * whatsapp.partials.messages, so a message that arrives while the
+     * conversation is already open gets exactly the same divider it would
+     * have gotten on a fresh page load.
+     */
+    public static function needsDateDivider(Carbon $sentAt, ?Carbon $previousSentAt): bool
+    {
+        if ($previousSentAt === null) {
+            return true;
+        }
+
+        if (! $sentAt->isSameDay($previousSentAt)) {
+            return true;
+        }
+
+        return abs($sentAt->diffInMinutes($previousSentAt)) >= self::DATE_DIVIDER_GAP_MINUTES;
+    }
+
+    /**
+     * Divider label for a message - always carries a time (not just the
+     * date) so a gap divider inside the same day still says when the
+     * conversation picked back up, e.g. "Today, 5:57 PM".
+     */
+    public static function dateDividerLabel(Carbon $sentAt): string
+    {
+        $day = $sentAt->isToday() ? 'Today' : ($sentAt->isYesterday() ? 'Yesterday' : $sentAt->format('M j, Y'));
+
+        return $day.', '.$sentAt->format('g:i A');
+    }
+
     public static function tickIcon(?string $status): string
     {
         return match ($status) {

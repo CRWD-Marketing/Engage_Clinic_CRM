@@ -40,8 +40,14 @@ class User extends Authenticatable
         'notes',
 
         'is_active',
+        'invited_at',
         'last_login_at',
         'email_verified_at',
+
+        'role_template_id',
+        'modules',
+        'module_levels',
+        'actions',
     ];
 
     /**
@@ -64,9 +70,13 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'invited_at' => 'datetime',
             'start_date' => 'date',
             'is_active' => 'boolean',
             'password' => 'hashed',
+            'modules' => 'array',
+            'module_levels' => 'array',
+            'actions' => 'array',
         ];
     }
 
@@ -116,15 +126,105 @@ class User extends Authenticatable
         );
     }
 
+    public function roleTemplate(): BelongsTo
+    {
+        return $this->belongsTo(RoleTemplate::class);
+    }
+
     /**
-     * Check if the user's role grants access to a given sidebar/feature key.
-     * See config/role_permissions.php for the role -> features mapping.
+     * The modules this user actually holds: their own copy if one was granted
+     * (Roles & access), else their template's, else nothing data-driven -
+     * canAccessFeature() then falls back to the legacy role config.
+     */
+    public function effectiveModules(): ?array
+    {
+        return $this->modules ?? $this->roleTemplate?->modules;
+    }
+
+    public function effectiveActions(): ?array
+    {
+        return $this->actions ?? $this->roleTemplate?->actions;
+    }
+
+    public function effectiveModuleLevels(): array
+    {
+        return $this->module_levels ?? $this->roleTemplate?->module_levels ?? [];
+    }
+
+    /**
+     * How much of a granted module this user can reach - "full" unless
+     * something more specific (own/view/edit) was set, so a module that
+     * predates this concept, or was never given a level, behaves exactly as
+     * it always did. Meaningless for a module the user doesn't hold at all.
+     */
+    public function levelFor(string $module): string
+    {
+        return $this->effectiveModuleLevels()[$module] ?? 'full';
+    }
+
+    /**
+     * Check if the user can reach a given sidebar/feature key. Data-driven
+     * (Roles & access) when the user holds a module list; otherwise the
+     * role -> features map in config/role_permissions.php.
      */
     public function canAccessFeature(string $feature): bool
     {
-        $features = config("role_permissions.{$this->role}", []);
+        $modules = $this->effectiveModules();
 
-        return in_array($feature, $features, true);
+        $key = RoleTemplate::MODULE_ALIASES[$feature] ?? $feature;
+
+        if ($modules !== null && array_key_exists($key, RoleTemplate::MODULES)) {
+            return in_array($key, $modules, true);
+        }
+
+        return in_array($feature, config("role_permissions.{$this->role}", []), true);
+    }
+
+    /**
+     * Whether the user may perform one of the named actions (see
+     * RoleTemplate::ACTIONS). Without a data-driven grant, falls back to the
+     * system template for their base role so nothing is locked out before the
+     * templates are seeded.
+     */
+    public function canDo(string $action): bool
+    {
+        $actions = $this->effectiveActions();
+
+        if ($actions === null) {
+            $actions = collect(RoleTemplate::SYSTEM)->firstWhere('base_role', $this->role)['actions'] ?? [];
+        }
+
+        return in_array($action, $actions, true);
+    }
+
+    /**
+     * Copy a template's modules/actions onto the user. Editing the template
+     * later doesn't change them - per-user grants can go beyond the role.
+     */
+    public function applyTemplate(RoleTemplate $template): void
+    {
+        $this->forceFill([
+            'role_template_id' => $template->id,
+            'role' => $template->base_role,
+            'modules' => $template->modules,
+            'module_levels' => $template->module_levels,
+            'actions' => $template->actions,
+        ])->save();
+    }
+
+    /**
+     * suspended (deactivated) / invited (never signed in yet) / active.
+     */
+    public function accessStatus(): string
+    {
+        if (! $this->is_active) {
+            return 'suspended';
+        }
+        if ($this->invited_at && ! $this->last_login_at) {
+            return 'invited';
+        }
+
+        return 'active';
     }
 
     /**

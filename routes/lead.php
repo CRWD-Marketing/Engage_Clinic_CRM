@@ -40,6 +40,11 @@ Route::middleware(['auth', 'feature:leads'])
             [LeadController::class, 'convertToPatient']
         )->name('leads.convert-to-patient');
 
+        Route::post(
+            'leads/{lead}/restore',
+            [LeadController::class, 'restore']
+        )->name('leads.restore');
+
         // Add route for getting lead count (for real-time badge updates)
         Route::get(
             'leads/count',

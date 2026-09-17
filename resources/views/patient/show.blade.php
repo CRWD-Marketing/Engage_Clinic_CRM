@@ -84,6 +84,11 @@
         width: 100%; box-sizing: border-box; padding: 11px 13px; border: 1px solid #E2DACE; border-radius: 10px;
         background: #F6F3EE; font: 600 13px 'Nunito Sans'; color: #2B3A4C; outline: none; resize: vertical; line-height: 1.5;
     }
+    .pt-conversion-banner {
+        box-sizing: border-box; padding: 11px 13px; border: 1px solid #E2DACE; border-radius: 10px;
+        background: #F6F3EE; font: 600 12.5px/1.5 'Nunito Sans'; color: #5A6B7E;
+    }
+    .pt-conversion-banner b { color: #2B3A4C; font-weight: 800; }
     .pt-note-input:focus { border-color: #C8355F; }
     .pt-note-actions { display: flex; align-items: center; gap: 10px; }
     .pt-note-hint { flex: 1; font: 600 11px 'Nunito Sans'; color: #A79C8E; }
@@ -174,6 +179,7 @@
     .pt-doc-badge-neutral { background: #F6F3EE; color: #98897A; }
 
     .pt-profile-section-title { font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+    .pt-profile-section-sub { font: 600 11.5px 'Nunito Sans'; color: #98897A; margin: -6px 0 12px; }
     .pt-profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
     .pt-profile-field-label { font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.05em; }
     .pt-profile-field-value { font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 3px; }
@@ -221,8 +227,41 @@
     $avatarPalette = ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F', '#2E7D5B'];
     $avatarColor = fn ($seed) => $avatarPalette[crc32((string) $seed) % count($avatarPalette)];
     $lead = $patient->lead;
-    $attendanceRate = $patient->attendanceRate30d();
+    $attendanceRate = $patient->attendanceRate();
     $primaryAuth = $patient->primaryAuthorization();
+    $assessmentClinician = optional($lead)->assessmentClinician;
+    $packageLocation = optional($lead)->packageLocation;
+    $leadPackages = $lead ? $lead->packages()->get() : collect();
+
+    // Package(s) agreed at intake - hours, rate and value are read straight off
+    // the Package catalog rows the lead picked, summed when more than one was
+    // selected, rather than re-entered anywhere.
+    $packageHoursPerWeek = $leadPackages->sum(fn ($p) => (float) $p->hours_per_week);
+    $packageRates = $leadPackages->pluck('rate')->filter()->unique();
+    $packageRatePerHr = $packageRates->count() === 1 ? $packageRates->first() : ($packageRates->count() > 1 ? 'Mixed' : null);
+    $packageValueExclVat = $leadPackages->sum(fn ($p) => (float) $p->total_excl_vat);
+    $packageSettings = $leadPackages->pluck('delivery_mode')->filter()->unique();
+    $packageSetting = $packageSettings->count() === 1 ? $packageSettings->first() : ($packageSettings->count() > 1 ? 'Mixed' : null);
+
+    // "Funding" summary line - Insurance / Self pay / Mixed - derived from who
+    // pays for each service line, falling back to the single funding_type
+    // picked in the funding step if no per-service breakdown was captured.
+    $fundingServiceRows = collect(optional($lead)->funding_services_needed ?? []);
+    $fundingPayers = $fundingServiceRows->pluck('payer')->filter()->unique();
+    $fundingSummary = $fundingPayers->count() > 1
+        ? 'Mixed — insurance + self pay'
+        : ($fundingPayers->first() ?? optional($lead)->funding_type);
+
+    // "Insurance-funded hours" reads the approved-hours figure out of each
+    // insurance-paid service line's free-text "cover" note (e.g. "96 h
+    // approved"), rather than the weekly hours booked - those are two
+    // different numbers and the intake form only ever captures the former
+    // as prose.
+    $fundingHoursNeeded = $fundingServiceRows
+        ->filter(fn ($r) => ($r['payer'] ?? null) === 'Insurance')
+        ->sum(fn ($r) => preg_match('/(\d+)/', $r['cover'] ?? '', $m) ? (int) $m[1] : (int) ($r['hours_per_week'] ?? 0));
+    $fundingHoursNeeded = $fundingHoursNeeded > 0 ? $fundingHoursNeeded : null;
+
     $soonestRenewal = $patient->authorizations->filter(fn ($a) => $a->renews_at)->sortBy('renews_at')->first();
     $expiringAuthDoc = $patient->documents
         ->where('type', 'Authorization')
@@ -337,6 +376,14 @@
 
                 <div class="pt-card">
                     <div class="pt-card-title">Session notes</div>
+                    @if ($patient->lead?->assessment_report_summary)
+                        <div class="pt-conversion-banner">Converted from lead — {{ $patient->lead->assessment_report_summary }}</div>
+                    @endif
+                    <textarea id="ptNoteBody" class="pt-note-input" rows="3" placeholder="Write a session note — what was worked on, response, next step…"></textarea>
+                    <div class="pt-note-actions">
+                        <div class="pt-note-hint">Saved to the clinical record with your name and time.</div>
+                        <button type="button" class="pt-add-note-btn" id="ptAddNoteBtn" onclick="addPatientNote()">Add note</button>
+                    </div>
                     <div class="pt-notes-list" id="ptNotesList">
                         @forelse ($patient->notes as $note)
                             <div class="pt-note-entry">
@@ -347,16 +394,9 @@
                                 <div class="pt-note-body">{{ $note->body }}</div>
                             </div>
                         @empty
-                            <div class="pt-card-empty">No notes on record yet.</div>
+                            <div class="pt-card-empty" id="ptNotesEmpty">No notes on record yet.</div>
                         @endforelse
                     </div>
-                    <textarea id="ptNoteBody" class="pt-note-input" rows="3" placeholder="Write a session note — what was worked on, response, next step…"></textarea>
-                    <div class="pt-note-actions">
-                        <div class="pt-note-hint">Saved to the clinical record with your name and time.</div>
-                        <button type="button" class="pt-add-note-btn" id="ptAddNoteBtn" onclick="addPatientNote()">Add note</button>
-                    </div>
-                    <div class="pt-card-empty" id="ptNotesEmpty">No notes added in this session yet.</div>
-                    <div class="pt-notes-list" id="ptNewNotesList"></div>
                 </div>
             </div>
 
@@ -448,7 +488,7 @@
                                     <td>{{ $session->activity_type }}</td>
                                     <td>{{ $session->duration_minutes }} min</td>
                                     <td>{{ $session->therapist ? trim($session->therapist->first_name.' '.$session->therapist->last_name) : '—' }}</td>
-                                    <td style="text-transform: capitalize;">{{ str_replace('_', ' ', $session->status) }}</td>
+                                    <td>{{ $session->statusLabel() }}</td>
                                     <td>{{ $session->notes ?: '—' }}</td>
                                 </tr>
                             @endforeach
@@ -544,13 +584,43 @@
     <div class="pt-tab-panel" id="pt-tab-profile">
         <div class="pt-card">
             <div class="pt-profile-section-title">Package & funding</div>
+            <div class="pt-profile-section-sub">Agreed at intake, before conversion</div>
             <div class="pt-profile-grid">
-                <div><div class="pt-profile-field-label">Programme</div><div class="pt-profile-field-value">{{ $patient->programme ?: '—' }}</div></div>
-                <div><div class="pt-profile-field-label">Payer</div><div class="pt-profile-field-value">{{ $primaryAuth->payer_name ?? '—' }}</div></div>
-                <div><div class="pt-profile-field-label">Approved hours</div><div class="pt-profile-field-value">{{ $primaryAuth->authorized_hours_total ?? '—' }}</div></div>
-                <div><div class="pt-profile-field-label">Renewal</div><div class="pt-profile-field-value">{{ optional($primaryAuth?->renews_at)->format('d M Y') ?? '—' }}</div></div>
-                <div><div class="pt-profile-field-label">Client since</div><div class="pt-profile-field-value">{{ $patient->enrolled_at->format('M Y') }}</div></div>
+                <div><div class="pt-profile-field-label">Package(s)</div><div class="pt-profile-field-value">{{ $leadPackages->isNotEmpty() ? $leadPackages->pluck('name')->implode(', ') : '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Hours purchased</div><div class="pt-profile-field-value">{{ $packageHoursPerWeek > 0 ? rtrim(rtrim(number_format($packageHoursPerWeek, 1), '0'), '.').' h' : '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Hours / week</div><div class="pt-profile-field-value">{{ $packageHoursPerWeek > 0 ? rtrim(rtrim(number_format($packageHoursPerWeek, 1), '0'), '.').' h' : '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Rate / hr</div><div class="pt-profile-field-value">{{ $packageRatePerHr === 'Mixed' ? 'Mixed' : ($packageRatePerHr ? 'AED '.number_format($packageRatePerHr) : '—') }}</div></div>
+                <div><div class="pt-profile-field-label">Package value excl. VAT</div><div class="pt-profile-field-value">{{ $packageValueExclVat > 0 ? 'AED '.number_format($packageValueExclVat) : '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Sessions / week</div><div class="pt-profile-field-value">{{ $lead->package_sessions_per_week ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Location</div><div class="pt-profile-field-value">{{ $packageLocation->name ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Setting</div><div class="pt-profile-field-value">{{ $packageSetting ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Funding</div><div class="pt-profile-field-value">{{ $fundingSummary ?: '—' }}</div></div>
             </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Services & who pays</div>
+            <div class="pt-profile-section-sub">Agreed at intake — a client can have several therapies with different payers</div>
+            @if ($fundingServiceRows->isEmpty())
+                <div class="pt-card-empty">No service/payer breakdown on file.</div>
+            @else
+                <div style="overflow-x: auto;">
+                    <table class="pt-data-table">
+                        <thead><tr><th>Service</th><th>Hours</th><th>Paid by</th><th>Cover</th><th>Approval ref</th></tr></thead>
+                        <tbody>
+                            @foreach ($fundingServiceRows as $row)
+                                <tr>
+                                    <td>{{ $row['service'] ?? '—' }}</td>
+                                    <td>{{ isset($row['hours_per_week']) ? $row['hours_per_week'].' h / week' : '—' }}</td>
+                                    <td>{{ $row['payer'] ?? '—' }}</td>
+                                    <td>{{ $row['cover'] ?? '—' }}</td>
+                                    <td>{{ $row['approval_ref'] ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
 
         <div class="pt-card">
@@ -574,8 +644,45 @@
             </div>
         </div>
 
+        @if ($lead)
         <div class="pt-card">
-            <div class="pt-profile-section-title">Funding</div>
+            <div class="pt-profile-section-title">Child details</div>
+            <div class="pt-profile-grid">
+                <div><div class="pt-profile-field-label">Full name</div><div class="pt-profile-field-value">{{ $lead->child_name ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Emirates ID</div><div class="pt-profile-field-value">{{ $lead->child_emirates_id ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Emirates ID expiry</div><div class="pt-profile-field-value">{{ optional($lead->child_emirates_id_expiry)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Date of birth</div><div class="pt-profile-field-value">{{ optional($lead->child_date_of_birth)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Gender</div><div class="pt-profile-field-value">{{ $lead->child_gender ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Diagnosis</div><div class="pt-profile-field-value">{{ $lead->diagnosis_suspected ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Nursery / school</div><div class="pt-profile-field-value">{{ $lead->nursery_school ?: '—' }}</div></div>
+                <div style="grid-column: 1 / -1;"><div class="pt-profile-field-label">Main concern</div><div class="pt-profile-field-value">{{ $lead->main_concern ?: '—' }}</div></div>
+            </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Intake form</div>
+            <div class="pt-profile-grid">
+                <div><div class="pt-profile-field-label">Received on</div><div class="pt-profile-field-value">{{ optional($lead->intake_form_received_on)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Received via</div><div class="pt-profile-field-value">{{ $lead->intake_form_received_via ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Allergies</div><div class="pt-profile-field-value">{{ $lead->allergies ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Medical history</div><div class="pt-profile-field-value">{{ $lead->medical_history ?: '—' }}</div></div>
+            </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Consultation / assessment</div>
+            <div class="pt-profile-grid">
+                <div><div class="pt-profile-field-label">Date</div><div class="pt-profile-field-value">{{ optional($lead->assessment_date)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Clinician</div><div class="pt-profile-field-value">{{ $assessmentClinician ? trim($assessmentClinician->first_name.' '.$assessmentClinician->last_name) : '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Tool</div><div class="pt-profile-field-value">{{ $lead->assessment_tool ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Report ref</div><div class="pt-profile-field-value">{{ $lead->assessment_report_reference ?: '—' }}</div></div>
+                <div style="grid-column: 1 / -1;"><div class="pt-profile-field-label">Summary</div><div class="pt-profile-field-value">{{ $lead->assessment_report_summary ?: '—' }}</div></div>
+            </div>
+        </div>
+        @endif
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Billing authorizations</div>
             @if ($patient->authorizations->isEmpty())
                 <div class="pt-card-empty">No funding on file.</div>
             @else
@@ -596,6 +703,53 @@
                 </div>
             @endif
         </div>
+
+        @if ($lead)
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Funding</div>
+            <div class="pt-profile-grid">
+                <div><div class="pt-profile-field-label">Funding type</div><div class="pt-profile-field-value">{{ $lead->funding_type ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Insurer / payer</div><div class="pt-profile-field-value">{{ $lead->funding_insurer ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Policy number</div><div class="pt-profile-field-value">{{ $lead->funding_policy_number ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Approval valid until</div><div class="pt-profile-field-value">{{ optional($lead->funding_approval_valid_until)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Insurance-funded hours</div><div class="pt-profile-field-value">{{ $fundingHoursNeeded ?? '—' }}</div></div>
+                <div style="grid-column: 1 / -1;"><div class="pt-profile-field-label">Funding notes</div><div class="pt-profile-field-value">{{ $lead->funding_notes ?: '—' }}</div></div>
+            </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Package agreed</div>
+            <div class="pt-profile-grid">
+                <div style="grid-column: 1 / -1;"><div class="pt-profile-field-label">Package(s)</div><div class="pt-profile-field-value">{{ $leadPackages->isNotEmpty() ? $leadPackages->pluck('name')->implode(', ') : '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Start date</div><div class="pt-profile-field-value">{{ optional($lead->package_start_date)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Sessions / week</div><div class="pt-profile-field-value">{{ $lead->package_sessions_per_week ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Location</div><div class="pt-profile-field-value">{{ $packageLocation->name ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Agreed by</div><div class="pt-profile-field-value">{{ $lead->package_agreed_by ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Notes</div><div class="pt-profile-field-value">{{ $lead->package_scheduling_notes ?: '—' }}</div></div>
+            </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Consent & terms</div>
+            <div class="pt-profile-grid">
+                <div><div class="pt-profile-field-label">Agreement signed</div><div class="pt-profile-field-value">{{ optional($lead->consent_signed_date)->format('d M Y') ?? '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Signed by</div><div class="pt-profile-field-value">{{ $lead->consent_signed_by ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Data & photo consent</div><div class="pt-profile-field-value">{{ $lead->consent_data_photo ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Method</div><div class="pt-profile-field-value">{{ $lead->consent_signature_method ?: '—' }}</div></div>
+                <div style="grid-column: 1 / -1;"><div class="pt-profile-field-label">Notes</div><div class="pt-profile-field-value">{{ $lead->consent_notes ?: '—' }}</div></div>
+            </div>
+        </div>
+
+        <div class="pt-card">
+            <div class="pt-profile-section-title">Lead origin</div>
+            <div class="pt-profile-grid">
+                <div><div class="pt-profile-field-label">Source</div><div class="pt-profile-field-value">{{ $lead->source ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">Campaign</div><div class="pt-profile-field-value">{{ $lead->campaign ?: '—' }}</div></div>
+                <div><div class="pt-profile-field-label">First enquiry</div><div class="pt-profile-field-value">{{ $lead->created_at->format('d M Y, H:i') }}</div></div>
+                <div><div class="pt-profile-field-label">Lead owner</div><div class="pt-profile-field-value">{{ $lead->assigned_to_name ?? '—' }}</div></div>
+            </div>
+        </div>
+        @endif
     </div>
 
 </div>
@@ -639,6 +793,28 @@
                 <div>
                     <div class="pt-field-label">Phone *</div>
                     <input id="ptPhone" name="phone" type="text" class="pt-field-input" value="{{ $lead->phone ?? '' }}">
+                </div>
+                <div>
+                    <div class="pt-field-label">Insurance</div>
+                    @php $currentPayer = $primaryAuth->payer_name ?? null; @endphp
+                    <select id="ptInsurance" name="insurance" class="pt-field-input">
+                        <option value="">No insurance</option>
+                        @if ($currentPayer && $currentPayer !== 'Self-pay' && ! $insurances->contains('name', $currentPayer))
+                            <option value="{{ $currentPayer }}" selected>{{ $currentPayer }} (inactive)</option>
+                        @endif
+                        @foreach ($insurances as $insurance)
+                            <option value="{{ $insurance->name }}" @selected($currentPayer === $insurance->name)>{{ $insurance->name }}</option>
+                        @endforeach
+                        <option value="Self-pay" @selected($currentPayer === 'Self-pay')>Self-pay</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="pt-field-label">Auth. hrs</div>
+                    <input id="ptAuthHours" name="authorized_hours_total" type="number" min="0" class="pt-field-input" value="{{ $primaryAuth->authorized_hours_total ?? '' }}">
+                </div>
+                <div>
+                    <div class="pt-field-label">Renewal</div>
+                    <input id="ptRenewsAt" name="renews_at" type="date" class="pt-field-input" value="{{ optional($primaryAuth?->renews_at)->format('Y-m-d') }}">
                 </div>
                 <div>
                     <div class="pt-field-label">Start</div>
@@ -780,9 +956,9 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const list = document.getElementById('ptNewNotesList');
-                const todayEmpty = document.getElementById('ptNotesEmpty');
-                if (todayEmpty) todayEmpty.style.display = 'none';
+                const list = document.getElementById('ptNotesList');
+                const emptyPlaceholder = document.getElementById('ptNotesEmpty');
+                if (emptyPlaceholder) emptyPlaceholder.remove();
 
                 const entry = document.createElement('div');
                 entry.className = 'pt-note-entry';

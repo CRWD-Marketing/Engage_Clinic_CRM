@@ -20,4 +20,9 @@ Route::middleware(['auth', 'feature:settings'])
         Route::patch('locations/{location}/toggle', [SettingsController::class, 'toggleLocation'])->name('locations.toggle');
         Route::delete('locations/{location}', [SettingsController::class, 'destroyLocation'])->name('locations.destroy');
 
+        Route::post('insurances', [SettingsController::class, 'storeInsurance'])->name('insurances.store');
+        Route::put('insurances/{insurance}', [SettingsController::class, 'updateInsurance'])->name('insurances.update');
+        Route::patch('insurances/{insurance}/toggle', [SettingsController::class, 'toggleInsurance'])->name('insurances.toggle');
+        Route::delete('insurances/{insurance}', [SettingsController::class, 'destroyInsurance'])->name('insurances.destroy');
+
     });

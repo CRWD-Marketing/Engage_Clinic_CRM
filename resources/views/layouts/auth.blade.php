@@ -305,6 +305,22 @@
 
         .status-banner svg{ width:16px; height:16px; flex-shrink:0; margin-top:1px; color:var(--success); }
 
+        .error-banner{
+            margin-bottom:20px;
+            padding:12px 14px;
+            border:1px solid var(--danger);
+            background:#FBEAEA;
+            border-radius:10px;
+            display:flex;
+            gap:10px;
+            align-items:flex-start;
+            font-size:13px;
+            line-height:1.5;
+            color:var(--danger);
+        }
+
+        .error-banner svg{ width:16px; height:16px; flex-shrink:0; margin-top:1px; color:var(--danger); }
+
         .row-between{
             display:flex;
             align-items:center;

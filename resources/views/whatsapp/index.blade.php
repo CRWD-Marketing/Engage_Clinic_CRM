@@ -49,13 +49,6 @@
             background: #FFFDFA; color: #8A7D6C; font: 700 10px 'Nunito Sans'; letter-spacing: 0.5px;
             text-transform: uppercase; padding: 4px 13px; border-radius: 20px; box-shadow: 0 1px 3px rgba(43,58,76,0.08);
         }
-        .wa-msg-convert-form { opacity: 0; transition: opacity 0.12s ease; margin-left: 4px; }
-        .wa-msg-row:hover .wa-msg-convert-form { opacity: 1; }
-        .wa-msg-convert-btn {
-            border: none; background: none; padding: 0; cursor: pointer;
-            font: 700 11px 'Nunito Sans'; color: #C8355F; text-decoration: underline;
-        }
-        .wa-msg-convert-btn:hover { color: #AD2A52; }
         #wa-channel-filter { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
         #wa-channel-filter::-webkit-scrollbar { display: none; }
         .wa-filter-pill { flex-shrink: 0; white-space: nowrap; }
@@ -157,28 +150,16 @@
 
                 <!-- Messages -->
                 <div id="wa-messages" class="wa-messages" data-last-message-id="{{ (int) $messages->max('id') }}" style="flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px;">
-                    @php $lastMsgDate = null; @endphp
-                    @forelse ($messages as $message)
-                        @php
-                            $msgDate = $message->sent_at->toDateString();
-                            $showDivider = $msgDate !== $lastMsgDate;
-                            $lastMsgDate = $msgDate;
-                            $dividerLabel = $message->sent_at->isToday()
-                                ? 'Today'
-                                : ($message->sent_at->isYesterday() ? 'Yesterday' : $message->sent_at->format('F j, Y'));
-                        @endphp
-                        @if ($showDivider)
-                            <div class="wa-date-divider"><span>{{ $dividerLabel }}</span></div>
-                        @endif
-                        @include('whatsapp.partials.message', ['message' => $message, 'activeContact' => $activeContact])
-                    @empty
+                    @if ($messages->isNotEmpty())
+                        @include('whatsapp.partials.messages', ['messages' => $messages, 'activeContact' => $activeContact, 'previousSentAt' => null])
+                    @else
                         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;">
                             <div style="width: 44px; height: 44px; border-radius: 50%; background: #FFFDFA; display: flex; align-items: center; justify-content: center;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3097 17.8992 16.9674 18.7293C15.6251 19.5594 14.0787 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92127 4.44061 8.37485 5.27072 7.03258C6.10083 5.6903 7.28825 4.6056 8.7 3.9C9.87812 3.30493 11.1801 2.99656 12.5 3H13C15.0843 3.11499 17.053 3.99476 18.5291 5.47086C20.0052 6.94696 20.885 8.91565 21 11V11.5Z" stroke="#B0A493" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                             </div>
                             <div style="font: 600 12.5px 'Nunito Sans'; color: #98897A;">No messages in this conversation yet.</div>
                         </div>
-                    @endforelse
+                    @endif
                 </div>
 
                 @if ($errors->any())

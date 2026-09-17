@@ -39,13 +39,23 @@
             height: 100vh;
             background: #FFFFFF;
             border-right: 1px solid #EBE4DA;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
             z-index: 100;
             display: flex;
             flex-direction: column;
             padding: 0;
             transition: width 0.18s ease;
+        }
+
+        /* Only the nav links scroll - the logo above and the waitlist/profile
+           footer below stay put, so the account switcher is never scrolled
+           out of view on a tall link list or a short viewport. */
+        .sidebar-nav-scroll {
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+            scrollbar-width: thin;
+            scrollbar-color: #DDD4C8 transparent;
         }
 
         .main-content {
@@ -392,15 +402,15 @@
             color: #16436E;
         }
         
-        .sidebar::-webkit-scrollbar {
+        .sidebar-nav-scroll::-webkit-scrollbar {
             width: 4px;
         }
-        
-        .sidebar::-webkit-scrollbar-track {
+
+        .sidebar-nav-scroll::-webkit-scrollbar-track {
             background: transparent;
         }
-        
-        .sidebar::-webkit-scrollbar-thumb {
+
+        .sidebar-nav-scroll::-webkit-scrollbar-thumb {
             background: #DDD4C8;
             border-radius: 5px;
         }
@@ -552,6 +562,103 @@
         @media (max-width: 640px) {
             .topbar-search-wrap { max-width: none; }
         }
+
+        /* Topbar search / activity / notifications dropdowns */
+        .topbar-dropdown-wrap { position: relative; }
+        .topbar-dropdown-panel {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-height: 420px;
+            overflow-y: auto;
+            background: #FFFFFF;
+            border: 1px solid #EBE4DA;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            z-index: 200;
+        }
+        .topbar-dropdown-panel.active { display: block; }
+        .topbar-search-wrap .topbar-dropdown-panel { left: 0; right: auto; width: 100%; }
+
+        .topbar-dropdown-header {
+            padding: 12px 16px;
+            font: 800 12px 'Nunito Sans';
+            color: #8A7D6C;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #F0EBE3;
+        }
+        .topbar-dropdown-empty {
+            padding: 24px 16px;
+            text-align: center;
+            color: #98897A;
+            font: 600 12.5px 'Nunito Sans';
+        }
+        .topbar-dropdown-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 16px;
+            text-decoration: none;
+            color: #2B3A4C;
+            border-bottom: 1px solid #F5F0E9;
+            transition: background 0.15s ease;
+        }
+        .topbar-dropdown-item:last-child { border-bottom: none; }
+        .topbar-dropdown-item:hover { background: #F8F5F0; }
+        .topbar-dropdown-item i {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: #F3EDE3;
+            color: #16436E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11.5px;
+            flex-shrink: 0;
+        }
+        .topbar-dropdown-item .item-body { flex: 1; min-width: 0; }
+        .topbar-dropdown-item .item-title {
+            font: 700 12.5px 'Nunito Sans';
+            color: #2B3A4C;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .topbar-dropdown-item .item-subtitle {
+            font: 600 11.5px 'Nunito Sans';
+            color: #98897A;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .topbar-dropdown-item .item-type {
+            font: 800 9.5px 'Nunito Sans';
+            color: #C8355F;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+        .topbar-dropdown-item .item-time {
+            font: 600 10.5px 'Nunito Sans';
+            color: #B0A493;
+            flex-shrink: 0;
+            margin-left: 8px;
+            white-space: nowrap;
+        }
+        .topbar-dropdown-item.is-unread .item-title { color: #16436E; }
+        .topbar-dropdown-item .item-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #C8355F;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
         
         .topbar-dashboard {
             display: flex;
@@ -630,7 +737,7 @@
             </button>
         </div>
 
-        <div style="padding: 6px 12px; display: flex; flex-direction: column; gap: 2px; flex: 1;">
+        <div class="sidebar-nav-scroll" style="padding: 6px 12px; display: flex; flex-direction: column; gap: 2px; flex: 1;">
             @if(Auth::user()->canAccessFeature('dashboard'))
             <a href="{{ route('dashboard') }}" class="sidebar-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" title="Dashboard">
                 <i class="fas fa-th-large"></i> <span class="link-label">Dashboard</span>
@@ -702,7 +809,7 @@
 
             @if(Auth::user()->canAccessFeature('calendar'))
             <a href="{{ route('calendar.index') }}" class="sidebar-link {{ request()->routeIs('calendar.index') ? 'active' : '' }}" title="Calendar">
-                <i class="fas fa-calendar-alt"></i> <span class="link-label">Calendar</span>
+                <i class="fas fa-calendar-alt"></i> <span class="link-label">{{ Auth::user()->levelFor('calendar') === 'own' ? 'My calendar' : 'Calendar' }}</span>
             </a>
             @endif
 
@@ -727,9 +834,9 @@
             </a>
             @endif
 
-            @if(Auth::user()->canAccessFeature('users'))
-            <a href="{{ route('users.index') }}" class="sidebar-link {{ request()->routeIs('users.*') ? 'active' : '' }}" title="User Management">
-                <i class="fas fa-user-shield"></i> <span class="link-label">User Management</span>
+            @if(Auth::user()->canAccessFeature('roles_access'))
+            <a href="{{ route('roles.index') }}" class="sidebar-link {{ request()->routeIs('roles.*') || request()->routeIs('users.*') ? 'active' : '' }}" title="Roles & access">
+                <i class="fas fa-user-lock"></i> <span class="link-label">Roles & access</span>
             </a>
             @endif
 
@@ -786,7 +893,7 @@
                             {{ Auth::user()->full_name ?? Auth::user()->name ?? 'Admin' }}
                         </div>
                         <div style="color: #98897A; font-size: 10px;">
-                            {{ Auth::user()->role ?? 'Staff' }}
+                            {{ Auth::user()->role ? str_replace('_', ' ', Auth::user()->role) : 'Staff' }}
                         </div>
                     </div>
                     <i class="fas fa-chevron-down" style="color: #98897A; font-size: 11px;"></i>
@@ -812,23 +919,30 @@
     <div class="main-content">
         <div class="topbar-fixed">
             <div class="topbar-fixed-inner">
-                <div class="topbar-search-wrap">
+                <div class="topbar-search-wrap topbar-dropdown-wrap" id="topbarSearchWrap">
                     <i class="fas fa-search topbar-search-icon"></i>
-                    <input type="text" class="topbar-search-input" placeholder="Search patients, parents, leads, phone…">
+                    <input type="text" class="topbar-search-input" id="topbarSearchInput" placeholder="Search patients, parents, leads, phone…" autocomplete="off">
+                    <div class="topbar-dropdown-panel" id="topbarSearchPanel"></div>
                 </div>
                 <div class="topbar-actions">
-                    <button type="button" class="topbar-activity-btn">Activity</button>
-                    <button type="button" class="topbar-bell-btn" title="Notifications">
-                        <i class="fas fa-bell"></i>
-                        @php
-                            $topbarNotifCount = \App\Models\Lead::where('status', 'new')->count()
-                                + \App\Models\Contact::where('status', 'new')->count()
-                                + \App\Models\WhatsappContact::sum('unread_count');
-                        @endphp
-                        @if($topbarNotifCount > 0)
-                            <span class="topbar-bell-badge">{{ $topbarNotifCount > 99 ? '99+' : $topbarNotifCount }}</span>
-                        @endif
-                    </button>
+                    <div class="topbar-dropdown-wrap" id="topbarActivityWrap">
+                        <button type="button" class="topbar-activity-btn" id="topbarActivityBtn">Activity</button>
+                        <div class="topbar-dropdown-panel" id="topbarActivityPanel"></div>
+                    </div>
+                    <div class="topbar-dropdown-wrap" id="topbarBellWrap">
+                        <button type="button" class="topbar-bell-btn" id="topbarBellBtn" title="Notifications">
+                            <i class="fas fa-bell"></i>
+                            @php
+                                $topbarUser = auth()->user();
+                                $topbarNotifCount = ($topbarUser->canAccessFeature('leads') ? \App\Models\Lead::where('status', 'new')->count() : 0)
+                                    + ($topbarUser->canAccessFeature('contacts') ? \App\Models\Contact::where('status', 'new')->count() : 0)
+                                    + ($topbarUser->canAccessFeature('whatsapp') ? \App\Models\WhatsappContact::sum('unread_count') : 0)
+                                    + $topbarUser->unreadNotifications()->count();
+                            @endphp
+                            <span class="topbar-bell-badge" id="topbarBellBadge" @if($topbarNotifCount <= 0) style="display:none;" @endif>{{ $topbarNotifCount > 99 ? '99+' : $topbarNotifCount }}</span>
+                        </button>
+                        <div class="topbar-dropdown-panel" id="topbarBellPanel"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -955,8 +1069,226 @@
                     .catch(error => console.error('Error updating application count:', error));
             }
         }, 30000);
+
+        // ------------------------------------------------------------------
+        // Topbar: search, activity feed, notifications bell
+        // ------------------------------------------------------------------
+        (function () {
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str == null ? '' : String(str);
+                return div.innerHTML;
+            }
+
+            function closeAllPanels(except) {
+                document.querySelectorAll('.topbar-dropdown-panel').forEach(function (panel) {
+                    if (panel !== except) panel.classList.remove('active');
+                });
+            }
+
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('.topbar-dropdown-wrap')) {
+                    closeAllPanels(null);
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeAllPanels(null);
+            });
+
+            // --- Search ---
+            const searchInput = document.getElementById('topbarSearchInput');
+            const searchPanel = document.getElementById('topbarSearchPanel');
+            let searchDebounce = null;
+            let searchRequestSeq = 0;
+
+            function renderSearchResults(results) {
+                if (!results.length) {
+                    searchPanel.innerHTML = '<div class="topbar-dropdown-empty">No matches found</div>';
+                    return;
+                }
+                searchPanel.innerHTML = results.map(function (item) {
+                    return '<a class="topbar-dropdown-item" href="' + item.url + '">'
+                        + '<i class="fas ' + (item.icon || 'fa-circle') + '"></i>'
+                        + '<div class="item-body">'
+                        + '<div class="item-title">' + escapeHtml(item.title || 'Untitled') + '</div>'
+                        + '<div class="item-subtitle">' + escapeHtml(item.subtitle || '') + '</div>'
+                        + '</div>'
+                        + '<span class="item-type">' + escapeHtml(item.type) + '</span>'
+                        + '</a>';
+                }).join('');
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    const q = searchInput.value.trim();
+                    clearTimeout(searchDebounce);
+
+                    if (q.length < 2) {
+                        searchPanel.classList.remove('active');
+                        return;
+                    }
+
+                    searchDebounce = setTimeout(function () {
+                        const seq = ++searchRequestSeq;
+                        searchPanel.innerHTML = '<div class="topbar-dropdown-empty">Searching…</div>';
+                        searchPanel.classList.add('active');
+                        closeAllPanels(searchPanel);
+
+                        fetch('{{ route("search") }}?q=' + encodeURIComponent(q))
+                            .then(function (response) { return response.json(); })
+                            .then(function (data) {
+                                if (seq !== searchRequestSeq) return;
+                                renderSearchResults(data.results || []);
+                            })
+                            .catch(function (error) {
+                                console.error('Error searching:', error);
+                                if (seq !== searchRequestSeq) return;
+                                searchPanel.innerHTML = '<div class="topbar-dropdown-empty">Something went wrong</div>';
+                            });
+                    }, 300);
+                });
+
+                searchInput.addEventListener('focus', function () {
+                    if (searchInput.value.trim().length >= 2) {
+                        searchPanel.classList.add('active');
+                        closeAllPanels(searchPanel);
+                    }
+                });
+            }
+
+            // --- Activity feed ---
+            const activityBtn = document.getElementById('topbarActivityBtn');
+            const activityPanel = document.getElementById('topbarActivityPanel');
+
+            function renderActivity(items) {
+                if (!items.length) {
+                    activityPanel.innerHTML = '<div class="topbar-dropdown-header">Recent activity</div><div class="topbar-dropdown-empty">No recent activity</div>';
+                    return;
+                }
+                const rows = items.map(function (item) {
+                    const link = item.url || '#';
+                    return '<a class="topbar-dropdown-item" href="' + link + '">'
+                        + '<i class="fas ' + (item.icon || 'fa-sticky-note') + '"></i>'
+                        + '<div class="item-body">'
+                        + '<div class="item-title">' + escapeHtml(item.title || '') + '</div>'
+                        + '<div class="item-subtitle">' + escapeHtml(item.actor || 'System') + ' &middot; ' + escapeHtml(item.created_at || '') + '</div>'
+                        + '</div>'
+                        + '</a>';
+                }).join('');
+                activityPanel.innerHTML = '<div class="topbar-dropdown-header">Recent activity</div>' + rows;
+            }
+
+            if (activityBtn) {
+                activityBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const willOpen = !activityPanel.classList.contains('active');
+                    closeAllPanels(activityPanel);
+
+                    if (!willOpen) {
+                        activityPanel.classList.remove('active');
+                        return;
+                    }
+
+                    activityPanel.classList.add('active');
+                    activityPanel.innerHTML = '<div class="topbar-dropdown-empty">Loading…</div>';
+
+                    fetch('{{ route("activity.index") }}')
+                        .then(function (response) { return response.json(); })
+                        .then(function (data) { renderActivity(data.items || []); })
+                        .catch(function (error) {
+                            console.error('Error loading activity:', error);
+                            activityPanel.innerHTML = '<div class="topbar-dropdown-empty">Something went wrong</div>';
+                        });
+                });
+            }
+
+            // --- Notifications bell ---
+            const bellBtn = document.getElementById('topbarBellBtn');
+            const bellPanel = document.getElementById('topbarBellPanel');
+            const bellBadge = document.getElementById('topbarBellBadge');
+
+            function renderNotifications(items) {
+                if (!items.length) {
+                    bellPanel.innerHTML = '<div class="topbar-dropdown-header">Notifications</div><div class="topbar-dropdown-empty">You\'re all caught up</div>';
+                    return;
+                }
+                const rows = items.map(function (item) {
+                    const unread = item.read === false;
+                    return '<a class="topbar-dropdown-item' + (unread ? ' is-unread' : '') + '" href="' + item.url + '"'
+                        + (item.id ? ' data-notification-id="' + escapeHtml(item.id) + '"' : '') + '>'
+                        + (unread ? '<span class="item-dot"></span>' : '<i class="fas ' + (item.icon || 'fa-bell') + '"></i>')
+                        + '<div class="item-body">'
+                        + '<div class="item-title">' + escapeHtml(item.title) + '</div>'
+                        + '<div class="item-subtitle">' + escapeHtml(item.subtitle || '') + '</div>'
+                        + '</div>'
+                        + '<span class="item-time">' + escapeHtml(item.created_at || '') + '</span>'
+                        + '</a>';
+                }).join('');
+                bellPanel.innerHTML = '<div class="topbar-dropdown-header">Notifications</div>' + rows;
+
+                // Mark read the moment it's clicked - the link still navigates
+                // as normal, this just fires alongside it.
+                bellPanel.querySelectorAll('.topbar-dropdown-item[data-notification-id]').forEach(function (row) {
+                    row.addEventListener('click', function () {
+                        if (!row.classList.contains('is-unread')) return;
+                        row.classList.remove('is-unread');
+                        const dot = row.querySelector('.item-dot');
+                        if (dot) dot.outerHTML = '<i class="fas fa-bell"></i>';
+                        updateBellBadge(Math.max(0, (parseInt(bellBadge && bellBadge.textContent, 10) || 1) - 1));
+                        fetch('{{ url("admin/notifications") }}/' + row.dataset.notificationId + '/read', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                                'Accept': 'application/json',
+                            },
+                        }).catch(function (error) { console.error('Error marking notification read:', error); });
+                    });
+                });
+            }
+
+            function updateBellBadge(count) {
+                if (!bellBadge) return;
+                if (count > 0) {
+                    bellBadge.textContent = count > 99 ? '99+' : count;
+                    bellBadge.style.display = '';
+                } else {
+                    bellBadge.style.display = 'none';
+                }
+            }
+
+            function fetchNotifications(openPanel) {
+                fetch('{{ route("notifications.index") }}')
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) {
+                        updateBellBadge(data.count || 0);
+                        if (openPanel) renderNotifications(data.items || []);
+                    })
+                    .catch(function (error) { console.error('Error loading notifications:', error); });
+            }
+
+            if (bellBtn) {
+                bellBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const willOpen = !bellPanel.classList.contains('active');
+                    closeAllPanels(bellPanel);
+
+                    if (!willOpen) {
+                        bellPanel.classList.remove('active');
+                        return;
+                    }
+
+                    bellPanel.classList.add('active');
+                    bellPanel.innerHTML = '<div class="topbar-dropdown-empty">Loading…</div>';
+                    fetchNotifications(true);
+                });
+
+                // Keep the badge fresh in the background, matching the sidebar's 30s polling.
+                setInterval(function () { fetchNotifications(false); }, 30000);
+            }
+        })();
     </script>
-    
+
     @stack('scripts')
 </body>
 </html>

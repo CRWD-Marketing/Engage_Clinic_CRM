@@ -21,6 +21,27 @@
         }
         .tp-add-btn:hover, .tp-cal-link:hover { background: #A82348; }
 
+        /* View toggle + month grid - styled to match the full Calendar page */
+        .cal-view-toggle { display: flex; gap: 6px; flex-shrink: 0; }
+        .cal-view-btn {
+            border: 1px solid #E2DACE; background: #fff; padding: 9px 16px;
+            border-radius: 9px; font: 800 12.5px 'Nunito Sans'; color: #16436E; cursor: pointer; text-decoration: none;
+        }
+        .cal-view-btn.active { background: #C8355F; border-color: #C8355F; color: #fff; }
+
+        .month-grid { flex: 1; overflow: auto; padding: 20px 24px; display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 10px; align-content: start; }
+        .month-dow { font: 800 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: .5px; padding: 0 4px 4px; }
+        .month-cell { background: #fff; border: 1px solid #EBE4DA; border-radius: 12px; padding: 8px; min-height: 100px; display: flex; flex-direction: column; gap: 3px; }
+        .month-cell.is-today { border: 2px solid #C8355F; }
+        .month-cell.is-empty { background: transparent; border-color: transparent; }
+        .month-cell.is-weekend { background: #F6F3EE; }
+        .month-cell-top { display: flex; justify-content: space-between; align-items: baseline; }
+        .month-cell-date { font: 800 12.5px 'Nunito Sans'; color: #2B3A4C; }
+        .month-cell-count { font: 800 11px 'Nunito Sans'; color: #C8355F; }
+        .month-chip { border-radius: 6px; padding: 2px 6px; font: 700 10.5px 'Nunito Sans'; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .month-chip.is-cancelled { text-decoration: line-through; }
+        .month-more { font: 700 10px 'Nunito Sans'; color: #98897A; }
+
         .tp-week-nav { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
         .tp-week-btn {
             width: 34px; height: 34px; border-radius: 9px; border: 1px solid #E2DACE; background: #FFFFFF;
@@ -67,13 +88,13 @@
             font: 800 11px 'Nunito Sans'; white-space: nowrap; flex-shrink: 0;
         }
 
-        .tp-grid { flex: 1; background: #FFFDFA; min-width: 0; overflow-y: auto; }
+        .tp-grid { flex: 1; background: #F6F3EE; min-width: 0; overflow-y: auto; }
         .tp-grid-row { overflow-x: auto; overflow-y: hidden; padding: 20px 24px; display: flex; gap: 14px; align-items: flex-start; }
         .tp-grid-row::-webkit-scrollbar { height: 7px; }
         .tp-grid-row::-webkit-scrollbar-track { background: transparent; }
         .tp-grid-row::-webkit-scrollbar-thumb { background: #D8CDBC; border-radius: 999px; }
 
-        .tp-day-col { width: 210px; min-width: 160px; flex-shrink: 0; }
+        .tp-day-col { flex: 1 1 0; min-width: 200px; }
         .tp-day-head {
             background: #F0EBE5; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px;
             display: flex; align-items: center; gap: 8px;
@@ -129,7 +150,7 @@
             .tp-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #EBE4DA; max-height: 240px; overflow-y: auto; }
             .tp-grid { flex: 0 0 auto; overflow-y: visible; }
             .tp-grid-row { padding: 12px 14px; }
-            .tp-day-col { width: 78vw; max-width: 240px; }
+            .tp-day-col { flex: 0 0 auto; width: 78vw; max-width: 240px; }
 
             #tp-panel-inner {
                 width: 100% !important;
@@ -167,23 +188,48 @@
                     @endif
                 </div>
                 <div class="tp-subtitle">
-                    Week of {{ $days->first()->format('M j') }}–{{ $days->last()->format('j, Y') }} (Mon–Fri)
+                    @if ($view === 'month')
+                        {{ $monthAnchor->format('F Y') }}
+                    @else
+                        Week of {{ $days->first()->format('M j') }}–{{ $days->last()->format('j, Y') }} (Mon–Fri)
+                    @endif
                     @if ($canViewAll)
                         · click a therapist to filter · add, modify or close sessions
                     @endif
                 </div>
             </div>
-            <form method="GET" action="{{ route('therapist.index') }}" class="tp-week-nav">
-                @if ($canViewAll && $selectedTherapistId)
-                    <input type="hidden" name="therapist_id" value="{{ $selectedTherapistId }}">
-                @endif
-                <a href="{{ route('therapist.index', array_filter(['week' => $prevWeek, 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-btn" title="Previous week" aria-label="Previous week">‹</a>
-                <input type="date" name="week" value="{{ $days->first()->toDateString() }}" onchange="this.form.submit()" class="tp-week-date" title="Jump to week containing this date" aria-label="Jump to a week">
-                @unless ($isCurrentWeek)
-                    <a href="{{ route('therapist.index', array_filter(['therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-today">Today</a>
-                @endunless
-                <a href="{{ route('therapist.index', array_filter(['week' => $nextWeek, 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-btn" title="Next week" aria-label="Next week">›</a>
-            </form>
+
+            <div class="cal-view-toggle">
+                <a href="{{ route('therapist.index', array_filter(['therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="cal-view-btn {{ $view === 'week' ? 'active' : '' }}">Week</a>
+                <a href="{{ route('therapist.index', array_filter(['view' => 'month', 'month' => $monthAnchor->format('Y-m'), 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="cal-view-btn {{ $view === 'month' ? 'active' : '' }}">Month</a>
+            </div>
+
+            @if ($view === 'month')
+                <form method="GET" action="{{ route('therapist.index') }}" class="tp-week-nav">
+                    <input type="hidden" name="view" value="month">
+                    @if ($canViewAll && $selectedTherapistId)
+                        <input type="hidden" name="therapist_id" value="{{ $selectedTherapistId }}">
+                    @endif
+                    <a href="{{ route('therapist.index', array_filter(['view' => 'month', 'month' => $prevMonth, 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-btn" title="Previous month" aria-label="Previous month">‹</a>
+                    <input type="month" name="month" value="{{ $monthAnchor->format('Y-m') }}" onchange="this.form.submit()" class="tp-week-date" title="Jump to a month" aria-label="Jump to a month">
+                    @unless ($isCurrentMonth)
+                        <a href="{{ route('therapist.index', array_filter(['view' => 'month', 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-today">This month</a>
+                    @endunless
+                    <a href="{{ route('therapist.index', array_filter(['view' => 'month', 'month' => $nextMonth, 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-btn" title="Next month" aria-label="Next month">›</a>
+                </form>
+            @else
+                <form method="GET" action="{{ route('therapist.index') }}" class="tp-week-nav">
+                    @if ($canViewAll && $selectedTherapistId)
+                        <input type="hidden" name="therapist_id" value="{{ $selectedTherapistId }}">
+                    @endif
+                    <a href="{{ route('therapist.index', array_filter(['week' => $prevWeek, 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-btn" title="Previous week" aria-label="Previous week">‹</a>
+                    <input type="date" name="week" value="{{ $days->first()->toDateString() }}" onchange="this.form.submit()" class="tp-week-date" title="Jump to week containing this date" aria-label="Jump to a week">
+                    @unless ($isCurrentWeek)
+                        <a href="{{ route('therapist.index', array_filter(['therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-today">Today</a>
+                    @endunless
+                    <a href="{{ route('therapist.index', array_filter(['week' => $nextWeek, 'therapist_id' => $canViewAll ? $selectedTherapistId : null])) }}" class="tp-week-btn" title="Next week" aria-label="Next week">›</a>
+                </form>
+            @endif
             @if ($canViewAll)
                 <button type="button" id="tp-add-btn" class="tp-add-btn">+ Add session</button>
             @else
@@ -223,8 +269,41 @@
                 </div>
             @endif
 
-            <!-- Right Side - Weekly Schedule -->
+            <!-- Right Side - Weekly / Monthly Schedule -->
             <div class="tp-grid">
+              @if ($view === 'month')
+                <div class="month-grid">
+                    @foreach (['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $dow)
+                        <div class="month-dow">{{ $dow }}</div>
+                    @endforeach
+                    @foreach ($monthDays as $day)
+                        @php
+                            $inMonth = $day->isSameMonth($monthAnchor);
+                            $daySessions = $monthSessions->filter(fn ($session) => $session->session_date->toDateString() === $day->toDateString());
+                            $preview = $daySessions->take(3);
+                        @endphp
+                        <div class="month-cell {{ !$inMonth ? 'is-empty' : '' }} {{ $day->isToday() ? 'is-today' : '' }} {{ $day->isWeekend() ? 'is-weekend' : '' }}">
+                            @if ($inMonth)
+                                <div class="month-cell-top">
+                                    <span class="month-cell-date">{{ $day->format('j') }}</span>
+                                    @if ($daySessions->count())
+                                        <span class="month-cell-count">{{ $daySessions->count() }}</span>
+                                    @endif
+                                </div>
+                                @foreach ($preview as $session)
+                                    @php $colors = $activityColors[$session->activity_type] ?? $defaultActivityColor; @endphp
+                                    <div class="month-chip {{ $session->status === 'cancelled' ? 'is-cancelled' : '' }}" style="background: {{ $colors['bg'] }}; color: {{ $colors['fg'] }};">
+                                        {{ substr($session->start_time, 0, 5) }} {{ $session->child->child_name ?? 'Unassigned' }}
+                                    </div>
+                                @endforeach
+                                @if ($daySessions->count() > 3)
+                                    <div class="month-more">+{{ $daySessions->count() - 3 }} more</div>
+                                @endif
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+              @else
               <div class="tp-grid-row">
                 @foreach ($days as $day)
                     @php $daySessions = $sessions->filter(fn ($session) => $session->session_date->toDateString() === $day->toDateString()); @endphp
@@ -237,7 +316,7 @@
                             @forelse ($daySessions as $session)
                                 @php
                                     $colors = $activityColors[$session->activity_type] ?? $defaultActivityColor;
-                                    $isClosed = $session->status === 'cancelled';
+                                    $isClosed = $session->status === 'closed';
                                     $sessionJson = [
                                         'id' => $session->id,
                                         'therapist_id' => $session->therapist_id,
@@ -283,6 +362,7 @@
                     </div>
                 @endforeach
               </div>
+              @endif
             </div>
 
             @if ($canViewAll)
@@ -451,7 +531,9 @@
                 btn.addEventListener('click', async () => {
                     const card = btn.closest('.tp-session-card');
                     const session = JSON.parse(card.dataset.session);
-                    const nextStatus = session.status === 'cancelled' ? 'scheduled' : 'cancelled';
+                    // Close = discontinue the slot (it disappears from the Calendar and
+                    // frees the time/hours); Reopen puts it back as scheduled.
+                    const nextStatus = session.status === 'closed' ? 'scheduled' : 'closed';
                     const originalLabel = btn.textContent;
                     btn.disabled = true;
                     btn.textContent = '…';

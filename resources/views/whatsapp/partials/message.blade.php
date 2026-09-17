@@ -45,12 +45,6 @@
             @endif
             <span style="font: 600 10px 'Nunito Sans'; color: #9AA79B; margin-left: 8px; white-space: nowrap;">{{ $message->sent_at->format('H:i') }}</span>
         </div>
-        @if (! $activeContact->lead_id && $message->body)
-            <form action="{{ route('whatsapp.message.convertToLead', $message->id) }}" method="POST" class="wa-msg-convert-form">
-                @csrf
-                <button type="submit" class="wa-msg-convert-btn">Convert to Lead</button>
-            </form>
-        @endif
     </div>
 @else
     <div style="display: flex; justify-content: flex-end;">

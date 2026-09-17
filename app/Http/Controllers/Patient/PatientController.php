@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Patient;
 
 use App\Http\Controllers\Controller;
 use App\Models\CalendarSession;
+use App\Models\Insurance;
 use App\Models\Lead;
 use App\Models\Patient;
 use App\Models\PatientAuthorization;
@@ -44,7 +45,9 @@ class PatientController extends Controller
 
         $patients = $query->get()->sortBy(fn ($p) => $p->lead->child_name ?? '')->values();
 
-        return view('patient.index', compact('patients'));
+        $insurances = Insurance::where('is_active', true)->orderBy('name')->get();
+
+        return view('patient.index', compact('patients', 'insurances'));
     }
 
     /**
@@ -58,7 +61,7 @@ class PatientController extends Controller
 
         $patient->load(['lead', 'goals', 'notes.user', 'authorizations', 'documents.uploader', 'invoices.lineItems']);
 
-        $sessions = $patient->calendarSessions()->with('therapist', 'goals')->orderByDesc('session_date')->orderByDesc('start_time')->get();
+        $sessions = $patient->calendarSessions()->notClosed()->with('therapist', 'goals')->orderByDesc('session_date')->orderByDesc('start_time')->get();
         $upcomingSessions = $sessions->filter(fn ($s) => $s->session_date->isToday() || $s->session_date->isFuture())
             ->sortBy(fn ($s) => $s->session_date->toDateString().' '.$s->start_time)
             ->take(5);
@@ -84,6 +87,8 @@ class PatientController extends Controller
 
         $therapists = User::where('role', 'THERAPIST')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
 
+        $insurances = Insurance::where('is_active', true)->orderBy('name')->get();
+
         return view('patient.show', compact(
             'patient',
             'sessions',
@@ -94,7 +99,8 @@ class PatientController extends Controller
             'billedTotal',
             'collectedTotal',
             'outstandingTotal',
-            'therapists'
+            'therapists',
+            'insurances'
         ));
     }
 
@@ -153,7 +159,7 @@ class PatientController extends Controller
         if (!empty($data['payer_name'])) {
             $patient->authorizations()->create([
                 'payer_name' => $data['payer_name'],
-                'coverage_percent' => $data['payer_name'] === 'Self-pay' ? 0 : 80,
+                'coverage_percent' => Insurance::where('name', $data['payer_name'])->value('default_coverage_percent') ?? 0,
                 'covers_services' => ['ABA'],
                 'authorized_hours_total' => $data['authorized_hours_total'] ?? null,
                 'renews_at' => $data['authorization_renews_at'] ?? null,
@@ -176,8 +182,10 @@ class PatientController extends Controller
 
     /**
      * Update a patient's clinical/admin details (diagnosis, programme, enrollment).
-     * Insurance authorizations are managed separately (see storeAuthorization()
-     * etc.) since a patient can have more than one concurrent payer.
+     * Also accepts a simplified insurance/authorized-hours/renewal set, which
+     * upserts the patient's *primary* (first) PatientAuthorization row - for
+     * more than one concurrent payer or a full coverage breakdown, use
+     * storeAuthorization()/updateAuthorization() directly instead.
      */
     public function update(Request $request, Patient $patient)
     {
@@ -192,6 +200,9 @@ class PatientController extends Controller
             'parent_guardian_name' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'clinical_note' => 'nullable|string|max:2000',
+            'insurance' => 'nullable|string|max:100',
+            'authorized_hours_total' => 'nullable|integer|min:0',
+            'renews_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -218,6 +229,50 @@ class PatientController extends Controller
 
         if ($leadFields && $patient->lead) {
             $patient->lead->update($leadFields);
+        }
+
+        // Insurance/auth hrs/renewal update the primary authorization (the
+        // first by sort_order) in place, or create one if this patient has
+        // none yet - only touched when at least one of the three was sent,
+        // so an unrelated save (e.g. just a clinical note) can't blank it out.
+        // payer_name is required on the row, so with nothing to create one
+        // from (no existing authorization and no "insurance" typed in) this
+        // is silently skipped rather than saving a half-filled record.
+        if ($request->filled('insurance') || $request->filled('authorized_hours_total') || $request->filled('renews_at')) {
+            $primaryAuth = $patient->authorizations()->orderBy('sort_order')->first();
+            $payerName = $request->filled('insurance') ? $request->input('insurance') : optional($primaryAuth)->payer_name;
+
+            if ($payerName) {
+                // hoursUsed() matches calendar sessions against covers_services -
+                // leaving it empty on a newly-created authorization would leave
+                // "hours used" stuck at 0 forever, even once real sessions
+                // happen. This form doesn't collect a coverage breakdown, so
+                // infer it from the programme text the same way the original
+                // patient_authorizations backfill migration did.
+                $coversServices = $primaryAuth->covers_services ?? array_values(array_filter([
+                    str_contains((string) $patient->programme, 'ABA') ? 'ABA' : null,
+                    str_contains((string) $patient->programme, 'Speech') ? 'Speech' : null,
+                    str_contains((string) $patient->programme, 'OT') ? 'OT' : null,
+                ])) ?: ['ABA'];
+
+                $patient->authorizations()->updateOrCreate(
+                    ['id' => $primaryAuth->id ?? 0],
+                    [
+                        'payer_name' => $payerName,
+                        'coverage_percent' => $primaryAuth->coverage_percent
+                            ?? Insurance::where('name', $payerName)->value('default_coverage_percent')
+                            ?? 0,
+                        'covers_services' => $coversServices,
+                        'authorized_hours_total' => $request->filled('authorized_hours_total')
+                            ? $request->input('authorized_hours_total')
+                            : optional($primaryAuth)->authorized_hours_total,
+                        'renews_at' => $request->filled('renews_at')
+                            ? $request->input('renews_at')
+                            : optional($primaryAuth)->renews_at,
+                        'sort_order' => $primaryAuth->sort_order ?? 0,
+                    ]
+                );
+            }
         }
 
         if (!$isCoordinator && $request->filled('clinical_note')) {

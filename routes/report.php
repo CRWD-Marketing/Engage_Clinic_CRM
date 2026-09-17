@@ -8,4 +8,7 @@ Route::middleware(['auth', 'feature:reports'])->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])
         ->name('reports.index');
 
+    Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf'])
+        ->name('reports.export-pdf');
+
 });

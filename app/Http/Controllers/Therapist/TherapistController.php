@@ -12,19 +12,22 @@ use Illuminate\Http\Request;
 class TherapistController extends Controller
 {
     /**
-     * Roles allowed to browse every therapist's schedule and switch between
-     * them. Everyone else (currently just THERAPIST) is scoped to their own
-     * sessions only — see role_permissions.php's note on the THERAPIST role.
-     */
-    protected const FULL_VISIBILITY_ROLES = ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'];
-
-    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
         $user = auth()->user();
-        $canViewAll = in_array($user->role, self::FULL_VISIBILITY_ROLES);
+        // An actual THERAPIST is always scoped to their own sessions,
+        // regardless of any level grant - never someone else's caseload.
+        // Everyone else who reaches this page (already gated by the
+        // 'therapists' feature/module) sees the full roster by default, but
+        // an admin can explicitly set their "Therapists" access level to
+        // "Own records only" in Roles & access to scope them down too. Used
+        // to be an allow-list of admin-tier role names, which meant a role
+        // granted this module via a per-user override (e.g. HR_STAFF) still
+        // got scoped to an empty "my schedule" for not being FULL_ADMIN/
+        // CLINICAL_SUPERVISOR.
+        $canViewAll = $user->role !== 'THERAPIST' && $user->levelFor('therapists') !== 'own';
 
         $therapists = User::where('role', 'THERAPIST')->orderBy('first_name')->get();
 
@@ -70,7 +73,7 @@ class TherapistController extends Controller
         // Real weekly workload per therapist, derived from actual booked
         // sessions (excluding cancelled ones) rather than a fixed field.
         $weeklyMinutes = $allWeekSessions
-            ->where('status', '!=', 'cancelled')
+            ->whereNotIn('status', CalendarSession::INACTIVE_STATUSES)
             ->groupBy('therapist_id')
             ->map(fn ($group) => $group->sum('duration_minutes'));
 
@@ -89,10 +92,51 @@ class TherapistController extends Controller
             ])->values();
         }
 
+        // Week is still the default landing view - Month is opt-in via ?view=month,
+        // matching the toggle on the full Calendar page.
+        $view = $request->input('view') === 'month' ? 'month' : 'week';
+
+        $monthAnchor = $this->monthAnchorFor($request->input('month'));
+        $monthGridStart = $monthAnchor->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+        $monthGridEnd = $monthAnchor->copy()->endOfMonth()->endOfWeek(Carbon::MONDAY);
+        $monthDays = collect();
+        for ($cursor = $monthGridStart->copy(); $cursor->lte($monthGridEnd); $cursor->addDay()) {
+            $monthDays->push($cursor->copy());
+        }
+        $isCurrentMonth = $monthAnchor->isSameMonth(Carbon::today());
+        $prevMonth = $monthAnchor->copy()->subMonth()->format('Y-m');
+        $nextMonth = $monthAnchor->copy()->addMonth()->format('Y-m');
+
+        $monthSessionsQuery = CalendarSession::with(['therapist', 'child'])
+            ->whereBetween('session_date', [$monthGridStart->toDateString(), $monthGridEnd->toDateString()]);
+
+        if (!$canViewAll) {
+            $monthSessionsQuery->where('therapist_id', $user->id);
+        }
+
+        $allMonthSessions = $monthSessionsQuery->get();
+        $monthSessions = ($selectedTherapistId
+            ? $allMonthSessions->where('therapist_id', $selectedTherapistId)
+            : $allMonthSessions)->sortBy('start_time');
+
         return view('therapist.index', compact(
             'therapists', 'sessions', 'allWeekSessions', 'days', 'canViewAll', 'selectedTherapistId',
-            'weeklyMinutes', 'therapistsForJs', 'leadsForJs', 'isCurrentWeek', 'prevWeek', 'nextWeek'
+            'weeklyMinutes', 'therapistsForJs', 'leadsForJs', 'isCurrentWeek', 'prevWeek', 'nextWeek',
+            'view', 'monthAnchor', 'monthDays', 'monthSessions', 'isCurrentMonth', 'prevMonth', 'nextMonth'
         ));
+    }
+
+    /**
+     * The 1st of the requested (or current) month - never lets a bad/missing
+     * ?month= value break the page.
+     */
+    protected function monthAnchorFor(?string $month): Carbon
+    {
+        try {
+            return $month ? Carbon::createFromFormat('Y-m', $month)->startOfMonth() : Carbon::today()->startOfMonth();
+        } catch (\Exception $e) {
+            return Carbon::today()->startOfMonth();
+        }
     }
 
     /**

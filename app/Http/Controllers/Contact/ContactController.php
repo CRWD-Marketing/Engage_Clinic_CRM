@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Lead;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class ContactController extends Controller
@@ -22,9 +24,12 @@ class ContactController extends Controller
             ? $allContacts->where('status', $status)->values()
             : $allContacts;
 
+        // The details form should open only after the user chooses a row.
+        // Defaulting to the first submission made the edit dialog appear as
+        // soon as the Contacts page loaded.
         $activeContact = $request->filled('contact')
             ? $allContacts->firstWhere('id', (int) $request->query('contact'))
-            : $contacts->first();
+            : null;
 
         $statuses = Contact::getStatuses();
         $newCount = $allContacts->where('status', Contact::STATUS_NEW)->count();
@@ -80,21 +85,92 @@ class ContactController extends Controller
 
     /**
      * Update a contact's status. Converting is handled separately by
-     * convertToLead() - this only covers the manual new/contacted/closed states.
+     * convertToLead() - this only covers the manually selectable states
+     * (new/approved/rejected/contacted/closed).
      */
     public function updateStatus(Request $request, Contact $contact)
     {
         $validator = Validator::make($request->all(), [
-            'status' => 'required|string|in:new,contacted,closed',
+            'status' => 'required|string|in:'.implode(',', array_keys(Contact::getSelectableStatuses())),
         ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator);
         }
 
-        $contact->update(['status' => $request->status]);
+        $updates = ['status' => $request->status];
+
+        // Record the approve/reject outcome separately from `status` so it
+        // survives once status later moves on to `contacted` (the email step).
+        if (in_array($request->status, [Contact::STATUS_APPROVED, Contact::STATUS_REJECTED], true)) {
+            $updates['booking_decision'] = $request->status;
+        }
+
+        $contact->update($updates);
 
         return redirect()->route('contacts.index', ['contact' => $contact->id]);
+    }
+
+    /**
+     * Email the family the approve/reject decision on their consultation
+     * booking - mirrors InvoiceController::send(), minus the CC field, since
+     * this is a single decision notice rather than a billing document with
+     * an optional accounting recipient. Sending is what moves status on to
+     * "contacted" - the decision itself only records intent, not outreach.
+     */
+    public function sendStatusEmail(Request $request, Contact $contact)
+    {
+        if (! $contact->canSendStatusEmail()) {
+            return response()->json([
+                'message' => 'Approve or reject this booking before emailing the family.',
+            ], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'to' => ['required', 'email'],
+            'subject' => ['required', 'string', 'max:200'],
+            'message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
+        }
+
+        // Same double-send guard as invoice emails - a repeat click must
+        // never result in two emails to the family.
+        $lock = Cache::lock("contact-status-email-{$contact->id}", 30);
+        if (! $lock->get()) {
+            return response()->json([
+                'message' => 'This email is already being sent.',
+                'contact' => $contact->fresh('lead'),
+            ]);
+        }
+
+        try {
+            $body = nl2br(e($request->message));
+
+            try {
+                Mail::html('<div style="font: 14px/1.5 Arial, sans-serif; color: #2B3A4C;">'.$body.'</div>', function ($m) use ($request) {
+                    $m->to($request->to)->subject($request->subject);
+                });
+            } catch (\Throwable $e) {
+                report($e);
+
+                return response()->json(['message' => 'The email could not be sent: '.$e->getMessage()], 500);
+            }
+
+            $contact->update([
+                'status' => Contact::STATUS_CONTACTED,
+                'status_email_sent_at' => now(),
+            ]);
+
+            return response()->json([
+                'message' => "Decision emailed to {$request->to}.",
+                'contact' => $contact->fresh('lead'),
+            ]);
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
@@ -114,9 +190,10 @@ class ContactController extends Controller
             'child_age' => $contact->child_age,
             'parent_guardian_name' => $contact->name,
             'phone' => $contact->phone,
+            'email' => $contact->email,
             'source' => 'Contact Us',
             'interested_in' => $contact->interested_in,
-            'notes' => ($contact->email ? "Email: {$contact->email}\n" : '').($contact->message ?: ''),
+            'notes' => $contact->message ?: '',
         ]);
 
         $contact->update([
@@ -140,6 +217,8 @@ class ContactController extends Controller
             'phone' => 'required|string|max:20',
             'interested_in' => 'nullable|string|max:100',
             'message' => 'nullable|string',
+            'booking_date' => 'nullable|date',
+            'booking_time' => 'nullable|string|max:20',
         ]);
 
         if ($validator->fails()) {

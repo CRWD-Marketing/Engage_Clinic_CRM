@@ -28,7 +28,7 @@
         text-align: left; font: 800 11px 'Nunito Sans'; text-transform: uppercase; letter-spacing: 0.06em;
         color: #98897A; padding: 13px 20px; border-bottom: 1px solid #EBE4DA; background: #FFFDFA; white-space: nowrap;
     }
-    .pt-table td { padding: 15px 20px; border-bottom: 1px solid #F3EDE3; font-size: 0.875rem; vertical-align: middle; }
+    .pt-table td { padding: 15px 20px; border-bottom: 1px solid #F3EDE3; font: 600 13px 'Nunito Sans'; color: #2B3A4C; vertical-align: middle; }
     .pt-table tr:last-child td { border-bottom: none; }
     .pt-table-row { cursor: pointer; text-decoration: none; color: inherit; display: table-row; }
     .pt-table-row:hover td { background: #FFFDFA; }
@@ -137,7 +137,7 @@
                         @php
                             $lead = $patient->lead;
                             $primaryAuth = $patient->primaryAuthorization();
-                            $attendanceRate = $patient->attendanceRate30d();
+                            $attendanceRate = $patient->attendanceRate();
                             $nameParts = preg_split('/\s+/', trim($lead->child_name ?? ''));
                             $initials = strtoupper(($nameParts[0][0] ?? '?').($nameParts[1][0] ?? ''));
                         @endphp
@@ -225,7 +225,13 @@
                 </div>
                 <div>
                     <div class="pt-field-label">Insurance payer</div>
-                    <input id="ptNewInsurance" name="payer_name" type="text" placeholder="e.g. Daman Enhanced (optional)" class="pt-field-input">
+                    <select id="ptNewInsurance" name="payer_name" class="pt-field-input">
+                        <option value="">No insurance (optional)</option>
+                        @foreach ($insurances as $insurance)
+                            <option value="{{ $insurance->name }}">{{ $insurance->name }}</option>
+                        @endforeach
+                        <option value="Self-pay">Self-pay</option>
+                    </select>
                 </div>
                 <div>
                     <div class="pt-field-label">Auth. hrs</div>

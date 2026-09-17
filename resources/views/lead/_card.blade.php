@@ -38,9 +38,6 @@
     <div class="lead-card-bottom">
         <div class="lead-card-value js-value">AED {{ number_format($lead->estimated_value_numeric ?? 0, 0) }}/mo</div>
         <div class="lead-card-time js-time">{{ $lead->created_at->diffForHumans() }}</div>
-        <div class="lead-card-actions">
-            <button class="btn-view" onclick="event.stopPropagation(); viewLead({{ $lead->id }})" title="View details">👁</button>
-        </div>
     </div>
     <div class="lead-card-owner js-owner {{ $ownerName ? '' : 'is-unassigned' }}">
         {{ $ownerName ? 'Assigned to '.$ownerName : 'Unassigned — open to assign' }}
