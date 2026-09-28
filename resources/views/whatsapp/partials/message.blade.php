@@ -1,6 +1,16 @@
 @if ($message->direction === 'inbound')
-    <div class="wa-msg-row" style="display: flex; flex-direction: column; align-items: flex-start; gap: 3px;">
-        <div style="max-width: 62%; background: #FFFFFF; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
+    <div id="wa-msg-{{ $message->id }}" class="wa-msg-row" style="display: flex; align-items: flex-end; gap: 7px;">
+        {{-- The sender's face next to their bubble, like Messenger. Only drawn in
+             the phone layout - on a wide screen the thread header already names
+             who you are talking to a few pixels away. --}}
+        <span class="wa-msg-avatar" style="display: none; flex-shrink: 0;">
+            @if ($activeContact?->avatar_url)
+                <img src="{{ $activeContact->avatar_url }}" alt="" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover; display: block;">
+            @else
+                <span style="display: flex; width: 26px; height: 26px; border-radius: 50%; background: {{ \App\Models\WhatsappContact::avatarColor($activeContact->wa_id ?? '') }}; color: white; align-items: center; justify-content: center; font: 600 10px 'Baloo 2';">{{ strtoupper(substr($activeContact->name ?? $activeContact->wa_id ?? '?', 0, 2)) }}</span>
+            @endif
+        </span>
+        <div class="wa-bubble" style="max-width: 62%; background: #FFFFFF; border-radius: 14px 14px 14px 4px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
             @if ($message->type === 'story_reply' && $message->media_url)
                 <a href="{{ $message->media_url }}" target="_blank" rel="noopener" style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 5px 8px; background: #F6F3EE; border-radius: 8px; text-decoration: none;">
                     {{-- Instagram's story CDN links expire after a while, so a thumbnail that 404s
@@ -47,16 +57,23 @@
         </div>
     </div>
 @else
-    <div style="display: flex; justify-content: flex-end;">
-        <div style="max-width: 62%; background: #DDF3E0; border-radius: 14px 14px 4px 14px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
+    <div id="wa-msg-{{ $message->id }}" style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px;">
+        <div class="wa-bubble" style="max-width: 62%; background: #DDF3E0; border-radius: 14px 14px 4px 14px; padding: 10px 14px; font: 600 13.5px/1.5 'Nunito Sans'; color: #2B3A4C; box-shadow: 0 1px 2px rgba(43,58,76,0.07);">
             @if ($message->is_ai_generated)
                 <span style="display: inline-block; margin-bottom: 4px; font: 800 9.5px 'Nunito Sans'; color: #16436E; background: #E9EEF3; border-radius: 5px; padding: 1px 6px;">🤖 AI</span><br>
+            @elseif ($message->sentBy)
+                <span style="display: inline-block; margin-bottom: 4px; font: 800 9.5px 'Nunito Sans'; color: #5A6B7E; background: #EEF0F2; border-radius: 5px; padding: 1px 6px;">{{ trim($message->sentBy->first_name.' '.$message->sentBy->last_name) }}</span><br>
             @endif
             {!! \App\Models\WhatsappMessage::linkify($message->body) !!}
             <span style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; white-space: nowrap; vertical-align: middle;">
                 <span style="font: 600 10px 'Nunito Sans'; color: #9AA79B;">{{ $message->sent_at->format('H:i') }}</span>
-                {!! \App\Models\WhatsappMessage::tickIcon($message->status) !!}
+                <span data-msg-tick="{{ $message->id }}">{!! \App\Models\WhatsappMessage::tickIcon($message->status) !!}</span>
             </span>
         </div>
+        {{-- Sending → Sent, the way a messaging app reads. Updated in place by
+             the inbox poll once the send behind it comes back. --}}
+        <div class="wa-msg-status {{ $message->status === 'failed' ? 'is-failed' : '' }}"
+             data-msg-status="{{ $message->id }}"
+             @if ($message->send_error) title="{{ $message->send_error }}" @endif>{{ \App\Models\WhatsappMessage::statusLabel($message->status) }}</div>
     </div>
 @endif

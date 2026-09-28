@@ -221,6 +221,85 @@
     @media (max-width: 900px) {
         .pt-grid, .pt-stat-cards { grid-template-columns: 1fr; }
     }
+
+    @media (max-width: 860px) {
+        .main-content-inner.pt-tight-padding { padding-left: 12px; padding-right: 12px; }
+
+        .pt-header { gap: 12px; margin-top: 10px; }
+        .pt-header-avatar { width: 44px; height: 44px; font-size: 16px; }
+        .pt-header-name { font-size: 19px; }
+        .pt-header-sub { font-size: 12px; }
+        /* The parent's details drop under the child's name as a caption, and
+           Edit rides the end of that same line instead of taking a full-width
+           row of its own between the name and the chips. */
+        .pt-header-contact { flex: 1 1 auto; min-width: 0; }
+        .pt-header-parent, .pt-header-parent-phone { text-align: left; }
+        .pt-edit-btn { flex: 0 0 auto; margin-left: auto; padding: 9px 16px; }
+
+        .pt-card { padding: 14px; gap: 10px; margin-bottom: 12px; }
+        .pt-card-title { font-size: 15px; }
+
+        /* One strip that scrolls sideways, instead of five buttons wrapping
+           onto three rows before the content starts. */
+        .pt-tabs {
+            flex-wrap: nowrap; overflow-x: auto; gap: 6px;
+            margin-top: 14px; margin-bottom: 14px;
+            scrollbar-width: none; -ms-overflow-style: none;
+        }
+        .pt-tabs::-webkit-scrollbar { display: none; }
+        .pt-tab-btn { flex-shrink: 0; white-space: nowrap; padding: 8px 14px; font-size: 12px; }
+
+        /* Three tall boxes stacked is most of a screen given over to three
+           numbers, so they become one strip split by hairlines - the whole
+           payment position readable above the history. */
+        .pt-stat-cards {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0; margin-bottom: 12px;
+            background: #fff; border: 1px solid #EBE4DA; border-radius: 14px; overflow: hidden;
+        }
+        .pt-stat-card { border: none; border-radius: 0; padding: 11px 8px; text-align: center; }
+        .pt-stat-card + .pt-stat-card { border-left: 1px solid #F0E9DE; }
+        .pt-stat-label { font-size: 9.5px; letter-spacing: 0.03em; }
+        .pt-stat-value { font-size: 15px; margin-top: 4px; white-space: nowrap; }
+
+        /* Seven columns cannot be read sideways on a phone, so each row becomes
+           its own card: the first column - the date, the invoice number, the
+           service - is what identifies the row, so it is lifted out as the
+           card's heading, and the rest read as a label-on-the-left,
+           value-on-the-right list underneath it. */
+        .pt-data-table, .pt-data-table tbody, .pt-data-table tr { display: block; width: 100%; }
+        .pt-data-table thead { display: none; }
+        .pt-data-table tr {
+            background: #fff; border: 1px solid #EBE4DA; border-radius: 12px;
+            overflow: hidden; margin-bottom: 10px;
+        }
+        .pt-data-table tr td:first-child {
+            display: block; padding: 10px 14px; text-align: left;
+            background: #FBF8F3; border-bottom: 1px solid #EFE8DD;
+            font: 800 13.5px 'Nunito Sans'; color: #16436E;
+        }
+        /* The heading names itself - "DATE 21 Sep 2026" reads as filler. */
+        .pt-data-table tr td:first-child::before { content: none; }
+        .pt-data-table td {
+            display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+            padding: 7px 14px; border-bottom: 1px solid #F6F1E9;
+            font: 700 12.5px 'Nunito Sans'; color: #2B3A4C; text-align: right;
+        }
+        .pt-data-table tr td:last-child { border-bottom: none; }
+        .pt-data-table td::before {
+            content: attr(data-label);
+            flex: 0 0 auto; text-align: left;
+            font: 800 10px 'Nunito Sans'; text-transform: uppercase;
+            letter-spacing: 0.05em; color: #A79C8E;
+        }
+
+        .pt-profile-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+        .pt-upcoming-day { width: 72px; }
+        .pt-doc-row { flex-wrap: wrap; }
+        .pt-grid-2col { grid-template-columns: 1fr; }
+        .pt-modal-box { padding: 20px 16px; border-radius: 14px; }
+        .pt-modal-actions { flex-wrap: wrap; }
+    }
 </style>
 
 @php
@@ -285,7 +364,7 @@
                 · enrolled {{ $patient->enrolled_at->format('M Y') }}
             </div>
         </div>
-        <div>
+        <div class="pt-header-contact">
             <div class="pt-header-parent">{{ $lead->parent_guardian_name ?? '—' }}</div>
             <div class="pt-header-parent-phone">{{ $lead->phone ?? 'No phone on file' }}</div>
         </div>
@@ -470,9 +549,9 @@
         <div class="pt-card">
             <div class="pt-card-title">
                 Session history
-                <span style="font: 600 12px 'Nunito Sans'; color: #98897A;">{{ $sessions->where('status', 'completed')->count() }} of {{ $sessions->count() }} attended</span>
+                <span style="font: 600 12px 'Nunito Sans'; color: #98897A;">{{ $pastSessions->where('status', 'completed')->count() }} of {{ $pastSessions->count() }} attended</span>
             </div>
-            @if ($sessions->isEmpty())
+            @if ($pastSessions->isEmpty())
                 <div class="pt-card-empty">No sessions on record yet.</div>
             @else
                 <div style="overflow-x: auto;">
@@ -481,15 +560,15 @@
                             <tr><th>Date</th><th>Time</th><th>Type</th><th>Length</th><th>Therapist</th><th>Status</th><th>Note</th></tr>
                         </thead>
                         <tbody>
-                            @foreach ($sessions as $session)
+                            @foreach ($pastSessions as $session)
                                 <tr>
-                                    <td>{{ $session->session_date->format('d M Y') }}</td>
-                                    <td>{{ substr($session->start_time, 0, 5) }}</td>
-                                    <td>{{ $session->activity_type }}</td>
-                                    <td>{{ $session->duration_minutes }} min</td>
-                                    <td>{{ $session->therapist ? trim($session->therapist->first_name.' '.$session->therapist->last_name) : '—' }}</td>
-                                    <td>{{ $session->statusLabel() }}</td>
-                                    <td>{{ $session->notes ?: '—' }}</td>
+                                    <td data-label="Date">{{ $session->session_date->format('d M Y') }}</td>
+                                    <td data-label="Time">{{ substr($session->start_time, 0, 5) }}</td>
+                                    <td data-label="Type">{{ $session->activity_type }}</td>
+                                    <td data-label="Length">{{ $session->duration_minutes }} min</td>
+                                    <td data-label="Therapist">{{ $session->therapist ? trim($session->therapist->first_name.' '.$session->therapist->last_name) : '—' }}</td>
+                                    <td data-label="Status">{{ $session->statusLabel() }}</td>
+                                    <td data-label="Note">{{ $session->notes ?: '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -528,13 +607,13 @@
                         <tbody>
                             @foreach ($patient->invoices as $invoice)
                                 <tr>
-                                    <td>{{ $invoice->invoice_number }}</td>
-                                    <td>{{ $invoice->issue_date->format('d M Y') }}</td>
-                                    <td>{{ $invoice->period->format('M Y') }}</td>
-                                    <td>AED {{ number_format($invoice->subtotal, 0) }}</td>
-                                    <td>AED {{ number_format($invoice->amount_paid, 0) }}</td>
-                                    <td>{{ $invoice->payment_method ?: '—' }}</td>
-                                    <td>{{ $invoice->paymentStatusLabel() }}</td>
+                                    <td data-label="Invoice">{{ $invoice->invoice_number }}</td>
+                                    <td data-label="Issued">{{ $invoice->issue_date->format('d M Y') }}</td>
+                                    <td data-label="Period">{{ $invoice->period->format('M Y') }}</td>
+                                    <td data-label="Amount">AED {{ number_format($invoice->subtotal, 0) }}</td>
+                                    <td data-label="Paid">AED {{ number_format($invoice->amount_paid, 0) }}</td>
+                                    <td data-label="Method">{{ $invoice->payment_method ?: '—' }}</td>
+                                    <td data-label="Status">{{ $invoice->paymentStatusLabel() }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -610,11 +689,11 @@
                         <tbody>
                             @foreach ($fundingServiceRows as $row)
                                 <tr>
-                                    <td>{{ $row['service'] ?? '—' }}</td>
-                                    <td>{{ isset($row['hours_per_week']) ? $row['hours_per_week'].' h / week' : '—' }}</td>
-                                    <td>{{ $row['payer'] ?? '—' }}</td>
-                                    <td>{{ $row['cover'] ?? '—' }}</td>
-                                    <td>{{ $row['approval_ref'] ?? '—' }}</td>
+                                    <td data-label="Service">{{ $row['service'] ?? '—' }}</td>
+                                    <td data-label="Hours">{{ isset($row['hours_per_week']) ? $row['hours_per_week'].' h / week' : '—' }}</td>
+                                    <td data-label="Paid by">{{ $row['payer'] ?? '—' }}</td>
+                                    <td data-label="Cover">{{ $row['cover'] ?? '—' }}</td>
+                                    <td data-label="Approval ref">{{ $row['approval_ref'] ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -784,7 +863,15 @@
                 </div>
                 <div>
                     <div class="pt-field-label">Programme *</div>
-                    <input id="ptProgramme" name="programme" type="text" class="pt-field-input" value="{{ $patient->programme }}">
+                    <select id="ptProgramme" name="programme" class="pt-field-input">
+                        <option value="">Select a package…</option>
+                        @if ($patient->programme && ! $packages->contains('name', $patient->programme))
+                            <option value="{{ $patient->programme }}" selected>{{ $patient->programme }} (inactive)</option>
+                        @endif
+                        @foreach ($packages as $package)
+                            <option value="{{ $package->name }}" @selected($patient->programme === $package->name)>{{ $package->name }} — {{ rtrim(rtrim(number_format($package->hours_per_week, 1), '0'), '.') }}h/wk @ AED {{ number_format($package->rate, 0) }}/hr</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <div class="pt-field-label">Parent / guardian</div>

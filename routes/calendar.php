@@ -10,6 +10,9 @@ Route::middleware(['auth', 'feature:calendar'])
 
         Route::get('/', [CalendarController::class, 'index'])->name('index');
         Route::get('/feed', [CalendarController::class, 'feed'])->name('feed');
+        // Registered ahead of the /{calendarSession} show route below, so
+        // "leads" isn't swallowed as a route-model-bound session id.
+        Route::get('/leads', [CalendarController::class, 'leads'])->name('leads');
         Route::get('/utilisation', [CalendarController::class, 'utilisation'])->name('utilisation');
 
         Route::get('/leave/impact', [CalendarController::class, 'leaveImpact'])->name('leave.impact');

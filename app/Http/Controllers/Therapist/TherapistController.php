@@ -140,8 +140,10 @@ class TherapistController extends Controller
     }
 
     /**
-     * Mon–Fri of the week containing $anchor (defaults to today when null
+     * Mon–Sun of the week containing $anchor (defaults to today when null
      * or unparseable), so the schedule can page into past/future weeks.
+     * The weekend is part of the week: sessions do get booked on it, and
+     * cutting the view at Friday hid them entirely.
      *
      * @return \Illuminate\Support\Collection<int, \Carbon\Carbon>
      */
@@ -155,7 +157,7 @@ class TherapistController extends Controller
 
         $monday = $date->startOfWeek(Carbon::MONDAY);
 
-        return collect(range(0, 4))->map(fn ($i) => $monday->copy()->addDays($i));
+        return collect(range(0, 6))->map(fn ($i) => $monday->copy()->addDays($i));
     }
 
     /**

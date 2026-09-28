@@ -31,7 +31,13 @@
 
         .month-grid { flex: 1; overflow: auto; padding: 20px 24px; display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 10px; align-content: start; }
         .month-dow { font: 800 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: .5px; padding: 0 4px 4px; }
-        .month-cell { background: #fff; border: 1px solid #EBE4DA; border-radius: 12px; padding: 8px; min-height: 100px; display: flex; flex-direction: column; gap: 3px; }
+        .month-cell {
+            background: #fff; border: 1px solid #EBE4DA; border-radius: 12px; padding: 8px;
+            min-height: 100px; display: flex; flex-direction: column; gap: 3px;
+            color: inherit; text-decoration: none; transition: border-color .15s ease, background-color .15s ease;
+        }
+        a.month-cell { cursor: pointer; }
+        a.month-cell:hover { border-color: #C8355F; background: #FFFDFA; }
         .month-cell.is-today { border: 2px solid #C8355F; }
         .month-cell.is-empty { background: transparent; border-color: transparent; }
         .month-cell.is-weekend { background: #F6F3EE; }
@@ -83,6 +89,23 @@
             font: 800 13px 'Nunito Sans'; color: #2B3A4C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .tp-therapist-sub { font: 600 11px 'Nunito Sans'; color: #98897A; }
+        /* Only ever on screen in the one-pane phone layout, where the list is
+           off-screen while a therapist's week is open. */
+        .tp-back-bar {
+            display: none; align-items: center; gap: 10px;
+            padding: 10px 14px; background: #FFFDFA; border-bottom: 1px solid #EBE4DA;
+        }
+        .tp-back-arrow {
+            display: flex; align-items: center; justify-content: center;
+            width: 30px; height: 30px; flex-shrink: 0; margin-left: -6px;
+            border-radius: 9px; text-decoration: none;
+        }
+        .tp-back-name { flex: 1; min-width: 0; font: 800 14.5px 'Nunito Sans'; color: #2B3A4C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #tp-panel-backdrop {
+            display: none; position: fixed; inset: 0; z-index: 1290;
+            background: rgba(22, 42, 60, .38);
+        }
+        .tp-back-sub { font: 700 11.5px 'Nunito Sans'; color: #98897A; flex-shrink: 0; }
         .tp-count-badge {
             background: #F3EDE3; color: #8A7D6C; border-radius: 8px; padding: 4px 10px;
             font: 800 11px 'Nunito Sans'; white-space: nowrap; flex-shrink: 0;
@@ -99,6 +122,10 @@
             background: #F0EBE5; border-radius: 10px; padding: 8px 12px; margin-bottom: 10px;
             display: flex; align-items: center; gap: 8px;
         }
+        /* Saturday and Sunday are part of the week but are not the working
+           days, so they sit back a shade rather than reading as equals. */
+        .tp-day-col.is-weekend .tp-day-head { background: #EFE7DA; }
+        .tp-day-col.is-weekend .tp-day-name { color: #8A7D6C; }
         .tp-day-name { font: 600 13.5px 'Baloo 2'; color: #16436E; flex: 1; }
         .tp-day-count { font: 800 11.5px 'Nunito Sans'; color: #8A7D6C; }
         .tp-day-body { display: flex; flex-direction: column; gap: 8px; }
@@ -135,29 +162,133 @@
             .main-content-inner:has(.tp-wrap) { flex: 0 0 auto; }
             .tp-wrap { flex: 0 0 auto; min-height: auto; }
 
-            .tp-topbar { padding: 12px 16px; flex-direction: column; align-items: stretch; gap: 10px; }
+            /* Title on its own line, then the view toggle and the date pager
+               share the next one - compact enough to fit side by side, and it
+               saves a whole row above the schedule. */
+            .tp-topbar { padding: 12px 14px; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 9px; }
+            /* !important because the title block carries an inline flex:1, which
+               would otherwise let the toggle ride up beside it and squeeze the
+               subtitle into three lines. */
+            .tp-topbar > div:first-child { flex: 1 1 100% !important; }
+            .cal-view-toggle { flex: 0 0 auto; gap: 5px; }
+            /* Trimmed just enough that the toggle and the pager share a row
+               rather than missing it by a few pixels. */
+            .cal-view-btn { padding: 8px 12px; font-size: 12px; }
             .tp-title { font-size: 17px; }
             .tp-subtitle { font-size: 12px; }
 
-            .tp-week-nav { width: 100%; flex-wrap: nowrap; }
-            .tp-week-date { flex: 1 1 auto; min-width: 0; }
-            .tp-week-btn { flex-shrink: 0; }
-            .tp-week-today { flex-shrink: 0; padding: 0 10px; }
+            /* The date field was taking every pixel the row could give it,
+               leaving a mostly empty box between the arrows. It sizes to its
+               own content now and the row reads as one pager. */
+            .tp-week-nav { flex: 1 1 auto; width: auto; flex-wrap: nowrap; justify-content: flex-end; gap: 6px; }
+            .tp-week-date { flex: 0 1 auto; min-width: 0; padding: 0 8px; font-size: 12px; }
+            .tp-week-btn { flex-shrink: 0; width: 32px; height: 32px; }
+            .tp-week-today { flex-shrink: 0; padding: 0 12px; height: 32px; }
 
-            .tp-add-btn, .tp-cal-link { width: 100%; justify-content: center; }
+            .tp-add-btn, .tp-cal-link { flex: 1 1 100%; width: 100%; justify-content: center; }
+
+            /* The month has to stay seven columns wide, so the cells shrink
+               until the whole month fits the screen and reads as an overview:
+               the day and how many sessions are on it. Session names are
+               unreadable in a 48px cell, and tapping a day opens its week. */
+            .month-grid { padding: 12px 10px; gap: 4px; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+            .month-dow { font-size: 9px; padding: 0 0 3px; text-align: center; letter-spacing: 0; }
+            .month-cell { min-height: 58px; padding: 5px 3px; border-radius: 8px; gap: 1px; }
+            .month-cell.is-today { border-width: 1.5px; }
+            .month-cell-top { justify-content: center; gap: 3px; }
+            .month-cell-date { font-size: 11.5px; }
+            .month-cell-count {
+                background: #C8355F; color: #fff; border-radius: 999px;
+                min-width: 15px; padding: 0 4px; text-align: center;
+                font-size: 9.5px; line-height: 15px;
+            }
+            /* The patient's name stays on the chip - it is the one thing the
+               month is read for - and truncates with an ellipsis rather than
+               being dropped. The time goes instead: in a cell this narrow it
+               would eat the whole line and leave nothing for the name. */
+            .month-chip {
+                display: block; padding: 1px 3px; border-radius: 4px;
+                font: 700 8.5px 'Nunito Sans'; line-height: 1.5;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .month-chip-time { display: none; }
+            .month-more { display: block; font-size: 8px; }
 
             .tp-body { flex-direction: column; overflow: visible; }
-            .tp-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #EBE4DA; max-height: 240px; overflow-y: auto; }
-            .tp-grid { flex: 0 0 auto; overflow-y: visible; }
-            .tp-grid-row { padding: 12px 14px; }
-            .tp-day-col { flex: 0 0 auto; width: 78vw; max-width: 240px; }
+            .tp-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #EBE4DA; }
 
+            /* The therapist list takes the shape of the WhatsApp inbox rows: a
+               large round avatar, the name with its count out on the right, and
+               one grey line underneath. It was a 240px scroll box holding three
+               names at a time; now the whole team reads in one pass. */
+            .tp-sidebar-head { padding: 14px 16px 10px; border-bottom: none; }
+            .tp-sidebar-title { font-size: 22px; letter-spacing: -0.3px; }
+            .tp-sidebar-sub { font-size: 12px; }
+            .tp-therapist-row {
+                display: grid;
+                grid-template-columns: auto 1fr auto;
+                grid-template-rows: auto auto;
+                column-gap: 11px; row-gap: 1px; align-items: center;
+                padding: 9px 14px; border-bottom: none;
+            }
+            .tp-avatar { grid-row: 1 / 3; width: 52px; height: 52px; font-size: 18px; }
+            /* The name and its sub line share a wrapper in the markup; this
+               lifts them out so each can take a cell of its own. */
+            .tp-therapist-row > div:not(.tp-avatar) { display: contents; }
+            .tp-therapist-name { grid-column: 2; grid-row: 1; min-width: 0; font-size: 15px; }
+            .tp-count-badge {
+                grid-column: 3; grid-row: 1;
+                background: none; padding: 0; color: #B0A493; font: 700 11.5px 'Nunito Sans';
+            }
+            .tp-therapist-sub {
+                grid-column: 2 / 4; grid-row: 2; min-width: 0;
+                font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .tp-grid { flex: 0 0 auto; overflow-y: visible; }
+            /* The week stacks instead of scrolling sideways - five days of
+               240px columns meant swiping past four of them to reach Friday,
+               and the whole week is short enough to just read down. */
+            .tp-grid-row {
+                padding: 12px 14px;
+                flex-direction: column; align-items: stretch;
+                overflow-x: hidden; gap: 10px;
+            }
+            .tp-day-col { flex: 0 0 auto; width: auto; max-width: none; min-width: 0; }
+            .tp-day-head { margin-bottom: 8px; }
+
+            /* One pane at a time, the way the WhatsApp inbox works: the list of
+               therapists, then a therapist's week behind a back arrow. The
+               controller preselects the first therapist so the desktop layout is
+               never empty, so which pane shows is decided by whether one was
+               actually asked for in the URL. */
+            .tp-wrap.tp-has-list:not(.tp-has-selection) .tp-grid { display: none; }
+            .tp-wrap.tp-has-selection .tp-sidebar { display: none; }
+            .tp-wrap.tp-has-selection .tp-back-bar { display: flex; }
+            /* Nothing is 'selected' while the list is the whole screen. */
+            .tp-wrap:not(.tp-has-selection) .tp-therapist-row.is-active { background: transparent; }
+
+            /* Edit opens as a sheet over the schedule. As a column appended
+               below it, the form landed off the bottom of the screen and the
+               tap looked like it had done nothing. */
             #tp-panel-inner {
-                width: 100% !important;
+                position: fixed !important;
+                left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important;
+                width: auto !important; max-height: 88vh;
+                z-index: 1300;
                 border-left: none !important;
                 border-top: 1px solid #EBE4DA;
-                padding: 18px 16px 24px !important;
+                border-radius: 18px 18px 0 0;
+                padding: 12px 16px 24px !important;
+                box-shadow: 0 -18px 46px rgba(22, 42, 60, .22);
             }
+            /* A grab bar, so it reads as a sheet rather than a panel that has
+               slipped out of place. */
+            #tp-panel-inner::before {
+                content: ''; align-self: center; flex: none;
+                width: 38px; height: 4px; border-radius: 999px;
+                background: #DFD6C8; margin-bottom: 6px;
+            }
+            #tp-panel-backdrop.is-open { display: block; }
         }
     </style>
 
@@ -175,7 +306,20 @@
     @endphp
 
     <!-- Therapists & Schedules -->
-    <div class="tp-wrap">
+    @php
+        // Keyed off the request, not off $selectedTherapistId: the controller
+        // falls back to the first therapist so the desktop schedule is never
+        // blank, and on a phone that pane is not on screen yet.
+        $tpHasSelection = $canViewAll && request()->filled('therapist_id');
+        $tpSelected = $therapists->firstWhere('id', $selectedTherapistId);
+        $tpBackLink = route('therapist.index', array_filter([
+            'view' => $view === 'month' ? 'month' : null,
+            'month' => $view === 'month' ? $monthAnchor->format('Y-m') : null,
+            'week' => $view === 'month' || $isCurrentWeek ? null : $days->first()->toDateString(),
+        ]));
+    @endphp
+
+    <div class="tp-wrap {{ $canViewAll ? 'tp-has-list' : '' }} {{ $tpHasSelection ? 'tp-has-selection' : '' }}">
 
         <!-- Top Bar -->
         <div class="tp-topbar">
@@ -191,7 +335,7 @@
                     @if ($view === 'month')
                         {{ $monthAnchor->format('F Y') }}
                     @else
-                        Week of {{ $days->first()->format('M j') }}–{{ $days->last()->format('j, Y') }} (Mon–Fri)
+                        Week of {{ $days->first()->format('M j') }}–{{ $days->last()->format('j, Y') }}
                     @endif
                     @if ($canViewAll)
                         · click a therapist to filter · add, modify or close sessions
@@ -271,6 +415,15 @@
 
             <!-- Right Side - Weekly / Monthly Schedule -->
             <div class="tp-grid">
+              @if ($canViewAll && $tpSelected)
+                <div class="tp-back-bar">
+                    <a href="{{ $tpBackLink }}" class="tp-back-arrow" aria-label="Back to therapists">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18L9 12L15 6" stroke="#16436E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                    <div class="tp-back-name">{{ trim("{$tpSelected->first_name} {$tpSelected->last_name}") ?: 'Unnamed' }}</div>
+                    <span class="tp-back-sub">{{ rtrim(rtrim(number_format(round(($weeklyMinutes[$tpSelected->id] ?? 0) / 60, 1), 1), '0'), '.') }}h/wk</span>
+                </div>
+              @endif
               @if ($view === 'month')
                 <div class="month-grid">
                     @foreach (['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $dow)
@@ -282,7 +435,21 @@
                             $daySessions = $monthSessions->filter(fn ($session) => $session->session_date->toDateString() === $day->toDateString());
                             $preview = $daySessions->take(3);
                         @endphp
-                        <div class="month-cell {{ !$inMonth ? 'is-empty' : '' }} {{ $day->isToday() ? 'is-today' : '' }} {{ $day->isWeekend() ? 'is-weekend' : '' }}">
+                        @php
+                            // A day in the month is a way into that week: the week
+                            // view is keyed on any date it contains, so the cell
+                            // just hands it this one. Days spilling in from the
+                            // neighbouring months stay inert, as they always were.
+                            $dayWeekLink = $inMonth
+                                ? route('therapist.index', array_filter([
+                                    'week' => $day->toDateString(),
+                                    'therapist_id' => $canViewAll ? $selectedTherapistId : null,
+                                ]))
+                                : null;
+                        @endphp
+                        <{{ $dayWeekLink ? 'a' : 'div' }}
+                            @if ($dayWeekLink) href="{{ $dayWeekLink }}" title="Open the week of {{ $day->format('M j') }}" @endif
+                            class="month-cell {{ !$inMonth ? 'is-empty' : '' }} {{ $day->isToday() ? 'is-today' : '' }} {{ $day->isWeekend() ? 'is-weekend' : '' }}">
                             @if ($inMonth)
                                 <div class="month-cell-top">
                                     <span class="month-cell-date">{{ $day->format('j') }}</span>
@@ -293,21 +460,21 @@
                                 @foreach ($preview as $session)
                                     @php $colors = $activityColors[$session->activity_type] ?? $defaultActivityColor; @endphp
                                     <div class="month-chip {{ $session->status === 'cancelled' ? 'is-cancelled' : '' }}" style="background: {{ $colors['bg'] }}; color: {{ $colors['fg'] }};">
-                                        {{ substr($session->start_time, 0, 5) }} {{ $session->child->child_name ?? 'Unassigned' }}
+                                        <span class="month-chip-time">{{ substr($session->start_time, 0, 5) }}</span> {{ $session->child->child_name ?? 'Unassigned' }}
                                     </div>
                                 @endforeach
                                 @if ($daySessions->count() > 3)
                                     <div class="month-more">+{{ $daySessions->count() - 3 }} more</div>
                                 @endif
                             @endif
-                        </div>
+                        </{{ $dayWeekLink ? 'a' : 'div' }}>
                     @endforeach
                 </div>
               @else
               <div class="tp-grid-row">
                 @foreach ($days as $day)
                     @php $daySessions = $sessions->filter(fn ($session) => $session->session_date->toDateString() === $day->toDateString()); @endphp
-                    <div class="tp-day-col">
+                    <div class="tp-day-col {{ $day->isWeekend() ? 'is-weekend' : '' }}">
                         <div class="tp-day-head">
                             <div class="tp-day-name">{{ $day->format('D') }} · {{ $day->format('M j') }}</div>
                             <span class="tp-day-count">{{ $daySessions->count() }}</span>
@@ -367,6 +534,7 @@
 
             @if ($canViewAll)
                 <!-- Add / Edit session panel -->
+                <div id="tp-panel-backdrop"></div>
                 <div id="tp-panel-inner" style="display:none; width:300px; flex-shrink:0; border-left:1px solid #EBE4DA; background:#FFFDFA; padding:20px; overflow-y:auto; flex-direction:column; gap:12px;">
 
                 <div style="display:flex; align-items:center; gap:10px;">
@@ -482,6 +650,7 @@
             }
 
             const modal = document.getElementById('tp-panel-inner');
+            const backdrop = document.getElementById('tp-panel-backdrop');
             const form = document.getElementById('tp-session-form');
 
             function openModal(session = null) {
@@ -511,14 +680,19 @@
                 }
 
                 modal.style.display = 'flex';
+                backdrop?.classList.add('is-open');
+                modal.scrollTop = 0;
             }
 
             function closeModal() {
                 modal.style.display = 'none';
+                backdrop?.classList.remove('is-open');
             }
 
             document.getElementById('tp-add-btn')?.addEventListener('click', () => openModal());
             document.getElementById('tp-modal-cancel').addEventListener('click', closeModal);
+            backdrop?.addEventListener('click', closeModal);
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
             document.querySelectorAll('.tp-edit-btn').forEach(btn => {
                 btn.addEventListener('click', () => {

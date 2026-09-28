@@ -85,6 +85,10 @@
           </div>
         </div>
         <div>
+          <label class="crm-label">Child's Name</label>
+          <input type="text" id="ct_child_name" placeholder="e.g. Hamad" class="crm-input">
+        </div>
+        <div>
           <label class="crm-label">Email Address</label>
           <input type="email" id="ct_email" placeholder="you@email.com" class="crm-input">
         </div>
@@ -105,7 +109,17 @@
           <label class="crm-label">Tell us about your child</label>
           <textarea id="ct_message" rows="4" placeholder="Any context about your child's needs, challenges, or goals…" class="crm-input" style="resize:vertical;"></textarea>
         </div>
-        <button type="submit" class="btn-pink w-full justify-center" id="contactSubmitBtn">Send Message</button>
+
+        <!-- Consent gate: the submit button stays disabled until this is ticked. -->
+        <label for="ct_consent" class="flex items-start gap-2.5 cursor-pointer select-none pt-1">
+          <input type="checkbox" id="ct_consent" class="mt-[3px] w-4 h-4 shrink-0 cursor-pointer" style="accent-color:var(--pink);" required>
+          <span class="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+            I agree to Engage Clinic contacting me about this enquiry and accept the
+            <a href="{{ route('privacy-policy') }}" class="font-bold text-[var(--navy)] underline">Privacy Policy</a>.
+          </span>
+        </label>
+
+        <button type="submit" class="btn-pink w-full justify-center" id="contactSubmitBtn" disabled>Send Message</button>
         <p class="text-center text-xs text-[var(--text-muted)]">We respond within 24 hours · Health insurance accepted</p>
       </form>
     </div>
@@ -254,61 +268,164 @@
 
 @push('scripts')
 <script>
-// ---- Inline contact form ----
-  function submitContact(event) {
+  // ---- CSRF handling ----
+  // Token is read at submit time, never baked into this script at render time,
+  // so a page left open past SESSION_LIFETIME or served from cache can't post
+  // a token the server has already rotated away from.
+
+  function getXsrfCookie() {
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return (meta && meta.content) ? meta.content : getXsrfCookie();
+  }
+
+  async function refreshCsrfToken() {
+    try {
+      const res = await fetch('{{ route('csrf.token') }}', {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data || !data.token) return false;
+
+      let meta = document.querySelector('meta[name="csrf-token"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'csrf-token');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', data.token);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function postJson(url, payload, allowRetry = true) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': getCsrfToken(),
+    };
+    const xsrf = getXsrfCookie();
+    if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+
+    if (response.status === 419 && allowRetry) {
+      const refreshed = await refreshCsrfToken();
+      if (refreshed) return postJson(url, payload, false);
+    }
+
+    // 419/500 responses are HTML, so an unconditional .json() would throw and
+    // surface the real failure as a misleading "Network error".
+    let data = null;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      data = await response.json().catch(() => null);
+    }
+
+    return { ok: response.ok, status: response.status, data: data };
+  }
+
+  // ---- Consent gate ----
+  // The Send Message button ships disabled in the markup and only unlocks once
+  // the consent box is ticked. Synced on load as well as on change, because
+  // browsers restore checkbox state on reload and back-navigation - without the
+  // initial sync the box could come back ticked with the button still dead.
+  const ctConsent = document.getElementById('ct_consent');
+  const ctSubmitBtn = document.getElementById('contactSubmitBtn');
+
+  function syncConsentGate() {
+    if (ctConsent && ctSubmitBtn) ctSubmitBtn.disabled = !ctConsent.checked;
+  }
+
+  if (ctConsent) {
+    ctConsent.addEventListener('change', syncConsentGate);
+    syncConsentGate();
+  }
+  window.addEventListener('pageshow', syncConsentGate);
+
+  // ---- Inline contact form ----
+  async function submitContact(event) {
     event.preventDefault();
+
+    const successBox = document.getElementById('contactSuccess');
+    const errorBox = document.getElementById('contactError');
+    successBox.style.display = 'none';
+    errorBox.style.display = 'none';
+
+    // Server-side validation is the real gate; this is the UI half of it.
+    if (ctConsent && !ctConsent.checked) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Tick the consent box before sending your message.';
+      syncConsentGate();
+      return;
+    }
+
+    const childName = document.getElementById('ct_child_name').value.trim();
     const childAge = document.getElementById('ct_child_age').value.trim();
     const name = document.getElementById('ct_name').value.trim();
     const phone = document.getElementById('ct_phone').value.trim();
     const email = document.getElementById('ct_email').value.trim();
     const interestedIn = document.getElementById('ct_interested_in').value;
     const message = document.getElementById('ct_message').value.trim();
-    const successBox = document.getElementById('contactSuccess');
-    const errorBox = document.getElementById('contactError');
-    successBox.style.display = 'none';
-    errorBox.style.display = 'none';
 
-    const btn = document.getElementById('contactSubmitBtn');
+    const btn = ctSubmitBtn;
     const originalText = btn.textContent;
     btn.textContent = 'Sending...';
     btn.disabled = true;
 
-    fetch('/api/contacts', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    try {
+      const result = await postJson('/api/contacts', {
+        child_name: childName,
         child_age: childAge,
         name: name,
         email: email,
         phone: phone,
         interested_in: interestedIn,
         message: message,
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
+      });
+
+      if (result.ok && result.data && result.data.success) {
         document.getElementById('contactForm').style.display = 'none';
         successBox.style.display = 'block';
-        successBox.textContent = '✅ Message received — we\'ll be in touch within 24 hours.';
-      } else {
-        errorBox.style.display = 'block';
-        const errors = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Something went wrong. Please try again.');
-        errorBox.textContent = '❌ ' + errors;
+        successBox.textContent = "Message received — we'll be in touch within 24 hours.";
+        return;
       }
-    })
-    .catch(() => {
+
       errorBox.style.display = 'block';
-      errorBox.textContent = '❌ Network error. Please check your connection and try again.';
-    })
-    .finally(() => {
+      if (result.status === 419) {
+        errorBox.textContent = 'Your session expired. Refresh the page and send again.';
+      } else if (result.status === 429) {
+        errorBox.textContent = 'Too many attempts. Wait a moment and try again.';
+      } else if (result.data && result.data.errors) {
+        errorBox.textContent = Object.values(result.data.errors).flat().join(', ');
+      } else if (result.data && result.data.message) {
+        errorBox.textContent = result.data.message;
+      } else {
+        errorBox.textContent = `Something went wrong (error ${result.status}). Try again, or call +971 50 884 6801.`;
+      }
+    } catch (e) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Network error. Check your connection and try again.';
+    } finally {
       btn.textContent = originalText;
-      btn.disabled = false;
-    });
+      // Re-enable only if consent is still ticked, so the gate survives a retry.
+      btn.disabled = ctConsent ? !ctConsent.checked : false;
+    }
   }
 
   // ---- Booking modal ----
@@ -429,8 +546,9 @@
     });
   }
 
-  function submitBooking(event) {
+  async function submitBooking(event) {
     event.preventDefault();
+
     const childName = document.getElementById('bk_child_name').value.trim();
     const childAge = document.getElementById('bk_child_age').value.trim();
     const name = document.getElementById('bk_name').value.trim();
@@ -443,33 +561,33 @@
     successBox.style.display = 'none';
     errorBox.style.display = 'none';
 
-    const dateStr = bookingState.date ? bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT) : '';
+    if (!bookingState.date || !bookingState.time) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Pick a date and time before confirming.';
+      return;
+    }
+
+    const dateStr = bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT);
     // Y-M-D in local time, not toISOString() (which would shift the date
     // near midnight for GST/UTC+4 users) - this is what the admin list sorts
     // and displays as the requested consultation slot.
-    const bookingDateIso = bookingState.date
-      ? `${bookingState.date.getFullYear()}-${String(bookingState.date.getMonth() + 1).padStart(2, '0')}-${String(bookingState.date.getDate()).padStart(2, '0')}`
-      : null;
+    const bookingDateIso = `${bookingState.date.getFullYear()}-${String(bookingState.date.getMonth() + 1).padStart(2, '0')}-${String(bookingState.date.getDate()).padStart(2, '0')}`;
     // A booking request is an enquiry, not a qualified lead yet - it goes to
     // Contacts like every other website submission, for a staff member to
-    // review and manually convert. Contact has no separate child-name field,
-    // so it's folded into the message alongside the requested slot.
-    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)\nChild: ${childName}` + (notes ? `\n${notes}` : '');
+    // review and manually convert. The child's name travels as its own field
+    // (so it reaches the lead on convert); the message keeps the slot and
+    // whatever the family wrote.
+    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)` + (notes ? `\n${notes}` : '');
 
     const btn = document.getElementById('confirmBookingBtn');
     const originalHTML = btn.innerHTML;
     btn.textContent = 'Booking...';
     btn.disabled = true;
 
-    fetch('/api/contacts', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    try {
+      const result = await postJson('/api/contacts', {
         name: name,
+        child_name: childName,
         child_age: childAge,
         email: email,
         phone: phone,
@@ -477,28 +595,34 @@
         message: combinedNotes,
         booking_date: bookingDateIso,
         booking_time: bookingState.time,
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
+      });
+
+      if (result.ok && result.data && result.data.success) {
         document.getElementById('bookingForm').style.display = 'none';
         successBox.style.display = 'block';
-        successBox.textContent = `✅ Booking request received for ${dateStr} at ${bookingState.time}. We'll confirm within 24 hours.`;
-      } else {
-        errorBox.style.display = 'block';
-        const errors = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Something went wrong. Please try again.');
-        errorBox.textContent = '❌ ' + errors;
+        successBox.textContent = `Booking request received for ${dateStr} at ${bookingState.time}. We'll confirm within 24 hours.`;
+        return;
       }
-    })
-    .catch(() => {
+
       errorBox.style.display = 'block';
-      errorBox.textContent = '❌ Network error. Please check your connection and try again.';
-    })
-    .finally(() => {
+      if (result.status === 419) {
+        errorBox.textContent = 'Your session expired. Refresh the page and submit again.';
+      } else if (result.status === 429) {
+        errorBox.textContent = 'Too many attempts. Wait a moment and try again.';
+      } else if (result.data && result.data.errors) {
+        errorBox.textContent = Object.values(result.data.errors).flat().join(', ');
+      } else if (result.data && result.data.message) {
+        errorBox.textContent = result.data.message;
+      } else {
+        errorBox.textContent = `Something went wrong (error ${result.status}). Try again, or call +971 50 884 6801.`;
+      }
+    } catch (e) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Network error. Check your connection and try again.';
+    } finally {
       btn.innerHTML = originalHTML;
       btn.disabled = false;
-    });
+    }
   }
 </script>
 @endpush

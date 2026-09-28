@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<meta name="facebook-domain-verification" content="uth7xxz8lmbs886w2m0e0pmzjakw8h" />
 <title>@yield('title', 'Engage Clinic · ABA Therapy Built Around Your Child')</title>
 <link rel="icon" type="image/png" href="{{ asset('uploads/engage.png') }}">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -430,7 +432,15 @@
   <div class="max-w-[1440px] mx-auto px-6 lg:px-8 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1fr] gap-10">
     <div>
       <img src="{{ asset('uploads/engage.png') }}" alt="Engage Clinic logo" class="h-20 w-auto object-contain" style="filter:brightness(0) invert(1);">
-      <p class="text-sm mt-4 max-w-xs" style="color:rgba(255,255,255,.65);">Empowering children and families to thrive every day through flexible, evidence-based ABA therapy across Abu Dhabi, UAE.</p>
+      {{-- Registered business details, required for Meta business verification.
+           Keep the text exactly as registered; do not translate or reformat. --}}
+      <div class="text-sm mt-4 max-w-xs space-y-1" style="color:rgba(255,255,255,.72);">
+        <p class="font-semibold" style="color:rgba(255,255,255,.88);">ENGAGE BEHAVIORAL DEVELOPMENT CLINIC - L.L.C</p>
+        <p>Phone: <a href="tel:+971588556108" class="hover:text-white">+971 58 855 6108</a></p>
+        <p>Address: <span dir="rtl" lang="ar" class="block text-right">الدانة, شرق 11, مبنى, عبدالله مهير عبدالله محيان، أبوظبي، الإمارات العربية المتحدة</span></p>
+        <p>(Al Danah, East 11, Building of Abdulla Muhair Abdulla Mohayyan, Abu Dhabi, UAE)</p>
+      </div>
+      <p class="text-sm mt-2 max-w-xs" style="color:rgba(255,255,255,.65);">Trading as Engage Clinic. Empowering children and families to thrive every day through flexible, evidence-based ABA therapy across Abu Dhabi, UAE.</p>
       <div class="flex items-center gap-2.5 mt-5">
         <a href="https://www.instagram.com/engageclinicuae?igsi=MXhsdXNvemJ1a3pxZQ%3D%3D&amp;utm_source=qr" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="Instagram"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1"/></svg></a>
         <a href="https://www.linkedin.com/company/engageclinic/" target="_blank" rel="noopener noreferrer" class="social-btn" aria-label="LinkedIn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4V8h4v1.5A6 6 0 0 1 16 8z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
@@ -462,7 +472,9 @@
   </div>
 
   <div class="max-w-[1440px] mx-auto px-6 lg:px-8 mt-12 pt-6 flex flex-col md:flex-row justify-between gap-2 text-xs" style="border-top:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);">
-    <span>© 2026 Engage Behavioral Development Clinic LLC. All rights reserved.</span>
+    {{-- The legal name is written exactly as it is registered, on every page,
+         so business verifications can match the site to the company. --}}
+    <span>© 2026 ENGAGE BEHAVIORAL DEVELOPMENT CLINIC - L.L.C. All rights reserved.</span>
     <span>Designed &amp; Developed by <a href="#" class="underline hover:text-white">CRWD Dubai</a></span>
   </div>
 </footer>

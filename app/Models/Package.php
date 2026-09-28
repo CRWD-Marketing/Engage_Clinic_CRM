@@ -42,6 +42,27 @@ class Package extends Model
     }
 
     /**
+     * Which calendar activity_type codes this package's service actually
+     * matches. The service is picked from the billing catalogue (e.g. "ABA
+     * therapy — 1:1 session (120 min)") rather than the short activity_type
+     * code CalendarSession stores ("ABA") - same substring rule
+     * PatientAuthorization::matchingActivityTypes() and SessionLedger::coversType()
+     * use, so a package lines up with the same sessions billing already does.
+     */
+    public function matchingActivityTypes(): array
+    {
+        $label = $this->service?->name;
+        if (! $label) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            CalendarSession::THERAPY_TYPES,
+            fn ($type) => stripos($label, $type) !== false || stripos($type, $label) !== false
+        ));
+    }
+
+    /**
      * "ABA therapy · Home base · 30 h/wk · AED 337/hr" - the caption line shown
      * under a package's name wherever it's picked from a list.
      */

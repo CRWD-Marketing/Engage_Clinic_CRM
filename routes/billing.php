@@ -17,6 +17,7 @@ Route::middleware(['auth', 'feature:billing'])
         Route::get('/patients/{patient}/ledger', [InvoiceController::class, 'ledger'])->name('ledger');
         Route::post('/patients/{patient}/top-up', [InvoiceController::class, 'topUp'])->name('topup');
         Route::get('/patients/{patient}/statement', [InvoiceController::class, 'statement'])->name('statements.show');
+        Route::get('/patients/{patient}/statement/pdf', [InvoiceController::class, 'statementPdf'])->name('statements.pdf');
 
         Route::post('/invoices/preview', [InvoiceController::class, 'preview'])->name('invoices.preview');
         Route::post('/invoices', [InvoiceController::class, 'store'])->name('invoices.store');

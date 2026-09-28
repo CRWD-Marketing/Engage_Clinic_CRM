@@ -26,6 +26,7 @@ class Contact extends Model
      */
     protected $fillable = [
         'name',
+        'child_name',
         'child_age',
         'email',
         'phone',

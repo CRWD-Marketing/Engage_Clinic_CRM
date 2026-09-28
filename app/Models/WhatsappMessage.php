@@ -40,8 +40,10 @@ class WhatsappMessage extends Model
         'media_url',
         'body',
         'status',
+        'send_error',
         'sent_at',
         'is_ai_generated',
+        'sent_by_user_id',
         'ai_processing_status',
         'triggered_by_message_id',
         'ai_error',
@@ -56,6 +58,33 @@ class WhatsappMessage extends Model
     public function contact()
     {
         return $this->belongsTo(WhatsappContact::class, 'whatsapp_contact_id');
+    }
+
+    /**
+     * The staff member who sent an outbound message manually - null for an
+     * AI-generated reply (is_ai_generated) or anything predating this column.
+     */
+    public function sentBy()
+    {
+        return $this->belongsTo(User::class, 'sent_by_user_id');
+    }
+
+    /**
+     * Small "who sent this" tag for an outbound message: AI, a named staff
+     * member, or null when it's neither (an inbound message, or an old
+     * outbound one from before sent_by_user_id existed).
+     */
+    public function responderLabel(): ?string
+    {
+        if ($this->direction !== 'outbound') {
+            return null;
+        }
+
+        if ($this->is_ai_generated) {
+            return 'AI';
+        }
+
+        return $this->sentBy ? trim($this->sentBy->first_name.' '.$this->sentBy->last_name) : null;
     }
 
     public function triggeredReply()
@@ -123,6 +152,23 @@ class WhatsappMessage extends Model
         $day = $sentAt->isToday() ? 'Today' : ($sentAt->isYesterday() ? 'Yesterday' : $sentAt->format('M j, Y'));
 
         return $day.', '.$sentAt->format('g:i A');
+    }
+
+    /**
+     * The word under an outbound bubble. An outbound message is written before
+     * it is handed to the provider, so it starts life as "Sending" and only
+     * becomes "Sent" once the send actually comes back clean.
+     */
+    public static function statusLabel(?string $status): string
+    {
+        return match ($status) {
+            'pending' => 'Sending',
+            'sent' => 'Sent',
+            'delivered' => 'Delivered',
+            'read' => 'Read',
+            'failed' => 'Not sent',
+            default => '',
+        };
     }
 
     public static function tickIcon(?string $status): string

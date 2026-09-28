@@ -8,6 +8,7 @@
 @section('content')
 <style>
     .ra-page { padding: 6px 28px 40px; }
+
     .ra-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
     .ra-title { font: 600 22px/1.2 'Baloo 2'; color: #16436E; }
     .ra-sub { font: 600 12.5px 'Nunito Sans'; color: #98897A; margin-top: 3px; }
@@ -50,6 +51,7 @@
     .ra-tpl-count { text-align: right; font: 800 12.5px 'Nunito Sans'; color: #16436E; white-space: nowrap; }
     .ra-tpl-count small { display: block; font: 600 11px 'Nunito Sans'; color: #98897A; }
     .ra-tpl-desc { font: 600 12px 'Nunito Sans'; color: #5A6B7E; line-height: 1.4; min-height: 34px; }
+    .ra-tpl-meta { display: none; }
     .ra-section { font: 800 10.5px 'Nunito Sans'; letter-spacing: .05em; text-transform: uppercase; color: #98897A; display: flex; justify-content: space-between; }
     .ra-section span { font-weight: 700; text-transform: none; letter-spacing: 0; }
     .ra-chips { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -91,6 +93,109 @@
     .btn-save { background: #C8355F; border: none; border-radius: 10px; padding: 13px 0; font: 800 13.5px 'Nunito Sans'; color: #fff; cursor: pointer; width: 100%; }
     .btn-cancel { background: #fff; border: 1px solid #E2DACE; border-radius: 10px; padding: 13px 0; font: 800 13.5px 'Nunito Sans'; color: #5A6B7E; cursor: pointer; width: 100%; }
     .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #16436E; color: #fff; padding: 11px 18px; border-radius: 10px; font: 800 12.5px 'Nunito Sans'; z-index: 100; display: none; box-shadow: 0 10px 30px rgba(22,67,110,.3); max-width: 90vw; }
+    /* ── Phone ───────────────────────────────────────────────────────────
+       Two long lists on this page - the users table at 860px wide, and a
+       role template card per role carrying two grids of chips. Both become
+       collapsed cards: a header you can read at a glance, one open at a
+       time, with the detail a tap away. */
+    @media (max-width: 860px) {
+        /* The layout's own 28px gutter goes as well as this page's, or the
+           two stack up to 56px of margin on a 390px screen. */
+        .main-content-inner { padding-left: 0 !important; padding-right: 0 !important; }
+        .ra-page { padding: 6px 5px 24px; }
+
+        .ra-head { margin-bottom: 12px; gap: 10px; }
+        .ra-title { font-size: 19px; }
+        .ra-sub { font-size: 11.5px; }
+        .ra-card { padding: 12px 10px; border-radius: 12px; }
+        .ra-card-sub { font-size: 11px; }
+        .ra-btn { padding: 9px 13px; font-size: 12px; }
+
+        /* Users: a card each, folded to the name row. */
+        .ra-table { min-width: 0; margin-top: 10px; }
+        .ra-table thead { display: none; }
+        .ra-table, .ra-table tbody, .ra-table tr { display: block; width: 100%; }
+        .ra-table tr {
+            background: #fff; border: 1px solid #EBE4DA; border-radius: 12px;
+            overflow: hidden; margin-bottom: 8px;
+            max-height: 53px;
+            transition: max-height .3s cubic-bezier(.4, 0, .2, 1);
+        }
+        .ra-table td {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 8px 12px; border-bottom: 1px solid #F6F1E9; text-align: right;
+        }
+        .ra-table td::before {
+            content: attr(data-label); flex: 0 0 auto; text-align: left;
+            font: 800 10px 'Nunito Sans'; text-transform: uppercase;
+            letter-spacing: .05em; color: #A79C8E;
+        }
+        .ra-table tr td:last-child { border-bottom: none; }
+        /* The name row is the header: fixed height so the folded card is
+           always exactly it, and the chevron sits in the space beside the
+           name - tapping the name itself still opens their permissions. */
+        .ra-table td:first-child {
+            height: 52px; box-sizing: border-box; justify-content: flex-start;
+            /* The value cells are right-aligned; the header is not. */
+            text-align: left;
+            background: #F6F3EE; border-bottom: 1px solid #EBE4DA; cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ra-table td:first-child::before { content: none; }
+        .ra-table td:first-child::after {
+            content: ''; margin-left: auto; flex: none; width: 7px; height: 7px;
+            border-right: 2px solid #98897A; border-bottom: 2px solid #98897A;
+            transform: rotate(-45deg);
+            transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+        }
+        .ra-table tr.is-open td:first-child::after { transform: rotate(45deg); }
+        .ra-select { max-width: none; }
+        .ra-actions { flex-wrap: wrap; justify-content: flex-end; }
+
+        /* Role templates: same fold, the chips behind the header. */
+        .ra-grid { grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+        /* The card is a flex column with a capped height, so without this its
+           children shrink to fit the cap - the header collapsed to a pixel and
+           the description to nothing, and their text spilled over the chips. */
+        .ra-tpl > * { flex-shrink: 0; }
+        .ra-tpl {
+            padding: 0; gap: 0; overflow: hidden;
+            max-height: 53px;
+            transition: max-height .3s cubic-bezier(.4, 0, .2, 1);
+        }
+        /* Everything on the header stays on one line. Left to wrap, it grew
+           past its own fixed height and painted over the description below. */
+        .ra-tpl-top {
+            height: 52px; box-sizing: border-box; align-items: center; overflow: hidden;
+            padding: 0 12px; background: #F6F3EE; border-bottom: 1px solid #EBE4DA;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+        }
+        .ra-tpl-name {
+            flex: 1; min-width: 0; font-size: 14px; flex-wrap: nowrap;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        /* System/Custom is on the card once it is open; on the header it is the
+           first thing to go when the line runs out of room. */
+        .ra-tpl-top .ra-tag { display: none; }
+        .ra-tpl-count { flex-shrink: 0; font-size: 11.5px; }
+        .ra-tpl-count small { display: inline; margin-left: 5px; }
+        .ra-tpl-top::after {
+            content: ''; align-self: center; flex: none; width: 7px; height: 7px;
+            border-right: 2px solid #98897A; border-bottom: 2px solid #98897A;
+            transform: rotate(-45deg);
+            transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+        }
+        .ra-tpl.is-open .ra-tpl-top::after { transform: rotate(45deg); }
+        .ra-tpl > *:not(.ra-tpl-top) { margin: 0 12px; }
+        .ra-tpl-meta { display: block; margin-top: 12px !important; }
+        .ra-tpl-desc { min-height: 0; margin-top: 8px !important; }
+        .ra-tpl .ra-chips { margin-top: 8px; }
+        .ra-tpl .ra-btn-danger { width: calc(100% - 24px); margin: 12px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .ra-table tr, .ra-tpl, .ra-table td:first-child::after, .ra-tpl-top::after { transition: none; }
+        }
+    }
 </style>
 
 <div class="ra-page" id="ra-root"
@@ -264,6 +369,23 @@
     </div>
 </div>
 
+<!-- Confirm action -->
+<div id="confirm-modal" class="ra-modal-overlay">
+    <div class="ra-modal" style="max-width:400px;">
+        <div class="ra-modal-head">
+            <div>
+                <div class="ra-modal-title" id="confirm-title">Are you sure?</div>
+                <div class="ra-modal-sub" id="confirm-sub"></div>
+            </div>
+            <button type="button" class="ra-x" data-close="confirm-modal">✕</button>
+        </div>
+        <div class="f-row">
+            <button type="button" class="btn-save" id="confirm-ok" style="background:#B3261E;">Confirm</button>
+            <button type="button" class="btn-cancel" data-close="confirm-modal">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -306,6 +428,18 @@
     document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeModal(b.dataset.close)));
     document.querySelectorAll('.ra-modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
 
+    // Confirm modal - replaces native confirm() for destructive actions.
+    // Re-binds a fresh click handler onto the Confirm button each call, so
+    // there's never more than one pending action attached to it.
+    function confirmAction({ title, message, confirmLabel = 'Confirm' }, onConfirm) {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-sub').textContent = message;
+        const okBtn = document.getElementById('confirm-ok');
+        okBtn.textContent = confirmLabel;
+        okBtn.onclick = () => { closeModal('confirm-modal'); onConfirm(); };
+        openModal('confirm-modal');
+    }
+
     // ---- Users ----
     function renderUsers() {
         const s = { active: 0, invited: 0, suspended: 0 };
@@ -317,10 +451,10 @@
         body.innerHTML = USERS.map(u => `
             <tr data-id="${esc(u.id)}">
                 <td><div class="ra-user" data-act="access"><div class="ra-avatar" style="background:${color(u.id)};">${esc(u.initials)}</div><div><div class="ra-user-name">${esc(u.name)}</div>${u.job_title ? `<div class="ra-email">${esc(u.job_title)}</div>` : ''}</div></div></td>
-                <td class="ra-email">${esc(u.email)}</td>
-                <td><select class="ra-select" data-act="template" ${CAN_MANAGE ? '' : 'disabled'}>${TEMPLATES.map(t => `<option value="${t.id}" ${t.id === u.template_id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></td>
-                <td><span class="ra-access" title="${esc(u.modules.map(m => MODULES[m]).join(', '))}">${u.access}/${MODULE_KEYS.length}</span></td>
-                <td><span class="ra-status ${u.status}">${u.status[0].toUpperCase() + u.status.slice(1)}</span></td>
+                <td class="ra-email" data-label="Email">${esc(u.email)}</td>
+                <td data-label="Role"><select class="ra-select" data-act="template" ${CAN_MANAGE ? '' : 'disabled'}>${TEMPLATES.map(t => `<option value="${t.id}" ${t.id === u.template_id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></td>
+                <td data-label="Access"><span class="ra-access" title="${esc(u.modules.map(m => MODULES[m]).join(', '))}">${u.access}/${MODULE_KEYS.length}</span></td>
+                <td data-label="Status"><span class="ra-status ${u.status}">${u.status[0].toUpperCase() + u.status.slice(1)}</span></td>
                 <td><div class="ra-actions">
                     <button type="button" class="ra-btn ra-btn-sm" data-act="edit">Edit</button>
                     ${CAN_MANAGE && !u.is_me ? `<button type="button" class="ra-btn ra-btn-sm" data-act="suspend">${u.status === 'suspended' ? 'Reactivate' : 'Suspend'}</button>
@@ -342,13 +476,63 @@
                 try { const r = await api(`${BASE}/users/${user.id}/suspend`, { method: 'PUT' }); replaceUser(r.user); toast(r.message); }
                 catch (err) { toast(err.message); }
             });
-            tr.querySelector('[data-act="remove"]')?.addEventListener('click', async () => {
-                if (!confirm(`Remove ${user.name}? They will no longer be able to sign in.`)) return;
-                try { const r = await api(`${BASE}/users/${user.id}`, { method: 'DELETE' }); USERS = USERS.filter(u => u.id !== user.id); renderUsers(); toast(r.message); refreshTemplateCounts(); }
-                catch (err) { toast(err.message); }
+            tr.querySelector('[data-act="remove"]')?.addEventListener('click', () => {
+                confirmAction({ title: 'Remove user?', message: `Remove ${user.name}? They will no longer be able to sign in.`, confirmLabel: 'Remove' }, async () => {
+                    try { const r = await api(`${BASE}/users/${user.id}`, { method: 'DELETE' }); USERS = USERS.filter(u => u.id !== user.id); renderUsers(); toast(r.message); refreshTemplateCounts(); }
+                    catch (err) { toast(err.message); }
+                });
             });
         });
     }
+    // Both lists fold on a phone: one user open at a time, one role template
+    // open at a time. They are re-rendered on every change, so this listens on
+    // the containers rather than on rows that will be replaced.
+    (function () {
+        const onNarrowScreen = () => window.matchMedia('(max-width: 860px)').matches;
+
+        function fold(container, itemSelector, headerSelector, guardSelector) {
+            const root = document.getElementById(container);
+            if (!root) return;
+
+            function setOpen(item, open) {
+                item.classList.toggle('is-open', open);
+                // Closed falls back to the header height in the stylesheet.
+                item.style.maxHeight = open
+                    ? Math.min(item.scrollHeight, Math.round(window.innerHeight * 0.66)) + 'px'
+                    : '';
+            }
+
+            root.addEventListener('click', e => {
+                if (!onNarrowScreen()) return;
+
+                const header = e.target.closest(headerSelector);
+                if (!header || !root.contains(header)) return;
+                // The name opens that person's permissions - only the space
+                // beside it folds the card.
+                if (guardSelector && e.target.closest(guardSelector)) return;
+
+                const item = header.closest(itemSelector);
+                const opening = !item.classList.contains('is-open');
+
+                root.querySelectorAll(itemSelector).forEach(el => setOpen(el, false));
+                if (opening) setOpen(item, true);
+            });
+
+            // The height is written inline, so it would follow the cards up to
+            // the wide layout and cap one that is no longer collapsible.
+            window.addEventListener('resize', () => {
+                if (onNarrowScreen()) return;
+                root.querySelectorAll(itemSelector).forEach(el => {
+                    el.classList.remove('is-open');
+                    el.style.maxHeight = '';
+                });
+            });
+        }
+
+        fold('users-body', 'tr', 'td:first-child', '.ra-user');
+        fold('templates-grid', '.ra-tpl', '.ra-tpl-top', null);
+    })();
+
     function replaceUser(u) { const i = USERS.findIndex(x => x.id === u.id); if (i >= 0) USERS[i] = u; else USERS.push(u); renderUsers(); }
     function refreshTemplateCounts() { TEMPLATES.forEach(t => { t.users_count = USERS.filter(u => u.template_id === t.id).length; }); renderTemplates(); }
 
@@ -372,6 +556,7 @@
                     <div class="ra-tpl-name">${esc(t.name)} <span class="ra-tag ${t.is_system ? '' : 'custom'}">${t.is_system ? 'System template' : 'Custom template'}</span></div>
                     <div class="ra-tpl-count">${t.users_count} user${t.users_count === 1 ? '' : 's'}<small>${t.modules.length} of ${MODULE_KEYS.length} modules</small></div>
                 </div>
+                <div class="ra-tpl-meta"><span class="ra-tag ${t.is_system ? '' : 'custom'}">${t.is_system ? 'System template' : 'Custom template'}</span></div>
                 <div class="ra-tpl-desc">${esc(t.description || '')}</div>
                 <div class="ra-chips" data-group="modules">${MODULE_KEYS.map(k => chip(k, MODULES[k], t.modules.includes(k), 'mod', editable, (t.module_levels || {})[k])).join('')}</div>
                 <div class="ra-section">Actions <span>${t.actions.length} of ${ACTION_KEYS.length} actions</span></div>
@@ -402,14 +587,15 @@
                     Object.assign(t, r.template); renderTemplates(); toast(r.message);
                 } catch (err) { toast(err.message); }
             }));
-            card.querySelector('[data-act="delete"]')?.addEventListener('click', async () => {
-                if (!confirm(`Delete “${t.name}”? Anyone on it moves back to the system template for their base role, keeping the access they already hold.`)) return;
-                try {
-                    const r = await api(`${BASE}/templates/${t.id}`, { method: 'DELETE' });
-                    TEMPLATES = TEMPLATES.filter(x => x.id !== t.id);
-                    USERS.forEach(u => { if (u.template_id === t.id) { const fb = TEMPLATES.find(x => x.is_system && x.base_role === t.base_role) || TEMPLATES.find(x => x.key === 'basic'); u.template_id = fb?.id ?? null; } });
-                    refreshTemplateCounts(); renderUsers(); toast(r.message);
-                } catch (err) { toast(err.message); }
+            card.querySelector('[data-act="delete"]')?.addEventListener('click', () => {
+                confirmAction({ title: 'Delete role template?', message: `Delete "${t.name}"? Anyone on it moves back to the system template for their base role, keeping the access they already hold.`, confirmLabel: 'Delete' }, async () => {
+                    try {
+                        const r = await api(`${BASE}/templates/${t.id}`, { method: 'DELETE' });
+                        TEMPLATES = TEMPLATES.filter(x => x.id !== t.id);
+                        USERS.forEach(u => { if (u.template_id === t.id) { const fb = TEMPLATES.find(x => x.is_system && x.base_role === t.base_role) || TEMPLATES.find(x => x.key === 'basic'); u.template_id = fb?.id ?? null; } });
+                        refreshTemplateCounts(); renderUsers(); toast(r.message);
+                    } catch (err) { toast(err.message); }
+                });
             });
         });
     }

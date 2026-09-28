@@ -79,6 +79,7 @@ class InvoicePresenter
             'phone' => $profile['phone'],
             'payer' => $profile['primary_payer'],
             'rate' => $profile['rate'],
+            'vat_rate' => $profile['vat_rate'],
             'setting' => $profile['setting'],
             'prepaid' => $profile['prepaid'],
             'package' => $profile['package_label'],

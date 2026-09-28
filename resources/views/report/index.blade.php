@@ -6,6 +6,42 @@
 @section('content-class', 'content-full-width')
 
 @section('content')
+    <style>
+        /* ── Phone ───────────────────────────────────────────────────────
+           Everything on this page is laid out with inline styles, so these
+           carry !important - it is the only way a stylesheet gets a word in.
+           Two columns of cards become one, and the cards themselves give up
+           the padding they can. */
+        @media (max-width: 820px) {
+            .rp-topbar {
+                padding: 12px 14px !important;
+                gap: 10px !important; flex-wrap: wrap;
+            }
+            .rp-title { font-size: 18px !important; }
+            .rp-sub { font-size: 11.5px !important; }
+            .rp-export {
+                flex: 1 1 100%; text-align: center;
+                padding: 10px 14px !important; font-size: 12.5px !important;
+            }
+
+            .rp-grid {
+                padding: 12px 10px !important;
+                grid-template-columns: minmax(0, 1fr) !important;
+                gap: 10px !important;
+            }
+            .rp-grid > div { padding: 14px 12px !important; border-radius: 12px !important; }
+
+            /* The bars are flex:1 so they fit any width; it is the month
+               labels underneath that run into each other first. */
+            .rp-bars { height: 124px !important; gap: 6px !important; }
+            .rp-bars div { font-size: 10px !important; }
+
+            /* The dial sits above its legend rather than beside it - side by
+               side left the source names about 90px to live in. */
+            .rp-pie { flex-direction: column !important; align-items: stretch !important; gap: 14px !important; }
+            .rp-pie-dial { align-self: center; }
+        }
+    </style>
     @php
         // Conic-gradient stops for the lead-sources pie, built from real
         // cumulative percentages rather than hand-picked degree values.
@@ -20,19 +56,19 @@
     @endphp
 
     <!-- Reports & Analytics -->
-    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; margin: -22px -28px 0 -28px;">
+    <div class="rp-wrap" style="flex: 1; display: flex; flex-direction: column; min-height: 0; margin: -22px -28px 0 -28px;">
 
         <!-- Top Bar -->
-        <div style="display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-bottom: 1px solid #EBE4DA; background: #FFFDFA;">
-            <div style="flex: 1;">
-                <div style="font: 600 21px/1.2 'Baloo 2'; color: #16436E;">Reports &amp; analytics</div>
-                <div style="font: 600 12.5px 'Nunito Sans'; color: #98897A;">{{ $revenueByMonth->first()['label'] ?? '' }} – {{ now()->format('F Y') }} · updated {{ now()->format('d M, H:i') }}</div>
+        <div class="rp-topbar" style="display: flex; align-items: center; gap: 16px; padding: 16px 28px; border-bottom: 1px solid #EBE4DA; background: #FFFDFA;">
+            <div class="rp-topbar-text" style="flex: 1;">
+                <div class="rp-title" style="font: 600 21px/1.2 'Baloo 2'; color: #16436E;">Reports &amp; analytics</div>
+                <div class="rp-sub" style="font: 600 12.5px 'Nunito Sans'; color: #98897A;">{{ $revenueByMonth->first()['label'] ?? '' }} – {{ now()->format('F Y') }} · updated {{ now()->format('d M, H:i') }}</div>
             </div>
-            <a href="{{ route('reports.export-pdf') }}" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 10px; padding: 10px 16px; font: 800 13px 'Nunito Sans'; cursor: pointer; text-decoration: none; display: inline-block;">Export PDF</a>
+            <a href="{{ route('reports.export-pdf') }}" class="rp-export" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 10px; padding: 10px 16px; font: 800 13px 'Nunito Sans'; cursor: pointer; text-decoration: none; display: inline-block;">Export PDF</a>
         </div>
 
         <!-- Main Content - Grid -->
-        <div style="flex: 1; overflow-y: auto; padding: 22px 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-content: start;">
+        <div class="rp-grid" style="flex: 1; overflow-y: auto; padding: 22px 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-content: start;">
 
             <!-- VAT Return Summary -->
             <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 18px 20px;">
@@ -139,7 +175,7 @@
             <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 18px 20px;">
                 <div style="font: 600 16px 'Baloo 2'; color: #16436E;">Revenue by month</div>
                 <div style="font: 600 12px 'Nunito Sans'; color: #98897A; margin-bottom: 16px;">AED thousands (invoiced, VAT excl.)</div>
-                <div style="display: flex; gap: 14px; align-items: flex-end; height: 150px;">
+                <div class="rp-bars" style="display: flex; gap: 14px; align-items: flex-end; height: 150px;">
                     @foreach ($revenueByMonth as $m)
                         @php $isCurrent = str_ends_with($m['label'], '*'); @endphp
                         <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end;">
@@ -247,8 +283,8 @@
             </div>
 
             <!-- Lead Sources Pie Chart -->
-            <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 18px 20px; display: flex; gap: 22px; align-items: center;">
-                <div style="width: 140px; height: 140px; border-radius: 50%; background: conic-gradient({{ $pieGradient }}); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div class="rp-pie" style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 18px 20px; display: flex; gap: 22px; align-items: center;">
+                <div class="rp-pie-dial" style="width: 140px; height: 140px; border-radius: 50%; background: conic-gradient({{ $pieGradient }}); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <div style="width: 84px; height: 84px; border-radius: 50%; background: #FFFFFF; display: flex; flex-direction: column; align-items: center; justify-content: center;">
                         <div style="font: 600 20px 'Baloo 2'; color: #16436E;">{{ $capturedCount }}</div>
                         <div style="font: 700 10px 'Nunito Sans'; color: #98897A;">LEADS · 90d</div>

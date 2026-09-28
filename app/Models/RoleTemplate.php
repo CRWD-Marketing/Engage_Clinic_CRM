@@ -16,7 +16,6 @@ class RoleTemplate extends Model
         'leads' => 'Leads',
         'contacts' => 'Contacts',
         'whatsapp' => 'WhatsApp',
-        'voice' => 'Voice Calls',
         'knowledge_base' => 'AI Employee',
         'patients' => 'Patients',
         'calendar' => 'Calendar',
@@ -88,7 +87,7 @@ class RoleTemplate extends Model
             'name' => 'Full Admin',
             'base_role' => 'FULL_ADMIN',
             'description' => 'Complete access to every module: user management, billing, system settings, all client and financial records',
-            'modules' => ['dashboard', 'leads', 'contacts', 'whatsapp', 'voice', 'knowledge_base', 'patients', 'calendar', 'therapists', 'careers', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings'],
+            'modules' => ['dashboard', 'leads', 'contacts', 'whatsapp', 'knowledge_base', 'patients', 'calendar', 'therapists', 'careers', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings'],
             'actions' => ['assign_lead_owner', 'reassign_lead_owner', 'terminate_lead', 'add_lead_notes', 'convert_to_client', 'book_modify_session', 'assign_change_schedule', 'assign_multiple_therapists', 'view_terminated_history', 'create_invoice', 'manage_users_roles'],
         ],
         'staff_admin' => [
@@ -102,14 +101,14 @@ class RoleTemplate extends Model
             'name' => 'Sales Module Access',
             'base_role' => 'SALES_STAFF',
             'description' => 'Leads, deals, pipeline, client communication and intake forms only. No clinical records',
-            'modules' => ['dashboard', 'leads', 'contacts', 'whatsapp', 'voice', 'reports'],
+            'modules' => ['dashboard', 'leads', 'contacts', 'whatsapp', 'reports'],
             'actions' => ['assign_lead_owner', 'terminate_lead', 'add_lead_notes', 'convert_to_client', 'view_terminated_history'],
         ],
         'scheduling' => [
             'name' => 'Scheduling & Coordination Access',
             'base_role' => 'COORDINATOR',
             'description' => 'Appointment calendars, client communication and intake coordination',
-            'modules' => ['dashboard', 'leads', 'contacts', 'whatsapp', 'voice', 'patients', 'calendar'],
+            'modules' => ['dashboard', 'leads', 'contacts', 'whatsapp', 'patients', 'calendar'],
             'actions' => ['assign_lead_owner', 'add_lead_notes', 'convert_to_client', 'book_modify_session', 'assign_change_schedule', 'assign_multiple_therapists'],
         ],
         'finance' => [

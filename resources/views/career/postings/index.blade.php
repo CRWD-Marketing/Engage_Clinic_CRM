@@ -3,15 +3,20 @@
 @section('title', 'Job Postings · Engage Clinic')
 @section('page-title', '')
 @section('page-subtitle', '')
+@section('content-class', 'content-full-width')
 
 @section('content')
 
 @include('career.postings._form-styles')
 
 <style>
-    .jp-page { margin: -22px -28px; padding: 26px 32px 40px; background: #FFFDFA; min-height: 100%; box-sizing: border-box; }
+    .jp-page { margin: -22px -28px; padding: 26px 32px 40px; min-height: 100%; box-sizing: border-box; }
 
     .jp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 12px; }
+    /* margin-left:auto rather than relying on space-between: once the row
+       wraps, the actions are alone on their line and space-between puts a
+       lone item at the start, which dropped them to the left on a phone. */
+    .jp-header-actions { display: flex; gap: 8px; margin-left: auto; }
     .jp-header-title { font: 600 26px 'Baloo 2'; color: #16436E; line-height: 1.2; }
     .jp-header-sub { font: 600 13px 'Nunito Sans'; color: #98897A; margin-top: 4px; }
 
@@ -30,6 +35,17 @@
     .jp-btn-ghost:hover { background: #F6F3EE; color: #16436E; }
 
     .jp-table-card { border: 1px solid #EBE4DA; border-radius: 16px; background: #fff; overflow: hidden; box-shadow: 0 2px 10px rgba(22,42,60,0.04); }
+
+    @media (max-width: 640px) {
+        .main-content-inner { padding-left: 12px; padding-right: 12px; }
+        .jp-header { margin-bottom: 16px; gap: 10px; }
+        .jp-header-title { font-size: 21px; }
+        .jp-header-sub { font-size: 12.5px; }
+        /* Two buttons, one row, no dead space either side of them. */
+        .jp-header-actions { width: 100%; }
+        .jp-header-actions > * { flex: 1; justify-content: center; padding: 10px 12px; }
+        .jp-table th, .jp-table td { padding: 12px 14px; }
+    }
     .jp-table { width: 100%; border-collapse: collapse; }
     .jp-table th {
         text-align: left; font: 800 11px 'Nunito Sans'; text-transform: uppercase; letter-spacing: 0.06em;
@@ -54,7 +70,11 @@
     .jp-actions button.delete { color: #A82348; }
     .jp-actions button.delete:hover { text-decoration: underline; }
 
-    .jp-empty { padding: 56px 20px; text-align: center; color: #98897A; font: 700 12.5px 'Nunito Sans'; }
+.jp-empty { padding: 64px 20px; text-align: center; color: #98897A; font: 700 12.5px 'Nunito Sans'; }
+    .jp-empty-icon { width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: #F9E7EC; color: #C8355F; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .jp-empty-title { color: #2B3A4C; font: 800 15px 'Nunito Sans'; margin-bottom: 6px; }
+    .jp-empty-sub { color: #98897A; font: 600 12.5px 'Nunito Sans'; max-width: 360px; margin: 0 auto; }
+    .jp-empty .jp-btn-primary { margin-top: 18px; }
 
     .jp-success-alert {
         background: #E4F6EB; border: 1px solid #BFE9CE; color: #1E8A4C; border-radius: 10px;
@@ -89,7 +109,7 @@
             <div class="jp-header-title">Job Postings</div>
             <div class="jp-header-sub">Manage what appears on the public Careers page.</div>
         </div>
-        <div style="display:flex; gap:8px;">
+        <div class="jp-header-actions">
             <a href="{{ route('job-applications.index') }}" class="jp-btn-ghost">
                 <i class="fas fa-inbox text-[10px]"></i> View Applicants
             </a>
@@ -105,7 +125,14 @@
 
     <div class="jp-table-card">
         @if ($postings->isEmpty())
-            <div class="jp-empty">No job postings yet. Create one to have it appear on the public Careers page.</div>
+            <div class="jp-empty">
+                <div class="jp-empty-icon"><i class="fas fa-briefcase"></i></div>
+                <div class="jp-empty-title">No job postings yet</div>
+                <div class="jp-empty-sub">Create one to have it appear on the public Careers page.</div>
+                <button type="button" id="jp-empty-new-posting-btn" class="jp-btn-primary">
+                    <i class="fas fa-plus text-[10px]"></i> New Posting
+                </button>
+            </div>
         @else
             <table class="jp-table">
                 <thead>
@@ -199,6 +226,7 @@
         }
 
         document.getElementById('jp-new-posting-btn').addEventListener('click', openModal);
+        document.getElementById('jp-empty-new-posting-btn')?.addEventListener('click', openModal);
         document.getElementById('jp-modal-close').addEventListener('click', closeModal);
         document.getElementById('jp-modal-cancel').addEventListener('click', closeModal);
         overlay.addEventListener('click', function (e) {

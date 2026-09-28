@@ -76,9 +76,9 @@
     <!-- Stats Cards - 6 columns matching CRM -->
     <div class="db-stats-grid">
         <div class="db-stat-card">
-            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">New leads · week</div>
+            <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">New leads · 7 days</div>
             <div style="font: 600 26px 'Baloo 2'; color: #16436E;">{{ $newLeadsCount }}</div>
-            <div style="font: 700 11.5px 'Nunito Sans'; color: {{ $newLeadsDelta > 0 ? '#2E7D5B' : ($newLeadsDelta < 0 ? '#B3261E' : '#8A7D6C') }};">{{ $newLeadsDelta > 0 ? '▲' : ($newLeadsDelta < 0 ? '▼' : '–') }} {{ abs($newLeadsDelta) }}% vs last week</div>
+            <div style="font: 700 11.5px 'Nunito Sans'; color: {{ $newLeadsDelta > 0 ? '#2E7D5B' : ($newLeadsDelta < 0 ? '#B3261E' : '#8A7D6C') }};">{{ $newLeadsDelta > 0 ? '▲' : ($newLeadsDelta < 0 ? '▼' : '–') }} {{ abs($newLeadsDelta) }}% vs previous 7 days</div>
         </div>
         <div class="db-stat-card">
             <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Sessions today</div>
@@ -132,7 +132,7 @@
                         } elseif ($session->status === 'no_show') {
                             $statusLabel = 'No-show'; $statusColors = ['bg' => '#F9E4E2', 'color' => '#B3261E'];
                         } elseif ($session->start_time <= $nowTime && $session->end_time >= $nowTime) {
-                            $statusLabel = 'In Session'; $statusColors = ['bg' => '#F9E7EC', 'color' => '#C8355F'];
+                            $statusLabel = 'In session'; $statusColors = ['bg' => '#F9E7EC', 'color' => '#C8355F'];
                         } elseif ($session->end_time < $nowTime) {
                             $statusLabel = 'Awaiting update'; $statusColors = ['bg' => '#F7EEDD', 'color' => '#B97F24'];
                         } else {
@@ -156,18 +156,18 @@
             <!-- Lead Sources -->
             <div style="background: #FFFFFF; border: 1px solid #EBE4DA; border-radius: 14px; padding: 16px 20px;">
                 <div class="db-card-head" style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px;">
-                    <div class="db-card-title" style="font: 600 16px 'Baloo 2'; color: #16436E; flex: 1;">Lead sources · this week</div>
+                    <div class="db-card-title" style="font: 600 16px 'Baloo 2'; color: #16436E; flex: 1;">Lead sources · last 7 days</div>
                     <a href="{{ route('reports.index') }}" style="background: none; border: none; font: 800 12px 'Nunito Sans'; color: #C8355F; cursor: pointer; padding: 0; text-decoration: none;">Reports →</a>
                 </div>
                 @if ($leadSources->isEmpty())
-                    <div style="font: 700 12.5px 'Nunito Sans'; color: #98897A;">No leads captured this week yet.</div>
+                    <div style="font: 700 12.5px 'Nunito Sans'; color: #98897A;">No leads captured in the last 7 days.</div>
                 @else
                     <div style="display: flex; flex-direction: column; gap: 9px;">
                         @foreach ($leadSources as $row)
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <div style="width: 86px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C;">{{ $row->source ?: 'Other' }}</div>
                                 <div style="flex: 1; height: 10px; background: #F3EDE3; border-radius: 5px; overflow: hidden;">
-                                    <div style="width: {{ max(4, round($row->c / $leadSourcesMax * 100)) }}%; height: 100%; background: {{ $sourceColors[$row->source] ?? '#8A7D6C' }}; border-radius: 5px;"></div>
+                                    <div style="width: {{ $row->c > 0 ? max(4, min(100, round($row->c / $leadSourcesScale * 100))) : 0 }}%; height: 100%; background: {{ $sourceColors[$row->source] ?? '#8A7D6C' }}; border-radius: 5px;"></div>
                                 </div>
                                 <div style="width: 20px; font: 800 12.5px 'Nunito Sans'; color: #16436E; text-align: right;">{{ $row->c }}</div>
                             </div>
@@ -241,8 +241,8 @@
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div style="font: 600 13px 'Baloo 2'; color: #C8355F; width: 20px;">{{ $i + 1 }}</div>
                                 <div style="flex: 1;">
-                                    <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">{{ $entry->child_name }}{{ $entry->child_age ? ' · ' . $entry->child_age : '' }}</div>
-                                    <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">{{ $entry->programme ?? 'Programme TBD' }}{{ $entry->hours_per_week ? ' ' . $entry->hours_per_week . 'h/wk' : '' }} · waiting {{ $entry->waitingWeeks() }} {{ Str::plural('wk', $entry->waitingWeeks()) }}</div>
+                                    <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">{{ $entry->child_name ?: ($entry->parent_guardian_name ?: 'Unnamed enquiry') }}{{ $entry->child_age ? ' · ' . $entry->child_age : '' }}</div>
+                                    <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">{{ $entry->interested_in ?: 'Interest not captured' }}{{ $entry->source ? ' · ' . $entry->source : '' }} · waiting {{ $entry->waitingWeeks() }} {{ Str::plural('wk', $entry->waitingWeeks()) }}</div>
                                 </div>
                             </div>
                         @endforeach

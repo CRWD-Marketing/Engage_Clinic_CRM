@@ -11,13 +11,15 @@ use Illuminate\Database\Seeder;
 class LeadSeeder extends Seeder
 {
     /**
-     * Seed leads across every pipeline stage (including a couple of terminated
-     * ones), spread over the last ~2 months so the pipeline/dashboard views
-     * have something realistic to show.
+     * Seed leads across every pipeline stage (including terminated ones
+     * covering every termination reason), spread over the last ~2.5 months
+     * so the pipeline/dashboard views have something realistic to show.
      */
     public function run(): void
     {
-        $owners = User::whereIn('role', ['SALES_STAFF', 'COORDINATOR', 'FULL_ADMIN'])->pluck('id')->all();
+        // Only Sales module and Full Admin users can own a lead (Coordinator's
+        // "leads" access is view-mostly, not ownership) - see LeadController.
+        $owners = User::whereIn('role', ['SALES_STAFF', 'FULL_ADMIN'])->pluck('id')->all();
         $clinicians = User::where('role', 'THERAPIST')->pluck('id')->all();
         $packages = Package::orderBy('id')->get();
         $locations = Location::orderBy('id')->pluck('id')->all();
@@ -48,6 +50,23 @@ class LeadSeeder extends Seeder
             ['Shamma Al Dhaheri', 'Butti Al Dhaheri', 4, Lead::STATUS_NEW],
             ['Saeed Al Mazrouei', 'Khalfan Al Mazrouei', 6, Lead::STATUS_TERMINATED],
             ['Noora Al Blooshi', 'Salem Al Blooshi', 3, Lead::STATUS_TERMINATED],
+
+            // Additional leads: fills out the thin stages (assessment/enrolled)
+            // and exercises every remaining TERMINATION_REASONS value so the
+            // "Why leads are lost" report card isn't dominated by just 2 reasons.
+            ['Reem Al Naqbi', 'Saeed Al Naqbi', 4, Lead::STATUS_NEW],
+            ['David Thompson', 'James Thompson', 6, Lead::STATUS_NEW],
+            ['Meera Nair', 'Anand Nair', 3, Lead::STATUS_CONTACTED],
+            ['Hana Al Zarooni', 'Marwan Al Zarooni', 5, Lead::STATUS_CONTACTED],
+            ['Lina Haddad', 'Karim Haddad', 4, Lead::STATUS_ASSESSMENT_BOOKED],
+            ['Priya Sharma', 'Rajesh Sharma', 6, Lead::STATUS_ASSESSMENT_DONE],
+            ['Maryam Al Kaabi', 'Hamdan Al Kaabi', 5, Lead::STATUS_ENROLLED],
+            ['Hind Al Marzouqi', 'Saif Al Marzouqi', 4, Lead::STATUS_TERMINATED],
+            ['Ahmad Zaidan', 'Fadi Zaidan', 5, Lead::STATUS_TERMINATED],
+            ['Sara Thompson', 'Michael Thompson', 3, Lead::STATUS_TERMINATED],
+            ['Omar Khalil', 'Nabil Khalil', 7, Lead::STATUS_TERMINATED],
+            ['Mona Al Suwaidi', 'Hamad Al Suwaidi', 4, Lead::STATUS_TERMINATED],
+            ['Ravi Patel', 'Nilesh Patel', 6, Lead::STATUS_TERMINATED],
         ];
 
         // [reason, note] for each terminated lead above, in order - feeds the
@@ -55,6 +74,12 @@ class LeadSeeder extends Seeder
         $terminationDetails = [
             'Saeed Al Mazrouei' => ['reason' => 'Distance / relocated', 'note' => 'Family relocated outside Abu Dhabi.'],
             'Noora Al Blooshi' => ['reason' => 'Chose another provider', 'note' => 'Enrolled at a centre closer to Al Reem — asked to stay on our mailing list.'],
+            'Hind Al Marzouqi' => ['reason' => 'Fees / budget', 'note' => 'Programme cost exceeds what the family can commit to monthly.'],
+            'Ahmad Zaidan' => ['reason' => 'No insurance coverage', 'note' => 'Insurer declined coverage for ABA; family could not self-fund the full programme.'],
+            'Sara Thompson' => ['reason' => 'Unreachable — no response', 'note' => 'No response after 3 follow-up calls and 2 WhatsApp messages over 2 weeks.'],
+            'Omar Khalil' => ['reason' => 'Not a fit for our services', 'note' => 'Child\'s needs are outside our current service scope; referred to a specialised centre.'],
+            'Mona Al Suwaidi' => ['reason' => 'Duplicate enquiry', 'note' => 'Same family already has an active lead under a different phone number.'],
+            'Ravi Patel' => ['reason' => 'Other', 'note' => 'Family decided to pause their therapy search for personal reasons.'],
         ];
 
         // How many of the 7 intake-checklist steps are done by pipeline stage.
@@ -84,8 +109,12 @@ class LeadSeeder extends Seeder
         $consentSignedBy = ['Parent', 'Mother', 'Father', 'Guardian'];
         $consentMethods = ['In person', 'Email', 'WhatsApp'];
 
+        $leadCount = count($children);
+
         foreach ($children as $i => [$childName, $parentName, $age, $status]) {
-            $daysAgo = 60 - ($i * 3);
+            // Spread leads from ~75 days ago down to ~2 days ago, regardless of
+            // how many leads are in the list above.
+            $daysAgo = (int) round(75 - ($i * (73 / max($leadCount - 1, 1))));
             $createdAt = now()->subDays(max($daysAgo, 1));
 
             $stepsComplete = $stepsByStatus[$status];

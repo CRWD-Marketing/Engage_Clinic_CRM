@@ -465,9 +465,10 @@
       : null;
     // A booking request is an enquiry, not a qualified lead yet - it goes to
     // Contacts like every other website submission, for a staff member to
-    // review and manually convert. Contact has no separate child-name field,
-    // so it's folded into the message alongside the requested slot.
-    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)\nChild: ${childName}` + (notes ? `\n${notes}` : '');
+    // review and manually convert. The child's name travels as its own field
+    // (so it reaches the lead on convert); the message keeps the slot and
+    // whatever the family wrote.
+    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)` + (notes ? `\n${notes}` : '');
 
     const btn = document.getElementById('confirmBookingBtn');
     const originalHTML = btn.innerHTML;
@@ -483,6 +484,7 @@
       },
       body: JSON.stringify({
         name: name,
+        child_name: childName,
         child_age: childAge,
         email: email,
         phone: phone,

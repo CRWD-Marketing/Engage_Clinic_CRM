@@ -28,12 +28,14 @@ class DatabaseSeeder extends Seeder
             CalendarSessionSeeder::class,
             CalendarExtrasSeeder::class,
             StaffLeaveSeeder::class,
-            InvoiceSeeder::class,
+            BillingDemoSeeder::class,
             WaitlistSeeder::class,
             ContactSeeder::class,
             WhatsappContactSeeder::class,
             WhatsappMessageSeeder::class,
+            LeadSourceDemoSeeder::class,
             KnowledgeBaseSeeder::class,
+            AiEmployeeQnaSeeder::class,
         ]);
     }
 }

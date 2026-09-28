@@ -269,6 +269,44 @@ class Lead extends Model
     }
 
     /**
+     * Total/used/remaining hours for this lead's assigned package(s) that
+     * cover the given calendar activity type - the hour balance scheduling
+     * must never book past. "Used" is every non-cancelled session (scheduled
+     * *and* completed, mirroring PatientAuthorization::minutesCommitted())
+     * so a future booking counts immediately, not only once it happens.
+     * Null when nothing assigned covers this type - callers should then skip
+     * the hours cap rather than treat it as zero.
+     */
+    public function packageHours(string $activityType): ?array
+    {
+        $activityType = trim($activityType);
+        if ($activityType === '') {
+            return null;
+        }
+
+        $packages = $this->packages()->get()->filter(
+            fn (Package $p) => in_array($activityType, $p->matchingActivityTypes(), true)
+        );
+
+        if ($packages->isEmpty()) {
+            return null;
+        }
+
+        $matchingTypes = $packages->flatMap(fn (Package $p) => $p->matchingActivityTypes())->unique()->values()->all();
+
+        $totalHours = (float) $packages->sum('hours_per_week');
+        $usedMinutes = (int) $this->calendarSessions()->notCancelled()->whereIn('activity_type', $matchingTypes)->sum('duration_minutes');
+        $usedHours = round($usedMinutes / 60, 1);
+
+        return [
+            'label' => $packages->pluck('name')->filter()->implode(' + ') ?: 'package',
+            'total' => $totalHours,
+            'used' => $usedHours,
+            'left' => max(0, round($totalHours - $usedHours, 1)),
+        ];
+    }
+
+    /**
      * Full activity log (notes + assignment changes), newest first.
      */
     public function activities()
@@ -531,6 +569,15 @@ class Lead extends Model
         ]);
 
         return true;
+    }
+
+    /**
+     * How long this family has been waiting, in whole weeks, counted from the
+     * enquiry landing here. Drives the waitlist widgets.
+     */
+    public function waitingWeeks(): int
+    {
+        return (int) round($this->created_at->diffInWeeks(now()));
     }
 
     /**

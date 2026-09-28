@@ -1,10 +1,64 @@
 @extends('layouts.landing')
 
-@section('title', 'Engage Clinic · Therapy, reimagined')
+@section('title', 'Engage Clinic · Therapy, reimagined | ENGAGE BEHAVIORAL DEVELOPMENT CLINIC - L.L.C')
 
 @php
   $activePage = 'home';
+
+  // The registered company behind this site. Business verifications (Meta,
+  // Google and the like) match the legal name letter for letter, so it is
+  // written out here once and reused in the copy and the markup below -
+  // never abbreviated to the trading name.
+  $legalName = 'ENGAGE BEHAVIORAL DEVELOPMENT CLINIC - L.L.C';
+  $tradingName = 'Engage Clinic';
+  $clinicAddress = 'Office no. 1203, ADCP Commercial Tower-C, Electra Street, Abu Dhabi, UAE';
+  $clinicPhone = '+971 50 884 6801';
+  $clinicEmail = 'info@engagebehavior.com';
+  $siteHost = parse_url(url('/'), PHP_URL_HOST);
 @endphp
+
+@push('head')
+<meta name="description" content="{{ $legalName }} (trading as {{ $tradingName }}) provides individualised ABA, speech and early-intervention therapy for children across Abu Dhabi, UAE.">
+<meta name="author" content="{{ $legalName }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{{ $legalName }}">
+<meta property="og:title" content="{{ $tradingName }} — ABA therapy built around your child">
+<meta property="og:description" content="{{ $legalName }} (trading as {{ $tradingName }}) provides individualised ABA, speech and early-intervention therapy for children across Abu Dhabi, UAE.">
+<meta property="og:url" content="{{ url('/') }}">
+<meta property="og:image" content="{{ asset('uploads/engage.png') }}">
+<meta property="business:contact_data:street_address" content="Office no. 1203, ADCP Commercial Tower-C, Electra Street">
+<meta property="business:contact_data:locality" content="Abu Dhabi">
+<meta property="business:contact_data:country_name" content="United Arab Emirates">
+<meta property="business:contact_data:phone_number" content="{{ $clinicPhone }}">
+<meta property="business:contact_data:email" content="{{ $clinicEmail }}">
+<script type="application/ld+json">
+{!! json_encode([
+  '@context' => 'https://schema.org',
+  '@type' => 'MedicalBusiness',
+  'name' => $legalName,
+  'legalName' => $legalName,
+  'alternateName' => $tradingName,
+  'url' => url('/'),
+  'logo' => asset('uploads/engage.png'),
+  'image' => asset('uploads/engage.png'),
+  'description' => $legalName.' (trading as '.$tradingName.') provides individualised ABA, speech and early-intervention therapy for children across Abu Dhabi, UAE.',
+  'telephone' => $clinicPhone,
+  'email' => $clinicEmail,
+  'address' => [
+    '@type' => 'PostalAddress',
+    'streetAddress' => 'Office no. 1203, ADCP Commercial Tower-C, Electra Street',
+    'addressLocality' => 'Abu Dhabi',
+    'addressCountry' => 'AE',
+  ],
+  'sameAs' => [
+    'https://www.facebook.com/engageBL/',
+    'https://www.instagram.com/engageclinicuae',
+    'https://www.linkedin.com/company/engageclinic/',
+    'https://www.tiktok.com/@engageclinicuae',
+  ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+</script>
+@endpush
 
 @section('content')
 
@@ -395,6 +449,46 @@
   </div>
 </section>
 
+<!-- Registered business details. Plain, crawlable text (no images, no
+     scripts) so a verification reviewer can read the legal name straight
+     off the page and match it to the licence on file. -->
+<section id="business-information" class="py-16 md:py-20 bg-white border-t border-[var(--border)]">
+  <div class="max-w-[1100px] mx-auto px-6 lg:px-8">
+    <span class="eyebrow-plain reveal-text">Business Information</span>
+    <h2 class="reveal-heading display mt-3 text-2xl md:text-3xl font-extrabold text-[var(--navy)]">{{ $legalName }}</h2>
+    <p class="reveal-text mt-4 text-[var(--text-secondary)] leading-relaxed max-w-3xl">
+      This website is owned and operated by <strong class="text-[var(--navy)]">{{ $legalName }}</strong>, a company registered in Abu Dhabi, United Arab Emirates and trading as <strong class="text-[var(--navy)]">{{ $tradingName }}</strong>. All therapy services, consultations and bookings offered here are delivered by {{ $legalName }}.
+    </p>
+
+    <dl class="reveal-group grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6 mt-10 pt-8 border-t border-[var(--border)]">
+      <div>
+        <dt class="text-[11.5px] font-extrabold uppercase tracking-[.1em] text-[var(--pink)]">Legal business name</dt>
+        <dd class="mt-1.5 text-[var(--navy)] font-bold">{{ $legalName }}</dd>
+      </div>
+      <div>
+        <dt class="text-[11.5px] font-extrabold uppercase tracking-[.1em] text-[var(--pink)]">Trading name</dt>
+        <dd class="mt-1.5 text-[var(--navy)] font-bold">{{ $tradingName }}</dd>
+      </div>
+      <div>
+        <dt class="text-[11.5px] font-extrabold uppercase tracking-[.1em] text-[var(--pink)]">Registered office</dt>
+        <dd class="mt-1.5 text-[var(--navy)] font-bold">{{ $clinicAddress }}</dd>
+      </div>
+      <div>
+        <dt class="text-[11.5px] font-extrabold uppercase tracking-[.1em] text-[var(--pink)]">Official website</dt>
+        <dd class="mt-1.5 text-[var(--navy)] font-bold"><a href="{{ url('/') }}" class="hover:text-[var(--pink)]">{{ $siteHost }}</a></dd>
+      </div>
+      <div>
+        <dt class="text-[11.5px] font-extrabold uppercase tracking-[.1em] text-[var(--pink)]">Telephone</dt>
+        <dd class="mt-1.5 text-[var(--navy)] font-bold"><a href="tel:{{ str_replace(' ', '', $clinicPhone) }}" class="hover:text-[var(--pink)]">{{ $clinicPhone }}</a></dd>
+      </div>
+      <div>
+        <dt class="text-[11.5px] font-extrabold uppercase tracking-[.1em] text-[var(--pink)]">Email</dt>
+        <dd class="mt-1.5 text-[var(--navy)] font-bold"><a href="mailto:{{ $clinicEmail }}" class="hover:text-[var(--pink)]">{{ $clinicEmail }}</a></dd>
+      </div>
+    </dl>
+  </div>
+</section>
+
 <!-- Booking modal -->
 <div class="modal-overlay" id="bookingOverlay">
   <div class="modal-card">
@@ -595,6 +689,86 @@
   }
   setInterval(() => { goToTestimonial((currentSlide + 1) % slides.length); }, 6000);
 
+  // ---- CSRF handling ----
+  // The token is read at submit time, never baked into this script at render
+  // time. A page left open past SESSION_LIFETIME, restored from bfcache, or
+  // served from a full-page cache would otherwise post a token the server has
+  // already rotated away from, which is what produces the 419 "CSRF token
+  // mismatch" on an otherwise valid booking.
+
+  function getXsrfCookie() {
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return (meta && meta.content) ? meta.content : getXsrfCookie();
+  }
+
+  // Pulls a fresh token from the session and writes it back into the meta tag
+  // so every later submit on this page uses the current one too.
+  async function refreshCsrfToken() {
+    try {
+      const res = await fetch('{{ route('csrf.token') }}', {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data || !data.token) return false;
+
+      let meta = document.querySelector('meta[name="csrf-token"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'csrf-token');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', data.token);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Posts JSON with both CSRF headers: X-CSRF-TOKEN for the standard web
+  // middleware, X-XSRF-TOKEN for Sanctum's stateful API guard. Sending both
+  // means this works whichever group /api/contacts ends up in.
+  async function postJson(url, payload, allowRetry = true) {
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-TOKEN': getCsrfToken(),
+    };
+    const xsrf = getXsrfCookie();
+    if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: headers,
+      body: JSON.stringify(payload),
+    });
+
+    // Token expired mid-visit: fetch a current one and replay the submit once.
+    if (response.status === 419 && allowRetry) {
+      const refreshed = await refreshCsrfToken();
+      if (refreshed) return postJson(url, payload, false);
+    }
+
+    // 419 and 500 responses are HTML, so calling .json() unconditionally would
+    // throw and surface the real failure as a misleading "Network error".
+    let data = null;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      data = await response.json().catch(() => null);
+    }
+
+    return { ok: response.ok, status: response.status, data: data };
+  }
+
   // ---- Booking modal ----
   const bookingState = { date: null, time: null, monthOffset: 0 };
   const TIME_SLOTS = ['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'];
@@ -713,8 +887,9 @@
     });
   }
 
-  function submitBooking(event) {
+  async function submitBooking(event) {
     event.preventDefault();
+
     const childName = document.getElementById('bk_child_name').value.trim();
     const childAge = document.getElementById('bk_child_age').value.trim();
     const name = document.getElementById('bk_name').value.trim();
@@ -727,33 +902,34 @@
     successBox.style.display = 'none';
     errorBox.style.display = 'none';
 
-    const dateStr = bookingState.date ? bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT) : '';
+    // Guard against the form being reachable without a slot picked.
+    if (!bookingState.date || !bookingState.time) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Pick a date and time before confirming.';
+      return;
+    }
+
+    const dateStr = bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT);
     // Y-M-D in local time, not toISOString() (which would shift the date
     // near midnight for GST/UTC+4 users) - this is what the admin list sorts
     // and displays as the requested consultation slot.
-    const bookingDateIso = bookingState.date
-      ? `${bookingState.date.getFullYear()}-${String(bookingState.date.getMonth() + 1).padStart(2, '0')}-${String(bookingState.date.getDate()).padStart(2, '0')}`
-      : null;
+    const bookingDateIso = `${bookingState.date.getFullYear()}-${String(bookingState.date.getMonth() + 1).padStart(2, '0')}-${String(bookingState.date.getDate()).padStart(2, '0')}`;
     // A booking request is an enquiry, not a qualified lead yet - it goes to
     // Contacts like every other website submission, for a staff member to
-    // review and manually convert. Contact has no separate child-name field,
-    // so it's folded into the message alongside the requested slot.
-    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)\nChild: ${childName}` + (notes ? `\n${notes}` : '');
+    // review and manually convert. The child's name travels as its own field
+    // (so it reaches the lead on convert); the message keeps the slot and
+    // whatever the family wrote.
+    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)` + (notes ? `\n${notes}` : '');
 
     const btn = document.getElementById('confirmBookingBtn');
     const originalHTML = btn.innerHTML;
     btn.textContent = 'Booking...';
     btn.disabled = true;
 
-    fetch('/api/contacts', {
-      method: 'POST',
-      headers: {
-        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    try {
+      const result = await postJson('/api/contacts', {
         name: name,
+        child_name: childName,
         child_age: childAge,
         email: email,
         phone: phone,
@@ -761,28 +937,34 @@
         message: combinedNotes,
         booking_date: bookingDateIso,
         booking_time: bookingState.time,
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
+      });
+
+      if (result.ok && result.data && result.data.success) {
         document.getElementById('bookingForm').style.display = 'none';
         successBox.style.display = 'block';
-        successBox.textContent = `✅ Booking request received for ${dateStr} at ${bookingState.time}. We'll confirm within 24 hours.`;
-      } else {
-        errorBox.style.display = 'block';
-        const errors = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Something went wrong. Please try again.');
-        errorBox.textContent = '❌ ' + errors;
+        successBox.textContent = `Booking request received for ${dateStr} at ${bookingState.time}. We'll confirm within 24 hours.`;
+        return;
       }
-    })
-    .catch(() => {
+
       errorBox.style.display = 'block';
-      errorBox.textContent = '❌ Network error. Please check your connection and try again.';
-    })
-    .finally(() => {
+      if (result.status === 419) {
+        errorBox.textContent = 'Your session expired. Refresh the page and submit again.';
+      } else if (result.status === 429) {
+        errorBox.textContent = 'Too many attempts. Wait a moment and try again.';
+      } else if (result.data && result.data.errors) {
+        errorBox.textContent = Object.values(result.data.errors).flat().join(', ');
+      } else if (result.data && result.data.message) {
+        errorBox.textContent = result.data.message;
+      } else {
+        errorBox.textContent = `Something went wrong (error ${result.status}). Try again, or call +971 50 884 6801.`;
+      }
+    } catch (e) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Network error. Check your connection and try again.';
+    } finally {
       btn.innerHTML = originalHTML;
       btn.disabled = false;
-    });
+    }
   }
 </script>
 @endpush

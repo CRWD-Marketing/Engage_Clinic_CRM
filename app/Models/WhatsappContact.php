@@ -45,6 +45,17 @@ class WhatsappContact extends Model
         return $this->hasMany(WhatsappMessage::class);
     }
 
+    /**
+     * The single most recent message, for the conversation-list row to show
+     * who last responded (AI vs. a named staff member) without pulling the
+     * whole thread. latestOfMany() is index-backed (MAX(id)) rather than an
+     * N+1 per row.
+     */
+    public function latestMessage()
+    {
+        return $this->hasOne(WhatsappMessage::class)->latestOfMany();
+    }
+
     public function lead()
     {
         return $this->belongsTo(Lead::class);

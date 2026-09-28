@@ -15,8 +15,8 @@
         .btn-back { background: #fff; color: #16436E; border: 1px solid #E2DACE !important; }
         .sheet { width: 780px; max-width: 100%; margin: 0 auto 40px; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(22,42,60,0.18); }
         .banner { background: #16436E; padding: 24px 40px; display: flex; align-items: center; justify-content: space-between; }
-        .banner-title { color: #fff; font: 600 26px 'Baloo 2'; text-align: right; }
-        .banner-sub { color: #F7C6D4; font: 700 12.5px 'Nunito Sans'; text-align: right; margin-top: 2px; }
+        .banner-title { color: #fff; font: 600 26px 'Baloo 2'; text-align: left; }
+        .banner-sub { color: #F7C6D4; font: 700 12.5px 'Nunito Sans'; text-align: left; margin-top: 2px; }
         .accent { height: 4px; background: #C8355F; }
         .body { padding: 30px 40px 40px; }
         .top-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; margin-bottom: 20px; }
@@ -38,19 +38,26 @@
         tbody td.num { text-align: right; font: 800 12.5px 'Nunito Sans'; }
         .credit { color: #1E7A46; }
         .charge { color: #B3261E; }
+        .nil { color: #C6BCAE; font-weight: 700 !important; }
         .closing { display: flex; justify-content: space-between; align-items: center; background: #16436E; border-radius: 10px; padding: 14px 18px; margin-top: 18px; }
         .closing .l { color: #BFD2E3; font: 700 12.5px 'Nunito Sans'; }
         .closing .v { color: #fff; font: 700 22px 'Baloo 2'; }
         .oldest { margin-top: 10px; font: 700 12px 'Nunito Sans'; color: #B3261E; }
-        .legal { text-align: center; font: 700 11px 'Nunito Sans'; color: #A79C8E; margin-top: 22px; padding-top: 14px; border-top: 1px solid #F0EAE0; }
-        @media print { .toolbar { display: none; } body { background: #fff; } .sheet { box-shadow: none; border-radius: 0; margin: 0; width: 100%; } }
+        .section { margin-top: 26px; padding-top: 18px; border-top: 1px solid #F0EAE0; }
+        .section-title { font: 600 18px 'Baloo 2'; color: #16436E; }
+        .section-sub { font: 600 12px 'Nunito Sans'; color: #98897A; margin-top: 2px; }
+        .sub { font: 700 10.5px 'Nunito Sans'; color: #98897A; margin-top: 2px; }
+        .pill { display: inline-block; border-radius: 7px; padding: 2px 8px; font: 800 10.5px 'Nunito Sans'; }
+        .empty { text-align: center; color: #98897A; font: 600 12.5px 'Nunito Sans'; padding: 16px 0; }
+        @page { margin: 0; }
+        @media print { .toolbar { display: none; } body { background: #fff; } .sheet { box-shadow: none; border-radius: 0; margin: 0; width: 100%; max-width: none; } table { page-break-inside: auto; } tr { page-break-inside: avoid; } }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
         <a href="{{ route('billing.index') }}" class="btn-back">← Back to billing</a>
-        <button type="button" class="btn-print" onclick="window.print()">Print / Save as PDF</button>
+        <a href="{{ route('billing.statements.pdf', $patient) }}" class="btn-print">Print / Save as PDF</a>
     </div>
 
     <div class="sheet">
@@ -93,8 +100,10 @@
                             <td>{{ $r['date_label'] }}</td>
                             <td>{{ $r['ref'] }}</td>
                             <td>{{ $r['desc'] }}</td>
-                            <td class="num charge">{{ $r['charge'] > 0 ? number_format($r['charge'], 2) : '—' }}</td>
-                            <td class="num credit">{{ $r['credit'] > 0 ? number_format($r['credit'], 2) : '—' }}</td>
+                            {{-- A row is either a charge or a credit, never both; the em dash
+                                 marks the empty side and stays grey so it can't read as an amount. --}}
+                            <td class="num {{ $r['charge'] > 0 ? 'charge' : 'nil' }}">{{ $r['charge'] > 0 ? number_format($r['charge'], 2) : '—' }}</td>
+                            <td class="num {{ $r['credit'] > 0 ? 'credit' : 'nil' }}">{{ $r['credit'] > 0 ? number_format($r['credit'], 2) : '—' }}</td>
                             <td class="num">{{ number_format($r['balance'], 2) }}</td>
                         </tr>
                     @empty
@@ -110,6 +119,60 @@
             @if ($oldest)
                 <div class="oldest">Oldest open item: {{ $oldest->invoice_number }}, {{ max(0, $oldest->daysPastDue()) }} days past due.</div>
             @endif
+
+            {{--
+                The sessions behind the charges above. Same delivered-session
+                ledger the invoice picker prices from, so a family reading the
+                statement can tie every invoice line back to an actual visit.
+            --}}
+            <div class="section">
+                <div class="section-title">Sessions delivered</div>
+                <div class="section-sub">Every session attended, cancelled or missed — and how each one was charged</div>
+
+                <div class="stat-row">
+                    <div class="stat"><div class="l">Sessions</div><div class="v">{{ $sessions->count() }}</div></div>
+                    <div class="stat"><div class="l">Billable hours</div><div class="v">{{ $sessionHours }}</div></div>
+                    <div class="stat"><div class="l">Session value</div><div class="v">AED {{ number_format($sessionCharged, 2) }}</div></div>
+                </div>
+
+                <table>
+                    <thead><tr><th>Date</th><th>Session</th><th>Attendance</th><th class="num">Hours</th><th class="num">Amount</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @forelse ($sessions as $s)
+                            @php
+                                $pill = match ($s['attendance']) {
+                                    'completed' => ['#E3F1E9', '#2E7D5B'],
+                                    'no_show' => ['#F9E4E2', '#B3261E'],
+                                    'cancelled_late' => ['#F7EEDD', '#B97F24'],
+                                    default => ['#EFEAE2', '#6B6B6B'],
+                                };
+                            @endphp
+                            <tr>
+                                <td>
+                                    {{ $s['date_label'] }}
+                                    <div class="sub">{{ $s['start_time'] }}–{{ $s['end_time'] }}</div>
+                                </td>
+                                <td>
+                                    {{ $s['service_label'] }}
+                                    <div class="sub">{{ $s['therapist_name'] }}{{ $s['trainee_note'] ? ' · '.$s['trainee_note'] : '' }} · {{ $s['payer'] }}</div>
+                                </td>
+                                <td>
+                                    <span class="pill" style="background: {{ $pill[0] }}; color: {{ $pill[1] }};">{{ $s['attendance_label'] }}</span>
+                                    <div class="sub">{{ $s['charge_rule'] }}</div>
+                                </td>
+                                <td class="num">{{ $s['bill_hours'] }}</td>
+                                <td class="num {{ $s['gross'] > 0 ? '' : 'nil' }}">{{ $s['gross'] > 0 ? number_format($s['gross'], 2) : '—' }}</td>
+                                <td>
+                                    {{ $s['billing_status'] }}
+                                    @if ($s['invoice_number'])<div class="sub">{{ $s['invoice_number'] }}</div>@endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="empty">No sessions delivered yet.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
             <div class="legal">
                 This is a statement of account, not a tax invoice. {{ $clinic['name'] }} · {{ $clinic['license'] }}

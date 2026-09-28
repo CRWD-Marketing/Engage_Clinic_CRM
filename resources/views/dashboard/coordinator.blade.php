@@ -119,7 +119,7 @@
                         } elseif ($session->status === 'no_show') {
                             $statusLabel = 'No-show'; $statusColors = ['bg' => '#F9E4E2', 'color' => '#B3261E'];
                         } elseif ($session->start_time <= $nowTime && $session->end_time >= $nowTime) {
-                            $statusLabel = 'In Session'; $statusColors = ['bg' => '#F9E7EC', 'color' => '#C8355F'];
+                            $statusLabel = 'In session'; $statusColors = ['bg' => '#F9E7EC', 'color' => '#C8355F'];
                         } elseif ($session->end_time < $nowTime) {
                             $statusLabel = 'Awaiting update'; $statusColors = ['bg' => '#F7EEDD', 'color' => '#B97F24'];
                         } else {

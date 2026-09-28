@@ -32,6 +32,11 @@ class InvoiceController extends Controller
      */
     public function ledger(Patient $patient)
     {
+        // A session becomes billable the moment its end time passes, not when
+        // the day ends - catch up here as the calendar does, so this
+        // morning's session can be invoiced this afternoon.
+        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+
         $patient->load(['lead', 'authorizations']);
         $rows = $this->ledger->forPatient($patient);
         $profile = $this->ledger->profile($patient);
@@ -378,9 +383,34 @@ class InvoiceController extends Controller
 
     /**
      * Per-family running-balance statement: every invoice, credit note and
-     * receipt in date order. Derived on demand, never stored.
+     * receipt in date order, plus the sessions those charges came from.
+     * Derived on demand, never stored.
      */
     public function statement(Patient $patient)
+    {
+        return view('billing.statement', $this->statementData($patient));
+    }
+
+    /**
+     * The same statement as a real PDF. The browser's own "Save as PDF" adds
+     * page margins and drops the full-bleed banner; dompdf with
+     * `@page { margin: 0 }` keeps the design edge to edge (billing.statement_pdf
+     * is table-based for the same reason billing.print_pdf is).
+     */
+    public function statementPdf(Patient $patient)
+    {
+        $data = $this->statementData($patient);
+        $name = str($data['profile']['child'] ?: 'patient')->slug();
+
+        return Pdf::loadView('billing.statement_pdf', $data)
+            ->setPaper('a4')
+            ->download("statement-{$name}-".now()->format('Y-m-d').'.pdf');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function statementData(Patient $patient): array
     {
         $patient->load(['lead', 'authorizations', 'invoices.payments']);
         $entries = collect();
@@ -407,7 +437,12 @@ class InvoiceController extends Controller
         $oldest = $patient->invoices->filter(fn ($i) => ! $i->isVoided() && $i->balance() > 0.01)->sortBy('due_date')->first();
         $profile = $this->ledger->profile($patient);
 
-        return view('billing.statement', [
+        // The sessions behind those charges - the same delivered, priced
+        // session ledger the invoice picker reads, oldest first so it runs in
+        // the same direction as the balance above it.
+        $sessions = $this->ledger->forPatient($patient)->sortBy('session_date')->values();
+
+        return [
             'patient' => $patient,
             'profile' => $profile,
             'rows' => $rows,
@@ -415,9 +450,12 @@ class InvoiceController extends Controller
             'credited' => $rows->sum('credit'),
             'balance' => $balance,
             'oldest' => $oldest,
+            'sessions' => $sessions,
+            'sessionHours' => $sessions->sum('bill_hours'),
+            'sessionCharged' => $sessions->sum('gross'),
             'clinic' => config('clinic'),
             'asOf' => now(),
-        ]);
+        ];
     }
 
     // ------------------------------------------------------------------

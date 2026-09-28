@@ -49,13 +49,26 @@ class SearchController extends Controller
         }
 
         if ($user->canAccessFeature('patients')) {
-            $results = array_merge($results, Patient::query()
+            $patientQuery = Patient::query()
                 ->whereHas('lead', function ($q) use ($term) {
                     $q->where('child_name', 'like', "%{$term}%")
                         ->orWhere('parent_guardian_name', 'like', "%{$term}%")
                         ->orWhere('phone', 'like', "%{$term}%");
                 })
-                ->with('lead')
+                ->with('lead');
+
+            if ($user->role === 'THERAPIST') {
+                // Same care-team scoping as PatientController::index() - a
+                // therapist should never find, via search, a patient their
+                // own patient list already hides from them.
+                $assignedLeadIds = CalendarSession::where('therapist_id', $user->id)
+                    ->distinct()
+                    ->pluck('patient_id');
+
+                $patientQuery->whereIn('lead_id', $assignedLeadIds);
+            }
+
+            $results = array_merge($results, $patientQuery
                 ->limit(6)
                 ->get()
                 ->map(fn (Patient $patient) => [
@@ -130,7 +143,7 @@ class SearchController extends Controller
         }
 
         if ($user->canAccessFeature('calendar')) {
-            $results = array_merge($results, CalendarSession::query()
+            $sessionQuery = CalendarSession::query()
                 ->where(function ($q) use ($term) {
                     $q->where('patient_name', 'like', "%{$term}%")
                         ->orWhere('activity_label', 'like', "%{$term}%")
@@ -139,7 +152,15 @@ class SearchController extends Controller
                                 ->orWhere('last_name', 'like', "%{$term}%");
                         });
                 })
-                ->with('therapist')
+                ->with('therapist');
+
+            if ($user->role === 'THERAPIST') {
+                // Same scoping as CalendarController::index() - a therapist
+                // only ever sees their own roster, never another therapist's.
+                $sessionQuery->where('therapist_id', $user->id);
+            }
+
+            $results = array_merge($results, $sessionQuery
                 ->latest('session_date')
                 ->limit(6)
                 ->get()

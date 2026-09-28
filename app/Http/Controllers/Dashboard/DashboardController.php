@@ -4,13 +4,13 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\CalendarSession;
+use App\Models\Contact;
 use App\Models\Invoice;
 use App\Models\Lead;
 use App\Models\Patient;
 use App\Models\PatientAuthorization;
 use App\Models\PatientNote;
 use App\Models\User;
-use App\Models\Waitlist;
 use App\Models\WhatsappContact;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -85,24 +85,105 @@ class DashboardController extends Controller
      */
     private function leadMetrics(): array
     {
-        $weekStart = now()->startOfWeek();
-        $prevWeekStart = now()->subWeek()->startOfWeek();
-        $prevWeekEnd = now()->subWeek()->endOfWeek();
+        // A rolling seven days, not the calendar week: on a Monday morning
+        // startOfWeek() is a few hours old, so every card here would read
+        // zero and climb back through the week. Rolling keeps the same span
+        // of trading on the chart whichever day it's opened.
+        $weekStart = now()->subDays(7);
+        $prevWeekStart = now()->subDays(14);
 
         $newLeadsCount = Lead::where('created_at', '>=', $weekStart)->count();
-        $newLeadsPrevWeek = Lead::whereBetween('created_at', [$prevWeekStart, $prevWeekEnd])->count();
+        $newLeadsPrevWeek = Lead::whereBetween('created_at', [$prevWeekStart, $weekStart])->count();
         $newLeadsDelta = $newLeadsPrevWeek > 0
             ? round((($newLeadsCount - $newLeadsPrevWeek) / $newLeadsPrevWeek) * 100)
             : ($newLeadsCount > 0 ? 100 : 0);
 
-        $leadSources = Lead::where('created_at', '>=', $weekStart)
+        // WhatsApp/Instagram/Facebook volume comes straight from the unified
+        // chat inbox - every inbound conversation, not just the ones a staff
+        // member formally converted into a Lead - since counting Lead::source
+        // alone undercounts chat-origin interest (most chats never convert).
+        $chatCounts = WhatsappContact::where('created_at', '>=', $weekStart)
+            ->select('channel', DB::raw('count(*) as c'))
+            ->groupBy('channel')
+            ->pluck('c', 'channel');
+
+        // Website volume comes from Contact form submissions the same way -
+        // every booking/contact-form fill, not only the ones later converted.
+        $websiteCount = Contact::where('created_at', '>=', $weekStart)->count();
+
+        // Leads added this week count too - a family who came in through a
+        // chat or the form in an earlier week but only became a Lead now, and
+        // anything a staff member keyed in by hand. Leads already represented
+        // by one of the conversations/submissions counted above are left out
+        // so the same enquiry can't land on the chart twice.
+        $alreadyCounted = WhatsappContact::where('created_at', '>=', $weekStart)
+            ->whereNotNull('lead_id')
+            ->pluck('lead_id')
+            ->merge(
+                Contact::where('created_at', '>=', $weekStart)
+                    ->whereNotNull('converted_lead_id')
+                    ->pluck('converted_lead_id')
+            )
+            ->filter()
+            ->unique()
+            ->all();
+
+        $leadCounts = Lead::where('created_at', '>=', $weekStart)
+            ->when($alreadyCounted, fn ($q) => $q->whereNotIn('id', $alreadyCounted))
             ->select('source', DB::raw('count(*) as c'))
             ->groupBy('source')
-            ->orderByDesc('c')
-            ->get();
-        $leadSourcesMax = max(1, (int) $leadSources->max('c'));
+            ->get()
+            ->groupBy(fn ($row) => $this->sourceBucket($row->source))
+            ->map(fn ($rows) => (int) $rows->sum('c'));
 
-        return compact('newLeadsCount', 'newLeadsDelta', 'leadSources', 'leadSourcesMax');
+        $leadSources = collect([
+            (object) ['source' => 'WhatsApp', 'c' => (int) ($chatCounts['whatsapp'] ?? 0) + (int) ($leadCounts['whatsapp'] ?? 0)],
+            (object) ['source' => 'Instagram', 'c' => (int) ($chatCounts['instagram'] ?? 0) + (int) ($leadCounts['instagram'] ?? 0)],
+            (object) ['source' => 'Facebook', 'c' => (int) ($chatCounts['facebook'] ?? 0) + (int) ($leadCounts['facebook'] ?? 0)],
+            (object) ['source' => 'Website', 'c' => $websiteCount + (int) ($leadCounts['website'] ?? 0)],
+            (object) ['source' => 'Referral', 'c' => (int) ($leadCounts['referral'] ?? 0)],
+            (object) ['source' => 'Google', 'c' => (int) ($leadCounts['google'] ?? 0)],
+        ])
+            ->concat(
+                // Anything typed into a Lead's source field that isn't one of
+                // the six above keeps its own row rather than being lumped in.
+                $leadCounts->reject(fn ($c, $bucket) => in_array($bucket, ['whatsapp', 'instagram', 'facebook', 'website', 'referral', 'google'], true))
+                    ->map(fn ($c, $bucket) => (object) ['source' => $bucket ?: 'Other', 'c' => (int) $c])
+            )
+            ->sortByDesc('c')
+            ->values();
+        // Bar width sits on a 0-10 lead scale by default (not a ratio against
+        // whichever source happens to have the highest count or the week's
+        // total - otherwise 2 total leads, both Instagram, renders as a full
+        // bar, which reads as "100% of leads" rather than "2 leads"). Grows
+        // in steps of 10 only if a source actually exceeds the current scale,
+        // so the axis stays fixed and readable in a normal week.
+        $leadSourcesScale = max(10, (int) ceil($leadSources->max('c') / 10) * 10);
+
+        return compact('newLeadsCount', 'newLeadsDelta', 'leadSources', 'leadSourcesScale');
+    }
+
+    /**
+     * A Lead's free-text source onto one of the channels the dashboard
+     * charts. Staff type these by hand and the website/ad integrations each
+     * spell them their own way ("Whatsapp", "WhatsApp", "Contact Us",
+     * "Google Ads"), so matching is loose and case-insensitive. Anything
+     * unrecognised keeps its own label and gets its own row.
+     */
+    private function sourceBucket(?string $source): string
+    {
+        $key = strtolower(str_replace([' ', '-', '_'], '', (string) $source));
+
+        return match (true) {
+            $key === '' => 'Other',
+            str_contains($key, 'whatsapp') => 'whatsapp',
+            str_contains($key, 'instagram') => 'instagram',
+            str_contains($key, 'facebook'), str_contains($key, 'messenger') => 'facebook',
+            str_contains($key, 'website'), str_contains($key, 'contactus'), str_contains($key, 'webform') => 'website',
+            str_contains($key, 'referral') => 'referral',
+            str_contains($key, 'google') => 'google',
+            default => $source,
+        };
     }
 
     /**
@@ -112,6 +193,12 @@ class DashboardController extends Controller
      */
     private function scheduleMetrics(?int $therapistId = null): array
     {
+        // Same catch-up the calendar and the scheduled command do: a session
+        // counts as attended the moment its end time passes, not at the end
+        // of the day. Run here too so this morning's 9 o'clock reads
+        // "Completed" by lunchtime even on a host with no cron.
+        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+
         $todaySessionsList = CalendarSession::whereDate('session_date', today())
             ->notCancelled()
             ->when($therapistId, fn ($q) => $q->forTherapist($therapistId))
@@ -181,13 +268,17 @@ class DashboardController extends Controller
 
     /**
      * Waitlist/authorization widgets. Only for roles with the 'patients' feature.
+     *
+     * The waitlist is the "New" column of the leads board - families who have
+     * enquired and are waiting to be picked up. That is the only place a
+     * waiting family is recorded, so it's the only place this counts from.
      */
     private function patientMetrics(): array
     {
-        $waitingEntries = Waitlist::waiting()->orderBy('joined_at')->get();
+        $waitingEntries = Lead::where('status', Lead::STATUS_NEW)->orderBy('created_at')->get();
         $waitlistCount = $waitingEntries->count();
         $avgWaitWeeks = $waitingEntries->isNotEmpty()
-            ? round($waitingEntries->avg(fn ($w) => $w->joined_at->diffInWeeks(now())), 1)
+            ? round($waitingEntries->avg(fn (Lead $l) => $l->created_at->diffInWeeks(now())), 1)
             : null;
         $waitlistNextUp = $waitingEntries->take(3);
 

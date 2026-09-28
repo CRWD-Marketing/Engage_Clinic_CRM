@@ -31,7 +31,7 @@ class WhatsappController extends Controller
      */
     public function index(Request $request)
     {
-        $contacts = WhatsappContact::orderByDesc('last_message_at')->get();
+        $contacts = WhatsappContact::with('latestMessage.sentBy')->orderByDesc('last_message_at')->get();
 
         $activeContact = $request->filled('contact')
             ? $contacts->firstWhere('id', (int) $request->query('contact'))
@@ -41,7 +41,7 @@ class WhatsappController extends Controller
         $leadHints = [];
 
         if ($activeContact) {
-            $messages = $activeContact->messages()->orderBy('sent_at')->get();
+            $messages = $activeContact->messages()->with('sentBy')->orderBy('sent_at')->get();
 
             if (! $activeContact->lead_id) {
                 $leadHints = $this->extractLeadHints($messages);
@@ -52,9 +52,7 @@ class WhatsappController extends Controller
             }
         }
 
-        $services = \App\Models\Service::where('is_active', true)->orderBy('name')->get();
-
-        return view('whatsapp.index', compact('contacts', 'activeContact', 'messages', 'leadHints', 'services'));
+        return view('whatsapp.index', compact('contacts', 'activeContact', 'messages', 'leadHints'));
     }
 
     /**
@@ -68,7 +66,7 @@ class WhatsappController extends Controller
         $activeContactId = $request->filled('contact') ? (int) $request->query('contact') : null;
         $afterMessageId = (int) $request->query('after', 0);
 
-        $contacts = WhatsappContact::orderByDesc('last_message_at')->get();
+        $contacts = WhatsappContact::with('latestMessage.sentBy')->orderByDesc('last_message_at')->get();
         $contactsHtml = $contacts->map(fn ($contact) => view('whatsapp.partials.contact_row', [
             'contact' => $contact,
             'activeContactId' => $activeContactId,
@@ -76,12 +74,31 @@ class WhatsappController extends Controller
 
         $messagesHtml = '';
         $latestMessageId = $afterMessageId;
+        $statuses = [];
 
         if ($activeContactId) {
             $activeContact = $contacts->firstWhere('id', $activeContactId);
 
             if ($activeContact) {
-                $newMessages = $activeContact->messages()->where('id', '>', $afterMessageId)->orderBy('sent_at')->get();
+                // Bubbles already on screen need their status kept current -
+                // "Sending" only becomes "Sent" once the delivery that started
+                // after the send response comes back, which is always after the
+                // bubble was drawn. Only outbound messages carry a status.
+                $statuses = $activeContact->messages()
+                    ->where('direction', 'outbound')
+                    ->orderByDesc('id')
+                    ->limit(30)
+                    ->get(['id', 'status', 'send_error'])
+                    ->map(fn ($m) => [
+                        'id' => $m->id,
+                        'status' => $m->status,
+                        'label' => WhatsappMessage::statusLabel($m->status),
+                        'tick' => WhatsappMessage::tickIcon($m->status),
+                        'error' => $m->send_error,
+                    ])
+                    ->values()
+                    ->all();
+                $newMessages = $activeContact->messages()->with('sentBy')->where('id', '>', $afterMessageId)->orderBy('sent_at')->get();
 
                 if ($newMessages->isNotEmpty()) {
                     // Whatever was last shown on screen before this batch, so the
@@ -127,13 +144,17 @@ class WhatsappController extends Controller
             'contacts_html' => $contactsHtml,
             'messages_html' => $messagesHtml,
             'latest_message_id' => $latestMessageId,
+            'statuses' => $statuses,
         ]);
     }
 
     /**
      * Best-effort scan of a conversation's inbound messages for lead details a family
-     * has already volunteered - child's name/age, service + hours interested in, and
-     * any insurance provider mentioned - so "Convert to Lead" doesn't start blank.
+     * has already volunteered - child's name/age, service interested in, and any
+     * insurance provider mentioned. The Family details panel now shows these
+     * read-only (no manual entry), so this is the only way those fields ever get
+     * filled in before "Convert to Lead" - it needs to catch what it reasonably
+     * can, not just the one rigid phrasing.
      */
     private function extractLeadHints($messages): array
     {
@@ -142,13 +163,30 @@ class WhatsappController extends Controller
         $childName = null;
         $childAge = null;
 
-        if (preg_match('/\bmy\s+(?:son|daughter|child|kid)\s+([A-Z][A-Za-z\'-]+)\s+is\s+(\d{1,2})\b/i', $text, $m)) {
-            $childName = $m[1];
-            $childAge = (int) $m[2];
+        // Checked most-specific first: a pattern that also captures the age
+        // wins over a name-only one, so a later "she is 3" isn't needed on
+        // top of it.
+        $namePatterns = [
+            '/\bmy\s+(?:son|daughter|child|kid)\s+([A-Z][A-Za-z\'-]+)\s+is\s+(\d{1,2})\b/i',
+            '/\bmy\s+(?:son|daughter|child|kid)(?:\'s)?\s+name\s+is\s+([A-Z][A-Za-z\'-]+)\b/i',
+            '/\b(?:his|her)\s+name\s+is\s+([A-Z][A-Za-z\'-]+)\b/i',
+            '/\bmy\s+(?:son|daughter|child|kid),?\s+([A-Z][A-Za-z\'-]+),/i',
+        ];
+
+        foreach ($namePatterns as $pattern) {
+            if (preg_match($pattern, $text, $m)) {
+                $childName = $m[1];
+                $childAge = isset($m[2]) ? (int) $m[2] : null;
+                break;
+            }
+        }
+
+        if ($childAge === null && preg_match('/\b(?:he|she)\s+is\s+(\d{1,2})\b/i', $text, $m)) {
+            $childAge = (int) $m[1];
         }
 
         $insurers = [
-            'Daman', 'Thiqa', 'ADNIC', 'AXA', 'Bupa', 'Cigna', 'MetLife', 'NextCare',
+            'Daman Enhanced', 'Daman', 'Thiqa', 'ADNIC', 'AXA', 'Bupa', 'Cigna', 'MetLife', 'NextCare',
             'Oman Insurance', 'Al Madallah', 'Almadallah', 'Saico', 'Orient Insurance',
             'Union Insurance', 'National Health Insurance', 'Neuron',
         ];
@@ -161,9 +199,21 @@ class WhatsappController extends Controller
             }
         }
 
+        // Longest/most specific phrase wins - checked before its shorter
+        // substring (e.g. "diagnostic assessment" before bare "assessment"),
+        // so the detected label is the more informative one when both appear.
         $services = [
-            'ABA' => 'ABA', 'Speech' => 'Speech', 'Occupational Therapy' => 'OT', 'OT' => 'OT',
-            'Assessment' => 'Assessment', 'Parent training' => 'Parent training',
+            'early intervention' => 'Early intervention',
+            'diagnostic assessment' => 'Diagnostic assessment',
+            'combined program' => 'Combined program',
+            'occupational therapy' => 'Occupational therapy',
+            'speech therapy' => 'Speech therapy',
+            'speech' => 'Speech therapy',
+            'aba therapy' => 'ABA therapy',
+            'aba' => 'ABA therapy',
+            'parent training' => 'Parent training',
+            'assessment' => 'Diagnostic assessment',
+            ' ot ' => 'Occupational therapy',
         ];
         $service = null;
 
@@ -389,39 +439,80 @@ class WhatsappController extends Controller
 
         $contact = WhatsappContact::findOrFail($validated['contact_id']);
 
-        $response = $this->messagingResolver->resolve($contact->channel)->sendText($contact, $validated['message']);
-
-        if ($response->failed()) {
-            Log::error(ucfirst($contact->channel).' send failed', $response->json() ?? ['status' => $response->status()]);
-
-            // Surface Meta's actual rejection reason (e.g. "Error validating access
-            // token", "This message is sent outside of allowed window") directly in
-            // the UI - the generic "Failed to send message" gave no way to tell an
-            // expired token from a wrong recipient id without SSHing in to read logs.
-            $metaError = $response->json('error.message');
-            $detail = $metaError ? " ({$metaError})" : " (HTTP {$response->status()})";
-
-            return back()->withErrors(['message' => 'Failed to send message.'.$detail])->withInput();
-        }
-
-        $waMessageId = match ($contact->channel) {
-            'instagram', 'facebook' => $response->json('message_id'),
-            default => $response->json('messages.0.id'),
-        };
-
-        $contact->messages()->create([
-            'wa_message_id' => $waMessageId,
+        // Write the message first and hand it straight back, so the bubble shows
+        // up the moment it is typed rather than after a round trip to Meta. It
+        // starts as "Sending"; the delivery below flips it to "Sent" or "Not
+        // sent", and the inbox's poll picks that up. Sending first meant a
+        // message that existed nowhere until Meta answered - a slow or failed
+        // call simply swallowed it.
+        $message = $contact->messages()->create([
             'direction' => 'outbound',
             'type' => 'text',
             'body' => $validated['message'],
-            'status' => 'sent',
+            'status' => 'pending',
             'sent_at' => now(),
+            'sent_by_user_id' => auth()->id(),
         ]);
+
+        // afterResponse rather than a queue: it runs once the response is on its
+        // way, so the UI is never waiting on Meta, and it needs no worker
+        // running to get a message out of the door.
+        $resolver = $this->messagingResolver;
+        dispatch(function () use ($resolver, $contact, $message) {
+            try {
+                $response = $resolver->resolve($contact->channel)->sendText($contact, $message->body);
+            } catch (\Throwable $e) {
+                Log::error(ucfirst($contact->channel).' send threw', ['error' => $e->getMessage()]);
+                $message->update(['status' => 'failed', 'send_error' => $e->getMessage()]);
+
+                return;
+            }
+
+            if ($response->failed()) {
+                Log::error(ucfirst($contact->channel).' send failed', $response->json() ?? ['status' => $response->status()]);
+
+                // Keep Meta's actual rejection reason (e.g. "Error validating
+                // access token", "This message is sent outside of allowed
+                // window") on the row - it is the only way to tell an expired
+                // token from a wrong recipient id without reading the logs, and
+                // the response has already gone by the time we know.
+                $message->update([
+                    'status' => 'failed',
+                    'send_error' => $response->json('error.message') ?: 'HTTP '.$response->status(),
+                ]);
+
+                return;
+            }
+
+            $message->update([
+                'status' => 'sent',
+                'wa_message_id' => match ($contact->channel) {
+                    'instagram', 'facebook' => $response->json('message_id'),
+                    default => $response->json('messages.0.id'),
+                },
+            ]);
+        })->afterResponse();
 
         $contact->update([
             'last_message_preview' => $validated['message'],
             'last_message_at' => now(),
         ]);
+
+        if ($request->wantsJson()) {
+            // Same divider logic the poll endpoint uses: whatever was already on
+            // screen right before this message, keyed by id (not sent_at-order)
+            // for the same out-of-order-webhook reason documented in poll().
+            $previousMessage = $contact->messages()->where('id', '<', $message->id)->orderByDesc('sent_at')->first();
+
+            return response()->json([
+                'message_html' => view('whatsapp.partials.messages', [
+                    'messages' => collect([$message]),
+                    'activeContact' => $contact,
+                    'previousSentAt' => $previousMessage?->sent_at,
+                ])->render(),
+                'latest_message_id' => $message->id,
+            ]);
+        }
 
         return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
     }
@@ -483,25 +574,6 @@ class WhatsappController extends Controller
         ]);
 
         $contact->update(['lead_id' => $lead->id]);
-
-        return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
-    }
-
-    /**
-     * Save a coordinator's manual edits to the Family details panel (child's name,
-     * interested in, insurance mentioned) for a conversation that hasn't been
-     * converted to a lead yet. These override extractLeadHints()'s auto-detected
-     * guesses both in the panel display and when "Convert to Lead" is eventually clicked.
-     */
-    public function updateFamilyDetails(Request $request, WhatsappContact $contact)
-    {
-        $validated = $request->validate([
-            'child_name' => ['nullable', 'string', 'max:255'],
-            'interested_in' => ['nullable', 'string', 'max:100'],
-            'insurance' => ['nullable', 'string', 'max:50'],
-        ]);
-
-        $contact->update($validated);
 
         return redirect()->route('whatsapp.index', ['contact' => $contact->id]);
     }

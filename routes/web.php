@@ -37,6 +37,19 @@ Route::get('/privacy-policy', function () {
 
 /*
 |--------------------------------------------------------------------------
+| CSRF token refresh
+|--------------------------------------------------------------------------
+| Returns the current session's CSRF token so a page left open past
+| SESSION_LIFETIME can recover instead of failing the booking submit with a
+| 419. Must stay in web.php: it needs the session middleware to read the
+| session's own token.
+*/
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->name('csrf.token');
+
+/*
+|--------------------------------------------------------------------------
 | Feature Routes
 |--------------------------------------------------------------------------
 */

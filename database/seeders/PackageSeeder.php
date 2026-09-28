@@ -12,63 +12,59 @@ class PackageSeeder extends Seeder
     /**
      * Sellable package bundles offered when agreeing a client's package
      * (Step 6 of the lead intake checklist) - clinic-wide setup data.
+     * Authoritative: anything not in this list is removed, so the catalog
+     * always matches exactly.
      */
     public function run(): void
     {
-        $aba = Service::where('name', 'LIKE', 'ABA therapy%')->first();
-        $speech = Service::where('name', 'LIKE', 'Speech therapy%')->first();
+        $aba = Service::where('name', 'ABA therapy session')->first();
+        $speech = Service::where('name', 'Speech & language therapy')->first();
+        $ot = Service::where('name', 'Occupational therapy')->first();
 
-        $abuDhabi = Location::where('name', 'Inside Abu Dhabi')->first();
-        $dubai = Location::where('name', 'Inside Dubai')->first();
-        $clinicAbuDhabi = Location::where('name', 'Clinic — Abu Dhabi')->first();
+        $insideAbuDhabi = Location::where('name', 'Inside Abu Dhabi')->first();
+        $aroundCityBoundary = Location::where('name', 'Abu Dhabi around city boundary')->first();
 
         $packages = [
             [
-                'name' => 'P — 20 hrs ABA + 10 hr speech',
+                'name' => 'P-20 hrs ABA and 10 hr speech',
                 'service_id' => $aba?->id,
-                'location_id' => $abuDhabi?->id,
+                'location_id' => $insideAbuDhabi?->id,
                 'delivery_mode' => 'Home base',
                 'hours_per_week' => 30,
                 'rate' => 337,
-                'funding_type' => 'Insurance',
-            ],
-            [
-                'name' => 'P — 40 hrs ABA',
-                'service_id' => $aba?->id,
-                'location_id' => $abuDhabi?->id,
-                'delivery_mode' => 'Home base',
-                'hours_per_week' => 40,
-                'rate' => 300,
-                'funding_type' => 'Insurance',
-            ],
-            [
-                'name' => 'P — 10 hrs speech/OT',
-                'service_id' => $speech?->id,
-                'location_id' => $abuDhabi?->id,
-                'delivery_mode' => 'Home base',
-                'hours_per_week' => 10,
-                'rate' => 375,
-                'funding_type' => 'Insurance',
-            ],
-            [
-                'name' => 'Clinic — 15 hrs ABA + 5 hr OT',
-                'service_id' => $aba?->id,
-                'location_id' => $clinicAbuDhabi?->id,
-                'delivery_mode' => 'Clinic',
-                'hours_per_week' => 20,
-                'rate' => 320,
                 'funding_type' => 'Self pay',
             ],
             [
-                'name' => 'P — 15 hrs ABA + 3 hr speech (Dubai)',
+                'name' => 'Package — 40 hrs ABA',
                 'service_id' => $aba?->id,
-                'location_id' => $dubai?->id,
+                'location_id' => $insideAbuDhabi?->id,
+                'delivery_mode' => 'Clinic',
+                'hours_per_week' => 40,
+                'rate' => 250,
+                'funding_type' => 'Self pay',
+            ],
+            [
+                'name' => 'P-10 hrs speech / OT',
+                'service_id' => $speech?->id,
+                'location_id' => $insideAbuDhabi?->id,
                 'delivery_mode' => 'Home base',
-                'hours_per_week' => 18,
-                'rate' => 340,
+                'hours_per_week' => 10,
+                'rate' => 625,
+                'funding_type' => 'Self pay',
+            ],
+            [
+                'name' => 'Early intervention starter',
+                'service_id' => $ot?->id,
+                'location_id' => $aroundCityBoundary?->id,
+                'delivery_mode' => 'Home base',
+                'hours_per_week' => 12,
+                'rate' => 705,
                 'funding_type' => 'Insurance',
             ],
         ];
+
+        $names = collect($packages)->pluck('name');
+        Package::whereNotIn('name', $names)->delete();
 
         foreach ($packages as $package) {
             Package::updateOrCreate(

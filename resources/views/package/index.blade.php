@@ -96,6 +96,47 @@
         .pk-modal-divider { flex-direction: column; align-items: flex-start; }
         .pk-modal-actions { margin-left: 0; width: 100%; }
     }
+
+    /* ── Phone ───────────────────────────────────────────────────────────
+       Nine columns come to 1282px, so the table was read by dragging it
+       sideways. Each package becomes a card instead: its name as the
+       heading, the rest as a labelled list. */
+    @media (max-width: 820px) {
+        .main-content-inner { padding-left: 8px !important; padding-right: 8px !important; }
+        .pk-header-title { font-size: 21px; }
+        .pk-header-sub { font-size: 12px; }
+        .pk-card { padding: 14px 10px; }
+        .pk-card-head { flex-wrap: wrap; gap: 10px; }
+        .pk-new-btn { flex: 1 1 100%; justify-content: center; }
+
+        .pk-table-scroll { overflow-x: visible; }
+        .pk-table, .pk-table tbody, .pk-table tr { display: block; width: 100%; }
+        .pk-table thead { display: none; }
+        .pk-table tr {
+            background: #fff; border: 1px solid #EBE4DA; border-radius: 12px;
+            overflow: hidden; margin-bottom: 8px;
+        }
+        .pk-table td {
+            display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+            padding: 8px 12px; border-bottom: 1px solid #F6F1E9;
+            white-space: normal; text-align: right;
+        }
+        .pk-table td::before {
+            content: attr(data-label); flex: 0 0 auto; text-align: left;
+            font: 800 10px 'Nunito Sans'; text-transform: uppercase;
+            letter-spacing: .05em; color: #A79C8E;
+        }
+        /* The name identifies the row, so it is the card's heading. */
+        .pk-table td[data-label="Package"] {
+            display: block; padding: 10px 12px; text-align: left;
+            background: #FBF8F3; border-bottom: 1px solid #EFE8DD;
+            font: 800 13.5px 'Nunito Sans'; color: #16436E;
+        }
+        .pk-table td[data-label="Package"]::before { content: none; }
+        .pk-table td:not([data-label]) { justify-content: flex-end; }
+        .pk-table td:not([data-label])::before { content: none; }
+        .pk-table tr td:last-child { border-bottom: none; }
+    }
 </style>
 
 <div>
@@ -133,20 +174,20 @@
             <tbody>
                 @forelse ($packages as $package)
                     <tr>
-                        <td>{{ $package->name }}</td>
-                        <td>{{ $package->service->name ?? '—' }}</td>
-                        <td>{{ $package->location->name ?? '—' }}</td>
-                        <td>
+                        <td data-label="Package">{{ $package->name }}</td>
+                        <td data-label="Service">{{ $package->service->name ?? '—' }}</td>
+                        <td data-label="Location">{{ $package->location->name ?? '—' }}</td>
+                        <td data-label="Funding">
                             @if ($package->funding_type)
                                 <span class="pk-badge {{ $package->funding_type === 'Insurance' ? 'insurance' : 'self-pay' }}">{{ $package->funding_type }}</span>
                             @else
                                 —
                             @endif
                         </td>
-                        <td>{{ $package->delivery_mode ?? '—' }}</td>
-                        <td>{{ rtrim(rtrim($package->hours_per_week, '0'), '.') }} h</td>
-                        <td>AED {{ number_format($package->rate, 0) }}</td>
-                        <td>AED {{ number_format($package->total_excl_vat, 0) }}</td>
+                        <td data-label="Setting">{{ $package->delivery_mode ?? '—' }}</td>
+                        <td data-label="Hours">{{ rtrim(rtrim($package->hours_per_week, '0'), '.') }} h</td>
+                        <td data-label="Rate / hr">AED {{ number_format($package->rate, 0) }}</td>
+                        <td data-label="Total excl. VAT">AED {{ number_format($package->total_excl_vat, 0) }}</td>
                         <td>
                             <div class="pk-actions-cell">
                                 <button type="button" class="pk-edit-btn" onclick="pkOpenEdit({{ $package->id }})">Edit</button>

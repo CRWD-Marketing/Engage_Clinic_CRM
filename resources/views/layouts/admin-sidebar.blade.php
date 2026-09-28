@@ -44,7 +44,7 @@
             display: flex;
             flex-direction: column;
             padding: 0;
-            transition: width 0.18s ease;
+            transition: width 0.18s ease, transform 0.18s ease;
         }
 
         /* Only the nav links scroll - the logo above and the waitlist/profile
@@ -426,25 +426,28 @@
             transition: opacity 0.25s ease;
         }
 
-        /* The old mobile pattern (hamburger button + full-screen slide-in drawer) has
-           been replaced by the same icon-rail sidebar used on desktop - it just
-           defaults to collapsed on narrow screens and expands as an overlay. */
+        /* On a narrow screen the sidebar is off-canvas rather than a rail: a phone
+           cannot spare 76px of width for navigation that is idle most of the time.
+           It is opened by the topbar button and closed by the arrow inside it, the
+           backdrop, Escape, or picking a link. The open/closed state is its own
+           class here, not `sidebar-collapsed` - that one means the icon rail, which
+           this breakpoint never shows, and reusing it would strip the labels out of
+           the drawer on the way out. */
         @media (max-width: 768px) {
             .sidebar-desktop {
                 display: flex !important;
+                width: 230px;
+                transform: translateX(-100%);
                 z-index: 1000;
             }
-            .main-content {
-                margin-left: 76px !important;
-            }
-            body.sidebar-collapsed .sidebar-desktop {
-                width: 76px;
-            }
-            body:not(.sidebar-collapsed) .sidebar-desktop {
-                width: 230px;
+            body.sidebar-open .sidebar-desktop {
+                transform: translateX(0);
                 box-shadow: 0 8px 40px rgba(22, 42, 60, 0.25);
             }
-            body:not(.sidebar-collapsed) .sidebar-mobile-overlay {
+            .main-content {
+                margin-left: 0 !important;
+            }
+            body.sidebar-open .sidebar-mobile-overlay {
                 display: block !important;
                 opacity: 1;
                 z-index: 999;
@@ -494,6 +497,36 @@
             padding: 16px 28px;
             width: 100%;
             box-sizing: border-box;
+        }
+
+        /* The only handle on the sidebar once it is off-canvas; on a wide screen
+           the sidebar is always there, so this has nothing to do. */
+        .sidebar-open-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border: 1px solid #E2DACE;
+            border-radius: 10px;
+            background: #FFFFFF;
+            color: #16436E;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .sidebar-open-btn:hover { background: #F5EFE7; }
+
+        /* Declared here rather than with the rest of the drawer, which sits above
+           the topbar rules these two override. */
+        @media (max-width: 768px) {
+            .sidebar-open-btn { display: inline-flex; }
+            /* The search is full-width by default, which on a wrapping topbar
+               would take the whole first line and push the menu button onto
+               one of its own. */
+            .topbar-search-wrap { width: auto; flex: 1 1 180px; }
         }
 
         .topbar-search-wrap { position: relative; width: 100%; max-width: 420px; }
@@ -712,10 +745,14 @@
 <body class="admin-body">
     <script>
         (function () {
+            // A narrow screen always starts with the drawer shut, and never carries
+            // `sidebar-collapsed` - that class is the desktop icon rail, and the
+            // drawer is full width whenever it is on screen.
+            if (window.matchMedia('(max-width: 768px)').matches) return;
+
             const stored = localStorage.getItem('sidebarCollapsed');
-            // No saved preference yet: default to collapsed on narrow screens, expanded on desktop.
-            const collapsed = stored !== null ? stored === '1' : window.matchMedia('(max-width: 768px)').matches;
-            if (collapsed) document.body.classList.add('sidebar-collapsed');
+            // No saved preference yet: desktop opens expanded.
+            if (stored === '1') document.body.classList.add('sidebar-collapsed');
         })();
     </script>
 
@@ -789,12 +826,6 @@
             </a>
             @endif
 
-            @if(Auth::user()->canAccessFeature('voice'))
-            <a href="{{ route('voice_calls.index') }}" class="sidebar-link {{ request()->routeIs('voice_calls.*') ? 'active' : '' }}" title="Voice Calls">
-                <i class="fas fa-phone-volume"></i> <span class="link-label">Voice Calls</span>
-            </a>
-            @endif
-
             @if(Auth::user()->canAccessFeature('knowledge_base'))
             <a href="{{ route('knowledge_base.index') }}" class="sidebar-link {{ request()->routeIs('knowledge_base.*') ? 'active' : '' }}" title="Knowledge Base">
                 <i class="fas fa-robot"></i> <span class="link-label">AI Employee</span>
@@ -819,7 +850,11 @@
             </a>
             @endif
 
-            @if(Auth::user()->canAccessFeature('careers'))
+            {{-- Job Application is hidden from the sidebar. The pages, their
+                 routes and the public Careers page all still work - only this
+                 link is gone, so restoring it is a matter of dropping the
+                 false below. --}}
+            @if(false && Auth::user()->canAccessFeature('careers'))
             <a href="{{ route('job-applications.index') }}" class="sidebar-link {{ request()->routeIs('job-applications.*') || request()->routeIs('job-postings.*') ? 'active' : '' }}" title="Job Application">
                 <i class="fas fa-briefcase"></i> <span class="link-label">Job Application</span>
                 @php
@@ -866,15 +901,21 @@
         </div>
 
         <div style="padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #EBE4DA;">
-            @if(Auth::user()->canAccessFeature('patients'))
+            {{-- The waitlist is the intake queue, so it belongs to whoever
+                 works the enquiries - leads, WhatsApp or contacts. Clinical
+                 and back-office roles (therapists, finance, HR) don't see it. --}}
+            @if(Auth::user()->canAccessFeature('leads') || Auth::user()->canAccessFeature('whatsapp') || Auth::user()->canAccessFeature('contacts'))
             <div class="waitlist-card">
                 <div class="label">Waitlist</div>
                 <div class="number">
                     @php
-                        $waitlistEntries = \App\Models\Waitlist::waiting()->get();
+                        // Families waiting = the "New" column of the leads
+                        // board: enquiries nobody has picked up yet. Same
+                        // source as the dashboard waitlist widgets.
+                        $waitlistEntries = \App\Models\Lead::where('status', \App\Models\Lead::STATUS_NEW)->get(['id', 'created_at']);
                         $waitlistCount = $waitlistEntries->count();
                         $avgWaitWeeks = $waitlistCount > 0
-                            ? round($waitlistEntries->avg(fn ($w) => $w->joined_at->diffInWeeks(now())), 1)
+                            ? round($waitlistEntries->avg(fn ($l) => $l->created_at->diffInWeeks(now())), 1)
                             : null;
                     @endphp
                     {{ $waitlistCount }} families
@@ -919,6 +960,9 @@
     <div class="main-content">
         <div class="topbar-fixed">
             <div class="topbar-fixed-inner">
+                <button type="button" class="sidebar-open-btn" onclick="toggleSidebarCollapse()" title="Menu" aria-label="Open menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="topbar-search-wrap topbar-dropdown-wrap" id="topbarSearchWrap">
                     <i class="fas fa-search topbar-search-icon"></i>
                     <input type="text" class="topbar-search-input" id="topbarSearchInput" placeholder="Search patients, parents, leads, phone…" autocomplete="off">
@@ -955,7 +999,19 @@
 
     <!-- JavaScript -->
     <script>
+        function onNarrowScreen() {
+            return window.matchMedia('(max-width: 768px)').matches;
+        }
+
         function toggleSidebarCollapse() {
+            // Two different things share this handler: on a phone it slides the
+            // drawer in and out, on a wide screen it switches between the full
+            // sidebar and the icon rail (and that choice is worth remembering).
+            if (onNarrowScreen()) {
+                document.body.classList.toggle('sidebar-open');
+                return;
+            }
+
             const collapsed = document.body.classList.toggle('sidebar-collapsed');
             localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
 
@@ -984,6 +1040,11 @@
         });
         
         function collapseSidebar() {
+            if (onNarrowScreen()) {
+                document.body.classList.remove('sidebar-open');
+                return;
+            }
+
             document.body.classList.add('sidebar-collapsed');
             localStorage.setItem('sidebarCollapsed', '1');
 
@@ -1000,14 +1061,29 @@
             }
         });
 
-        // On a narrow screen the sidebar expands as a full overlay - once a link is picked,
-        // collapse it back to the rail so the next page doesn't load with the overlay open.
+        // Shut the drawer as the next page starts loading, so it isn't left hanging
+        // over the content during the navigation.
         document.querySelectorAll('.sidebar-desktop .sidebar-link').forEach(function (link) {
             link.addEventListener('click', function () {
-                if (window.matchMedia('(max-width: 768px)').matches) {
-                    localStorage.setItem('sidebarCollapsed', '1');
-                }
+                if (onNarrowScreen()) document.body.classList.remove('sidebar-open');
             });
+        });
+
+        // Crossing the breakpoint hands the sidebar between its two behaviours;
+        // drop the drawer state so a resize can't leave it open over a layout that
+        // has no backdrop to close it with.
+        window.addEventListener('resize', function () {
+            if (onNarrowScreen()) {
+                // The rail treatment means nothing here and would empty the drawer
+                // of its labels, so it comes off on the way in.
+                document.body.classList.remove('sidebar-collapsed');
+                return;
+            }
+
+            document.body.classList.remove('sidebar-open');
+            if (localStorage.getItem('sidebarCollapsed') === '1') {
+                document.body.classList.add('sidebar-collapsed');
+            }
         });
 
         // Auto-refresh badge counts every 30 seconds

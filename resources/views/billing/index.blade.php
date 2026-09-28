@@ -73,7 +73,8 @@
     .claim-table td, .aging-table td, .fam-table td, .pa-table td, .inv-table td { padding: 11px 10px; border-bottom: 1px solid #F3EDE3; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C; vertical-align: middle; }
     .claim-table tr:last-child td, .aging-table tr:last-child td, .fam-table tr:last-child td, .pa-table tr:last-child td, .inv-table tr:last-child td { border-bottom: none; }
     .inv-table th, .inv-table td { text-align: center; }
-    .num { text-align: right; }
+    th.num, td.num { text-align: right; }
+    th.center, td.center { text-align: center; }
 
     /* Below 700px the invoice table stops trying to fit six columns side by
        side (unreadable at phone width even with horizontal scroll) and each
@@ -96,6 +97,40 @@
         .inv-table td[data-label="Patient"]::before { margin-bottom: 4px; }
         .inv-table td:not([data-label]) { display: block; text-align: center; border-bottom: none; }
         .inv-actions { min-width: 0; width: 100%; }
+    }
+
+    /* ── Phone ───────────────────────────────────────────────────────────
+       The page sat inside two 28px gutters - the layout's and its own - and
+       the cards still overflowed the screen, because a 1fr grid track takes
+       its minimum from its content and the wide tables inside stretched it.
+       minmax(0, 1fr) lets the track shrink, and the tables scroll inside
+       their own card rather than dragging it past the edge. */
+    @media (max-width: 820px) {
+        .main-content-inner { padding-left: 0 !important; padding-right: 0 !important; }
+        .bl-page { padding: 0 8px 28px; }
+        .role-strip { margin: 0 -8px 10px; padding-left: 8px; padding-right: 8px; }
+        .role-can, .role-locked { display: none; }
+
+        .bl-head { margin: 12px 0 10px; gap: 10px; }
+        .bl-title { font-size: 19px; }
+        .bl-sub { font-size: 11.5px; }
+
+        /* One scrolling strip rather than three tabs wrapping onto two rows. */
+        .bl-tabs { gap: 14px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+        .bl-tabs::-webkit-scrollbar { display: none; }
+        .bl-tabs > * { flex-shrink: 0; white-space: nowrap; }
+
+        .bl-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .bl-tile { padding: 11px 12px; }
+        .bl-tile-value { font-size: 17px !important; }
+
+        .bl-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+        .bl-card { padding: 14px 12px; margin-bottom: 10px; min-width: 0; }
+        .bl-card-head { flex-wrap: wrap; }
+
+        .claim-table, .aging-table, .fam-table, .pa-table, .util-tbl {
+            display: block; overflow-x: auto; white-space: nowrap;
+        }
     }
     .status-sel { border: 1px solid #E2DACE; border-radius: 7px; padding: 5px 8px; font: 800 11px 'Nunito Sans'; background: #fff; }
     .age-chip { border-radius: 7px; padding: 3px 9px; font: 800 10.5px 'Nunito Sans'; white-space: nowrap; }
@@ -144,6 +179,9 @@
     .sess-meta { font: 700 11px 'Nunito Sans'; color: #8A7D6C; margin-top: 2px; }
     .sess-rule { font: 700 10.5px 'Nunito Sans'; margin-top: 3px; }
     .att-select { border: 1px solid #E2DACE; border-radius: 7px; padding: 4px 6px; font: 800 10.5px 'Nunito Sans'; background: #fff; }
+    .att-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+    .notice-input { width: 56px; border: 1px solid #E2DACE; border-radius: 7px; padding: 4px 6px; font: 800 10.5px 'Nunito Sans'; background: #fff; color: #2B3A4C; }
+    .notice-input[hidden] { display: none; }
     .sess-amount { text-align: right; font: 800 12.5px 'Nunito Sans'; color: #16436E; white-space: nowrap; }
     .sess-invoiced-tag { font: 800 10px 'Nunito Sans'; color: #98897A; }
 
@@ -277,7 +315,7 @@
                     <div class="bl-card-head"><div><div class="bl-card-title">Who owes us money</div><div class="bl-card-sub">Open balances by age since the due date — as at {{ now()->format('d M Y') }}</div></div></div>
                     <div style="overflow-x:auto;">
                         <table class="aging-table">
-                            <thead><tr><th>Invoice</th><th>Age</th><th class="num">Total</th><th class="num">Balance</th><th></th></tr></thead>
+                            <thead><tr><th>Invoice</th><th class="center">Age</th><th class="center">Total</th><th class="center">Balance</th><th class="center"></th></tr></thead>
                             <tbody id="aging-body"></tbody>
                         </table>
                     </div>
@@ -286,14 +324,14 @@
                     <div class="bl-card-head"><div><div class="bl-card-title">Family statements</div><div class="bl-card-sub">Running balance across every invoice, credit note and payment</div></div></div>
                     <div style="overflow-x:auto;">
                         <table class="fam-table">
-                            <thead><tr><th>Family</th><th class="num">Billed</th><th class="num">Balance</th><th></th></tr></thead>
+                            <thead><tr><th>Family</th><th class="center">Billed</th><th class="center">Balance</th><th class="center"></th></tr></thead>
                             <tbody>
                                 @forelse ($aging['families'] as $f)
                                     <tr>
                                         <td><strong>{{ $f['patient'] }}</strong><div style="color:#8A7D6C; font-weight:600;">{{ $f['parent'] }} · {{ $f['invoices'] }} invoice{{ $f['invoices'] === 1 ? '' : 's' }} · {{ $f['payer'] }}</div></td>
-                                        <td class="num">AED {{ number_format($f['billed'], 2) }}</td>
-                                        <td class="num" style="color: {{ $f['balance'] > 0 ? '#B3261E' : '#1E7A46' }};">AED {{ number_format($f['balance'], 2) }}</td>
-                                        <td><a href="{{ $f['statement_url'] }}" target="_blank" class="bl-btn bl-btn-sm" style="text-decoration:none;">Open statement</a></td>
+                                        <td class="center">AED {{ number_format($f['billed'], 2) }}</td>
+                                        <td class="center" style="color: {{ $f['balance'] > 0 ? '#B3261E' : '#1E7A46' }};">AED {{ number_format($f['balance'], 2) }}</td>
+                                        <td class="center"><a href="{{ $f['statement_url'] }}" target="_blank" class="bl-btn bl-btn-sm" style="text-decoration:none;">Open statement</a></td>
                                     </tr>
                                 @empty
                                     <tr><td colspan="4" class="bl-empty">No invoices raised yet.</td></tr>
@@ -845,10 +883,10 @@
             const overdue = i.days_past_due > 0;
             return `<tr data-id="${i.id}">
                 <td><strong>${esc(i.patient)}</strong><div style="color:#8A7D6C; font-weight:600;">${esc(i.number)} · ${esc(i.payer)} · due ${esc(i.due_label)}</div>${i.reminder_sent_at ? `<div style="color:#24619C; font-weight:700;">Reminder sent ${esc(i.reminder_sent_at)}</div>` : ''}</td>
-                <td><span class="age-chip" style="background:${overdue ? '#F9E4E2' : '#E3F1E9'}; color:${overdue ? '#B3261E' : '#1E7A46'};">${esc(i.age_label)}</span></td>
-                <td class="num">${money(i.total)}</td>
-                <td class="num" style="color:#B3261E;">${money(i.balance)}</td>
-                <td><button type="button" class="bl-btn bl-btn-sm bl-btn-dark" data-remind="${i.id}">Send reminder</button></td>
+                <td class="center"><span class="age-chip" style="background:${overdue ? '#F9E4E2' : '#E3F1E9'}; color:${overdue ? '#B3261E' : '#1E7A46'};">${esc(i.age_label)}</span></td>
+                <td class="center">${money(i.total)}</td>
+                <td class="center" style="color:#B3261E;">${money(i.balance)}</td>
+                <td class="center"><button type="button" class="bl-btn bl-btn-sm bl-btn-dark" data-remind="${i.id}">Send reminder</button></td>
             </tr>`;
         }).join('');
         body.querySelectorAll('[data-remind]').forEach(btn => btn.addEventListener('click', () => {
@@ -893,6 +931,58 @@
     }
 
     const ATT_OPTIONS = [['completed', 'Completed'], ['no_show', 'No-show'], ['cancelled_late', 'Cancelled — late'], ['cancelled_notice', 'Cancelled — with notice'], ['cancelled_clinic', 'Cancelled — clinic']];
+    // Family cancellations are priced off the notice given, so those two
+    // states carry an hours box; the ledger decides free vs late from it.
+    const NOTICE_STATES = ['cancelled_late', 'cancelled_notice'];
+    function defaultNotice(state) { return state === 'cancelled_notice' ? POLICY.notice_hours : Math.max(0, POLICY.notice_hours - 1); }
+    function noticeValue(r) {
+        if (!NOTICE_STATES.includes(r.attendance)) return '';
+        return r.notice_hours === null || r.notice_hours === undefined ? defaultNotice(r.attendance) : Number(r.notice_hours);
+    }
+    function stateForNotice(n) { return n >= POLICY.notice_hours ? 'cancelled_notice' : 'cancelled_late'; }
+    function chargeFactor(state, notice) {
+        if (NOTICE_STATES.includes(state)) {
+            const h = notice === '' || notice === null || isNaN(notice) ? defaultNotice(state) : Number(notice);
+            return h >= POLICY.notice_hours ? 0 : POLICY.late_pct / 100;
+        }
+        return { completed: 1, no_show: POLICY.no_show_pct / 100, cancelled_clinic: 0 }[state] ?? 0;
+    }
+    /**
+     * Re-price one picker row the way the ledger would, so the amount on the
+     * right follows the attendance and the notice hours without a round trip.
+     * The invoice itself is still composed server-side on preview.
+     */
+    function repriceRow(row, notice) {
+        const vatRate = Number(currentPatient?.vat_rate ?? 0.05);
+        row.factor = chargeFactor(row.attendance, notice);
+        row.bill_hours = row.factor === 0 ? 0 : row.hours;
+        row.net = row.bill_hours * row.rate * row.factor;
+        row.vat = row.net * vatRate;
+        row.gross = row.net + row.vat;
+        row.charge_rule = chargeRule(row.attendance, notice);
+        const el = document.querySelector(`.sess-row[data-id="${row.id}"]`);
+        if (!el) return;
+        el.querySelector('.sess-amount').innerHTML = `${money(row.gross)}<div class="sess-invoiced-tag">${esc(row.billing_status)}</div>`;
+        const rule = el.querySelector('.sess-rule');
+        rule.textContent = row.charge_rule;
+        rule.style.color = row.bill_hours > 0 ? '#5A6B7E' : '#98897A';
+        setPickerCount();
+    }
+    function chargeRule(state, notice) {
+        if (NOTICE_STATES.includes(state) && notice !== '' && notice !== null && !isNaN(notice)) {
+            const h = Number(notice);
+            return h >= POLICY.notice_hours
+                ? `Cancelled ${h} h ahead — not charged`
+                : `Cancelled ${h} h ahead — ${POLICY.late_pct}% charged`;
+        }
+        return {
+            completed: 'Attended — 100% charged',
+            no_show: `No-show — ${POLICY.no_show_pct}% charged`,
+            cancelled_late: `Cancelled late — ${POLICY.late_pct}% charged`,
+            cancelled_notice: 'Cancelled with notice — not charged',
+            cancelled_clinic: 'Cancelled by clinic — not charged',
+        }[state];
+    }
     function renderSessionRows() {
         const box = document.getElementById('picker-sessions');
         if (!currentLedger.length) { box.innerHTML = '<div class="bl-empty">No delivered sessions on file for this client yet.</div>'; setPickerCount(); return; }
@@ -902,7 +992,10 @@
                 <div class="sess-main">
                     <div class="sess-top"><span>${esc(r.service_label)} — 1:1 session</span><span>${esc(r.date_label)} · ${esc(r.start_time)}–${esc(r.end_time)}</span></div>
                     <div class="sess-meta">${esc(r.setting)} by ${esc(r.therapist_name)}${r.trainee_note ? ' (' + esc(r.trainee_note) + ')' : ''} · ${esc(r.payer)} ${r.coverage_pct}%${r.invoiced ? ' · ' + esc(r.invoice_number) : ''}${r.insufficient_authorization ? ' · <strong style="color:#8A5A10;">' + esc(r.insufficient_message) + '</strong>' : ''}</div>
-                    <select class="att-select" data-att="${r.id}">${ATT_OPTIONS.map(([k, l]) => `<option value="${k}" ${k === r.attendance ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+                    <div class="att-line">
+                        <select class="att-select" data-att="${r.id}">${ATT_OPTIONS.map(([k, l]) => `<option value="${k}" ${k === r.attendance ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+                        <input type="number" class="notice-input" data-notice="${r.id}" min="0" max="720" step="any" value="${noticeValue(r)}" placeholder="h" title="Hours of notice the family gave" ${NOTICE_STATES.includes(r.attendance) ? '' : 'hidden'}>
+                    </div>
                     <span class="sess-rule" style="color:${r.bill_hours > 0 ? '#5A6B7E' : '#98897A'};">${esc(r.charge_rule)}</span>
                 </div>
                 <div class="sess-amount">${money(r.gross)}<div class="sess-invoiced-tag">${esc(r.billing_status)}</div></div>
@@ -911,9 +1004,33 @@
         box.querySelectorAll('[data-check]').forEach(cb => cb.addEventListener('change', setPickerCount));
         box.querySelectorAll('[data-att]').forEach(sel => sel.addEventListener('change', () => {
             const row = currentLedger.find(r => r.id === Number(sel.dataset.att));
-            const rule = { completed: 'Attended — 100% charged', no_show: `No-show — ${POLICY.no_show_pct}% charged`, cancelled_late: `Cancelled late — ${POLICY.late_pct}% charged`, cancelled_notice: 'Cancelled with notice — not charged', cancelled_clinic: 'Cancelled by clinic — not charged' }[sel.value];
+            const notice = sel.closest('.sess-main').querySelector('[data-notice]');
+            if (NOTICE_STATES.includes(sel.value)) {
+                // Keep the box in step with the state picked: 24 h means free,
+                // 23 h means the late fee, so switching states moves the hours.
+                notice.value = defaultNotice(sel.value);
+                notice.hidden = false;
+            } else {
+                notice.value = '';
+                notice.hidden = true;
+            }
             row.attendance = sel.value;
-            sel.closest('.sess-main').querySelector('.sess-rule').textContent = rule;
+            row.notice_hours = notice.value === '' ? null : Number(notice.value);
+            repriceRow(row, notice.value);
+        }));
+        box.querySelectorAll('[data-notice]').forEach(inp => inp.addEventListener('input', () => {
+            const row = currentLedger.find(r => r.id === Number(inp.dataset.notice));
+            const main = inp.closest('.sess-main');
+            if (inp.value !== '' && Number(inp.value) >= 0) {
+                // The hours are what actually price the cancellation, so let
+                // them drive the dropdown rather than contradict it.
+                row.attendance = stateForNotice(Number(inp.value));
+                row.notice_hours = Number(inp.value);
+                main.querySelector('[data-att]').value = row.attendance;
+            } else {
+                row.notice_hours = null;
+            }
+            repriceRow(row, inp.value);
         }));
     }
     function setPickerCount() {
@@ -933,7 +1050,12 @@
     function selectedIds() { return [...document.querySelectorAll('[data-check]:checked')].map(c => Number(c.dataset.check)); }
     function attendancePayload() {
         const out = {};
-        currentLedger.forEach(r => { out[r.id] = { state: r.attendance }; });
+        currentLedger.forEach(r => {
+            out[r.id] = { state: r.attendance };
+            if (NOTICE_STATES.includes(r.attendance) && r.notice_hours !== null && r.notice_hours !== undefined) {
+                out[r.id].notice_hours = r.notice_hours;
+            }
+        });
         return out;
     }
 

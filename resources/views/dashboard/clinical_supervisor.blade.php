@@ -112,7 +112,7 @@
                         } elseif ($session->status === 'no_show') {
                             $statusLabel = 'No-show'; $statusColors = ['bg' => '#F9E4E2', 'color' => '#B3261E'];
                         } elseif ($session->start_time <= $nowTime && $session->end_time >= $nowTime) {
-                            $statusLabel = 'In Session'; $statusColors = ['bg' => '#F9E7EC', 'color' => '#C8355F'];
+                            $statusLabel = 'In session'; $statusColors = ['bg' => '#F9E7EC', 'color' => '#C8355F'];
                         } elseif ($session->end_time < $nowTime) {
                             $statusLabel = 'Awaiting update'; $statusColors = ['bg' => '#F7EEDD', 'color' => '#B97F24'];
                         } else {
@@ -213,8 +213,8 @@
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div style="font: 600 13px 'Baloo 2'; color: #C8355F; width: 20px;">{{ $i + 1 }}</div>
                                 <div style="flex: 1;">
-                                    <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">{{ $entry->child_name }}{{ $entry->child_age ? ' · ' . $entry->child_age : '' }}</div>
-                                    <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">{{ $entry->programme ?? 'Programme TBD' }}{{ $entry->hours_per_week ? ' ' . $entry->hours_per_week . 'h/wk' : '' }} · waiting {{ $entry->waitingWeeks() }} {{ Str::plural('wk', $entry->waitingWeeks()) }}</div>
+                                    <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C;">{{ $entry->child_name ?: ($entry->parent_guardian_name ?: 'Unnamed enquiry') }}{{ $entry->child_age ? ' · ' . $entry->child_age : '' }}</div>
+                                    <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A;">{{ $entry->interested_in ?: 'Interest not captured' }}{{ $entry->source ? ' · ' . $entry->source : '' }} · waiting {{ $entry->waitingWeeks() }} {{ Str::plural('wk', $entry->waitingWeeks()) }}</div>
                                 </div>
                             </div>
                         @endforeach

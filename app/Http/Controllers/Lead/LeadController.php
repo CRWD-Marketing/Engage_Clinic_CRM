@@ -55,7 +55,22 @@ class LeadController extends Controller
         $followUpCount = $activeLeads->whereNotNull('follow_up_due_at')->count();
         $terminatedCount = $leads->where('status', Lead::STATUS_TERMINATED)->count();
 
+        // Only Sales module and Full Admin users can own a lead - Coordinator's
+        // "leads" access is view-mostly (see role_permissions.php), not ownership.
+        // Any user already assigned to one of the leads below is still included
+        // so a legacy/ineligible assignment keeps rendering correctly instead of
+        // showing blank in the dropdown - it just won't be offered for new picks
+        // once reassigned away from them.
+        $existingOwnerIds = $leads->pluck('assigned_to')->filter()->unique()->all();
+
         $assignableUsers = \App\Models\User::where('is_active', true)
+            ->where(function ($query) use ($existingOwnerIds) {
+                $query->whereIn('role', ['SALES_STAFF', 'FULL_ADMIN']);
+
+                if ($existingOwnerIds) {
+                    $query->orWhereIn('id', $existingOwnerIds);
+                }
+            })
             ->orderBy('first_name')
             ->get(['id', 'first_name', 'last_name']);
 

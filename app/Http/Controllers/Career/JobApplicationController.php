@@ -33,8 +33,10 @@ class JobApplicationController extends Controller
 
         $statuses = JobApplication::getStatuses();
         $newCount = $allApplications->where('status', JobApplication::STATUS_NEW)->count();
+        $statusCounts = $allApplications->countBy('status');
+        $totalCount = $allApplications->count();
 
-        return view('career.applications.index', compact('applications', 'activeApplication', 'statuses', 'newCount'));
+        return view('career.applications.index', compact('applications', 'activeApplication', 'statuses', 'newCount', 'statusCounts', 'totalCount'));
     }
 
     /**

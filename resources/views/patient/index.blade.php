@@ -22,6 +22,15 @@
     }
     .pt-add-btn:hover { background: #A82348; }
 
+    .pt-filter-select {
+        border: 1px solid #E2DACE; border-radius: 8px; background: #fff; color: #16436E;
+        font: 800 12.5px 'Nunito Sans'; padding: 9px 32px 9px 14px; cursor: pointer; outline: none;
+        appearance: none; -webkit-appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%2316436E'/></svg>");
+        background-repeat: no-repeat; background-position: right 12px center;
+    }
+    .pt-filter-select:hover { border-color: #C8355F; }
+
     .pt-table-card { border: 1px solid #EBE4DA; border-radius: 16px; background: #fff; overflow: hidden; box-shadow: 0 2px 10px rgba(22,42,60,0.04); overflow-x: auto; }
     .pt-table { width: 100%; border-collapse: collapse; min-width: 900px; }
     .pt-table th {
@@ -46,6 +55,50 @@
     .pt-badge.needs-details { background: #FDF6E9; color: #8A5A10; }
 
     .pt-empty { padding: 56px 20px; text-align: center; color: #98897A; font: 700 12.5px 'Nunito Sans'; }
+
+    /* ── Phone: grouped card list ─────────────────────────────────────────
+       The table needs 900px before it stops cramping, so below that it is
+       replaced by a card per patient, under a heading per status. Everything
+       stays on screen - this list is short and is read straight through, so
+       there is nothing here worth putting behind a tap. The cards are their
+       own list rather than the table restyled, so the desktop table keeps its
+       own ordering (newest first) instead of being re-sorted by status. */
+    .pt-groups { display: none; flex-direction: column; gap: 8px; }
+    .pt-group { border: 1px solid #EBE4DA; border-radius: 14px; background: #fff; overflow: hidden; box-shadow: 0 2px 10px rgba(22,42,60,0.04); }
+    .pt-group-head { display: flex; align-items: center; gap: 9px; padding: 10px 12px; }
+    .pt-group-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .pt-group-title { flex: 1; font: 800 13.5px 'Nunito Sans'; color: #2B3A4C; }
+    .pt-group-count { background: #F6F3EE; color: #5A6B7E; border-radius: 999px; padding: 2px 9px; font: 800 11.5px 'Nunito Sans'; }
+    .pt-group-body { display: flex; flex-direction: column; }
+
+    /* Built like the WhatsApp inbox rows: a large round avatar, the name and
+       its badge on the first line, one grey line under it, and the running
+       figure out on the right. Two lines per patient, no dividers - the rest
+       of the record is a tap away. */
+    .pt-mcard {
+        display: flex; align-items: center; gap: 11px;
+        padding: 9px 14px; text-decoration: none; color: inherit;
+    }
+    .pt-mcard .pt-avatar { width: 52px; height: 52px; font-size: 18px; }
+    .pt-mcard-ident { flex: 1 1 0; min-width: 0; }
+    .pt-mcard-top, .pt-mcard-bottom { display: flex; align-items: center; gap: 8px; }
+    .pt-mcard-bottom { margin-top: 1px; }
+    /* Everything truncates rather than wraps, so a long name or diagnosis can
+       never push a row to double height. */
+    .pt-mcard .pt-name, .pt-mcard-line { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pt-mcard .pt-name { font-size: 15px; }
+    .pt-mcard .pt-badge { flex-shrink: 0; padding: 2px 8px; font-size: 10px; }
+    .pt-mcard-line { font: 600 13px 'Nunito Sans'; color: #98897A; }
+    .pt-mcard-meta { flex-shrink: 0; font: 700 11.5px 'Nunito Sans'; color: #B0A493; }
+
+    @media (max-width: 860px) {
+        .main-content-inner.pt-tight-padding { padding-left: 12px; padding-right: 12px; }
+        .pt-header-bar { margin-bottom: 16px; gap: 10px; }
+        .pt-header-title { font-size: 21px; }
+        .pt-header-sub { font-size: 12px; }
+        .pt-table-card-table { display: none; }
+        .pt-groups { display: flex; }
+    }
 
     .pt-success-alert {
         background: #E4F6EB; border: 1px solid #BFE9CE; color: #1E8A4C; border-radius: 10px;
@@ -107,16 +160,26 @@
             <div class="pt-header-title">Patients</div>
             <div class="pt-header-sub">{{ $patients->count() }} active · {{ $patients->count() }} shown</div>
         </div>
-        @if (auth()->user()->role !== 'COORDINATOR' && auth()->user()->role !== 'THERAPIST')
-            <button type="button" class="pt-add-btn" onclick="openPatientAddModal()">+ Add patient</button>
-        @endif
+        <div style="display:flex; align-items:center; gap:10px;">
+            <select class="pt-filter-select" id="ptPeriodFilter" onchange="ptFilterByPeriod(this.value)">
+                <option value="all" {{ $period === 'all' ? 'selected' : '' }}>All time</option>
+                <option value="today" {{ $period === 'today' ? 'selected' : '' }}>Today</option>
+                <option value="week" {{ $period === 'week' ? 'selected' : '' }}>This week</option>
+                <option value="month" {{ $period === 'month' ? 'selected' : '' }}>This month</option>
+                <option value="last_month" {{ $period === 'last_month' ? 'selected' : '' }}>Last month</option>
+                <option value="year" {{ $period === 'year' ? 'selected' : '' }}>This year</option>
+            </select>
+            @if (auth()->user()->role !== 'COORDINATOR' && auth()->user()->role !== 'THERAPIST')
+                <button type="button" class="pt-add-btn" onclick="openPatientAddModal()">+ Add patient</button>
+            @endif
+        </div>
     </div>
 
     @if (session('success'))
         <div class="pt-success-alert">{{ session('success') }}</div>
     @endif
 
-    <div class="pt-table-card">
+    <div class="pt-table-card {{ $patients->isEmpty() ? '' : 'pt-table-card-table' }}">
         @if ($patients->isEmpty())
             <div class="pt-empty">No patients yet. Convert an enrolled lead from the Leads pipeline to get started.</div>
         @else
@@ -182,6 +245,66 @@
         @endif
     </div>
 
+    @if ($patients->isNotEmpty())
+        @php
+            // Two states is all this list has, and the incomplete records are
+            // what someone usually opens this page to deal with, so they lead.
+            $ptGroups = [
+                ['label' => 'Needs details', 'dot' => '#C8355F', 'items' => $patients->filter(fn ($p) => $p->isProfileIncomplete())->values()],
+                ['label' => 'Active', 'dot' => '#1E8A4C', 'items' => $patients->reject(fn ($p) => $p->isProfileIncomplete())->values()],
+            ];
+        @endphp
+        <div class="pt-groups">
+            @foreach ($ptGroups as $group)
+                @continue ($group['items']->isEmpty())
+                <div class="pt-group">
+                    <div class="pt-group-head">
+                        <span class="pt-group-dot" style="background: {{ $group['dot'] }};"></span>
+                        <span class="pt-group-title">{{ $group['label'] }}</span>
+                        <span class="pt-group-count">{{ $group['items']->count() }}</span>
+                    </div>
+                    <div class="pt-group-body">
+                        @foreach ($group['items'] as $patient)
+                            @php
+                                $lead = $patient->lead;
+                                $primaryAuth = $patient->primaryAuthorization();
+                                $attendanceRate = $patient->attendanceRate();
+                                $nameParts = preg_split('/\s+/', trim($lead->child_name ?? ''));
+                                $initials = strtoupper(($nameParts[0][0] ?? '?').($nameParts[1][0] ?? ''));
+                                $hoursLeft = ($primaryAuth && $primaryAuth->authorized_hours_total)
+                                    ? max(0, $primaryAuth->authorized_hours_total - $primaryAuth->hoursUsed())
+                                    : null;
+                            @endphp
+                            <a href="{{ route('patient.show', $patient) }}" class="pt-mcard">
+                                <div class="pt-avatar" style="background: {{ $avatarColor($patient->lead_id) }};">{{ $initials }}</div>
+                                <div class="pt-mcard-ident">
+                                    <div class="pt-mcard-top">
+                                        <div class="pt-name">{{ $lead->child_name ?? 'Unnamed' }}{{ $lead->child_age ? ' · '.$lead->child_age : '' }}</div>
+                                        @if ($patient->isProfileIncomplete())
+                                            <span class="pt-badge needs-details">Needs details</span>
+                                        @else
+                                            <span class="pt-badge active">Active</span>
+                                        @endif
+                                    </div>
+                                    <div class="pt-mcard-bottom">
+                                        <div class="pt-mcard-line">{{ $lead->parent_guardian_name ?? 'No parent on file' }} · {{ $lead->phone ?? 'no phone' }}</div>
+                                        <div class="pt-mcard-meta">
+                                            @if ($hoursLeft !== null)
+                                                {{ $hoursLeft }}/{{ $primaryAuth->authorized_hours_total }}h
+                                            @else
+                                                No auth
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
 </div>
 
 <!-- Add Patient Modal -->
@@ -213,7 +336,12 @@
                 </div>
                 <div>
                     <div class="pt-field-label">Programme *</div>
-                    <input id="ptNewProgramme" name="programme" type="text" placeholder="e.g. ABA 20h/wk + Speech 2h" class="pt-field-input">
+                    <select id="ptNewProgramme" name="programme" class="pt-field-input">
+                        <option value="">Select a package…</option>
+                        @foreach ($packages as $package)
+                            <option value="{{ $package->name }}">{{ $package->name }} — {{ rtrim(rtrim(number_format($package->hours_per_week, 1), '0'), '.') }}h/wk @ AED {{ number_format($package->rate, 0) }}/hr</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div>
                     <div class="pt-field-label">Parent / guardian</div>
@@ -263,6 +391,13 @@
 
 @push('scripts')
 <script>
+    function ptFilterByPeriod(period) {
+        const url = new URL(window.location.href);
+        if (period === 'all') url.searchParams.delete('period');
+        else url.searchParams.set('period', period);
+        window.location.href = url.toString();
+    }
+
     function ptCsrf() {
         return document.querySelector('meta[name="csrf-token"]')?.content
             || document.querySelector('input[name="_token"]')?.value;

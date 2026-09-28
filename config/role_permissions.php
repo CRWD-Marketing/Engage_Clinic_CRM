@@ -19,7 +19,7 @@ return [
 
     'FULL_ADMIN' => [
         // Everything in the CRM, including user/role management and system-level access.
-        'dashboard', 'leads', 'contacts', 'whatsapp', 'voice', 'patients', 'calendar', 'therapists', 'users', 'billing', 'reports', 'knowledge_base', 'careers', 'settings', 'packages', 'roles_access',
+        'dashboard', 'leads', 'contacts', 'whatsapp', 'patients', 'calendar', 'therapists', 'users', 'billing', 'reports', 'knowledge_base', 'careers', 'settings', 'packages', 'roles_access',
     ],
 
     'HR_STAFF' => [
@@ -31,13 +31,13 @@ return [
     'SALES_STAFF' => [
         // Leads, lead details, lead conversion, sales pipeline/deals, client intake
         // forms, WhatsApp/client communication. No patient clinical records.
-        'dashboard', 'leads', 'contacts', 'whatsapp', 'voice',
+        'dashboard', 'leads', 'contacts', 'whatsapp',
     ],
 
     'COORDINATOR' => [
         // Calendar, appointments, client communication, intake coordination, plus
         // limited (view-mostly, non-clinical) lead/patient information.
-        'dashboard', 'calendar', 'whatsapp', 'voice', 'leads', 'contacts', 'patients',
+        'dashboard', 'calendar', 'whatsapp', 'leads', 'contacts', 'patients',
     ],
 
     'FINANCE_STAFF' => [

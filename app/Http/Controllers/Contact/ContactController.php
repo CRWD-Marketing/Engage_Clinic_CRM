@@ -34,7 +34,14 @@ class ContactController extends Controller
         $statuses = Contact::getStatuses();
         $newCount = $allContacts->where('status', Contact::STATUS_NEW)->count();
 
-        return view('contact.index', compact('contacts', 'activeContact', 'statuses', 'newCount'));
+        // Per-status totals for the filter dropdown, counted off the unfiltered
+        // set so every option keeps showing its own total while a filter is on.
+        $totalCount = $allContacts->count();
+        $statusCounts = collect($statuses)->mapWithKeys(
+            fn ($label, $key) => [$key => $allContacts->where('status', $key)->count()]
+        )->all();
+
+        return view('contact.index', compact('contacts', 'activeContact', 'statuses', 'newCount', 'totalCount', 'statusCounts'));
     }
 
     /**
@@ -44,6 +51,7 @@ class ContactController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'nullable|string|max:255',
+            'child_name' => 'nullable|string|max:255',
             'child_age' => 'nullable|string|max:10',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
@@ -187,6 +195,7 @@ class ContactController extends Controller
         }
 
         $lead = Lead::create([
+            'child_name' => $contact->child_name,
             'child_age' => $contact->child_age,
             'parent_guardian_name' => $contact->name,
             'phone' => $contact->phone,
@@ -212,6 +221,7 @@ class ContactController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
+            'child_name' => 'nullable|string|max:255',
             'child_age' => 'nullable|string|max:10',
             'email' => 'nullable|email|max:255',
             'phone' => 'required|string|max:20',

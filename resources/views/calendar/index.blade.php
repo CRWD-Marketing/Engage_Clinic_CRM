@@ -211,8 +211,144 @@
             .cal-daylabel { font-size: 17px; }
             .cal-subtitle { display: none; }
             .cal-grid { padding: 12px 14px; gap: 10px; }
-            .therapist-col { width: 78vw; max-width: 240px; }
             .panel { width: 100vw !important; max-width: 100vw !important; padding: 18px 16px 24px !important; }
+        }
+
+        /* ---- Phone ----------------------------------------------------------
+           Three views that all assume a wide screen: a row of therapist columns,
+           a 1040px roster, and a seven-column month. Each one is reworked below
+           rather than left to be dragged sideways. */
+        @media (max-width: 820px) {
+            /* The role strip is reference text, not something acted on, and it
+               was taking a third of the screen above the calendar. The badge
+               says which role you are in; the rest is on the roles page. */
+            .role-strip { padding: 7px 14px; gap: 8px; }
+            .role-can, .role-locked { display: none; }
+
+            .cal-topbar { padding: 10px 14px 8px; gap: 8px; }
+            .cal-topbar-title { flex: 1 1 100%; min-width: 0; }
+            .cal-daylabel { font-size: 16px; }
+            .cal-view-toggle { flex: 1 1 100%; }
+            .cal-view-btn { flex: 1; padding: 8px 0; }
+            /* The date nav gets its own line, then the actions pair off two to a
+               row instead of breaking wherever they happen to run out of width.
+               Booking is the primary action, so it takes a full row. */
+            .cal-nav { flex: 1 1 100%; }
+            .cal-nav-label { min-width: 0; flex: 1; font-size: 12px; }
+            .cal-select { padding: 8px 12px; font-size: 11.5px; flex: 1; }
+            .cal-btn {
+                flex: 1 1 calc(50% - 4px); min-width: 0;
+                padding: 10px 8px; font-size: 11.5px; text-align: center;
+            }
+            .cal-btn-primary { flex: 1 1 100%; }
+
+            /* One row that scrolls, rather than three rows of chips before the
+               calendar even starts. */
+            .cal-legend {
+                flex-wrap: nowrap; overflow-x: auto; padding: 0 14px 10px;
+                scrollbar-width: none; -ms-overflow-style: none;
+            }
+            .cal-legend::-webkit-scrollbar { display: none; }
+            .legend-chip { flex-shrink: 0; }
+
+            /* Day: the same shape as the leads pipeline - a stacked list of
+               therapists, all shut, one open at a time. Swiping between narrow
+               columns meant never seeing more than one person at a time, and no
+               sense of who else is on today. */
+            .cal-grid {
+                padding: 12px 14px; gap: 8px;
+                flex-direction: column; align-items: stretch;
+                overflow-x: hidden; overflow-y: auto;
+            }
+            .therapist-col {
+                width: auto; max-width: none; padding: 0;
+                background: #F6F3EE; border-radius: 12px; overflow: hidden;
+            }
+            .therapist-col-header {
+                display: flex; align-items: center; gap: 10px;
+                margin-bottom: 0; border-radius: 0; cursor: pointer;
+                user-select: none; -webkit-tap-highlight-color: transparent;
+            }
+            .therapist-col-header > div { flex: 1; min-width: 0; }
+            .therapist-col-header::after {
+                content: ''; flex: none; width: 7px; height: 7px; margin-right: 3px;
+                border-right: 2px solid #9FB6CC; border-bottom: 2px solid #9FB6CC;
+                transform: rotate(-45deg);
+                transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+            }
+            .therapist-col.is-open .therapist-col-header::after { transform: rotate(45deg); }
+            /* Height rather than display, so it can be animated. The open height
+               is set on the element by the script, which is the only thing that
+               knows how many sessions are inside. */
+            .col-body {
+                min-height: 0; max-height: 0; opacity: 0; overflow: hidden;
+                padding: 0 8px;
+                transition: max-height .3s cubic-bezier(.4, 0, .2, 1),
+                            padding .3s cubic-bezier(.4, 0, .2, 1),
+                            opacity .22s ease;
+            }
+            /* Same reason as the roles cards: a capped flex column shrinks its
+               children rather than letting them overflow. */
+            .col-body > * { flex-shrink: 0; }
+            .therapist-col.is-open .col-body { padding: 8px; opacity: 1; overflow-y: auto; }
+            /* Reassigning by drag is a mouse gesture; the hint is noise here. */
+            .card-hint { display: none; }
+
+            @media (prefers-reduced-motion: reduce) {
+                .col-body, .therapist-col-header::after { transition: none; }
+            }
+
+            /* Week: the row number and the designation are reference detail
+               costing a third of the width, so they go. The name column is the
+               one pinned, so a row is never anonymous once the days scroll. */
+            /* No side padding on the scroll container: a sticky cell parks at
+               the padding edge, not the border edge, so a 14px gutter left a
+               strip beside the pinned name column for the scrolling days to
+               show through. */
+            .roster-wrap { padding: 12px 0; }
+            /* overflow:hidden on the table (there for the rounded corners)
+               makes it a scroll container of its own, which pins the sticky
+               cell to the table instead of to the viewport - so it has to go
+               for the name column to hold its place. */
+            .roster { min-width: 660px; overflow: visible; }
+            .roster th:nth-child(1), .roster td:nth-child(1),
+            .roster th:nth-child(3), .roster td:nth-child(3) { display: none; }
+            .roster th:nth-child(2), .roster td:nth-child(2) {
+                position: sticky; left: 0; z-index: 2;
+                width: 98px; min-width: 98px; background: #fff;
+                /* Reads as the days passing underneath rather than into it. */
+                box-shadow: 3px 0 6px -2px rgba(22, 42, 60, .18);
+            }
+            .roster th:nth-child(2) { z-index: 3; background: #F6F3EE; }
+            .roster td { min-width: 92px; height: auto; padding: 6px; }
+
+
+            /* Month has to stay seven columns wide, so the cells shrink until
+               the whole month fits the screen and read as an overview - the day
+               number and how many sessions are on it. Tapping one opens the day. */
+            .month-grid { padding: 12px 10px; gap: 4px; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+            .month-dow { font-size: 9px; padding: 0 0 3px; text-align: center; letter-spacing: 0; }
+            .month-cell { min-height: 58px; padding: 5px 3px; border-radius: 8px; gap: 1px; }
+            .month-cell.is-today { border-width: 1.5px; }
+            .month-cell-top { justify-content: center; gap: 3px; }
+            .month-cell-date { font-size: 11.5px; }
+            .month-cell-count {
+                background: #C8355F; color: #fff; border-radius: 999px;
+                min-width: 15px; padding: 0 4px; text-align: center;
+                font-size: 9.5px; line-height: 15px;
+            }
+            /* The patient's name stays on the chip - it is the one thing the
+               month is read for - and truncates with an ellipsis rather than
+               being dropped. The time goes instead: in a cell this narrow it
+               would eat the whole line and leave nothing for the name. */
+            .month-chip {
+                display: block; padding: 1px 3px; border-radius: 4px;
+                font: 700 8.5px 'Nunito Sans'; line-height: 1.5;
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            }
+            .month-chip-time { display: none; }
+            .month-more { display: block; font-size: 8px; }
+            .month-book-link { display: none; }
         }
     </style>
 
@@ -227,6 +363,7 @@
          data-me="{{ $currentUserId }}"
          data-me-name="{{ $currentUserName }}"
          data-feed-url="{{ route('calendar.feed') }}"
+         data-leads-url="{{ route('calendar.leads') }}"
          data-store-url="{{ route('calendar.store') }}"
          data-base-url="{{ url('calendar') }}"
          data-utilisation-url="{{ route('calendar.utilisation') }}"
@@ -304,47 +441,70 @@
                 <input type="hidden" id="f-id" value="">
 
                 <div>
-                    <label class="f-label">Therapists / assign to</label>
+                    <label class="f-label">Therapist / assign to</label>
                     <div id="ms-therapists"></div>
-                    <div class="f-help" id="f-therapists-help">Session will be booked for each selected therapist.</div>
                 </div>
 
-                <div id="f-repeats-wrap">
-                    <label class="f-label" for="f-repeats">Repeats</label>
-                    <select id="f-repeats" class="f-select">
-                        <option value="weekly" selected>Every week</option>
-                        <option value="none">One-off on a date</option>
-                    </select>
+                <div style="display:flex; gap:10px;">
+                    <div id="f-repeats-wrap" style="flex:1;">
+                        <label class="f-label" for="f-repeats">Repeats</label>
+                        <select id="f-repeats" class="f-select">
+                            <option value="weekly" selected>Every week</option>
+                            <option value="none">One-off on a date</option>
+                        </select>
+                    </div>
+
+                    <div style="flex:1;">
+                        <label class="f-label" id="f-day-label">Date</label>
+                        <input type="date" id="f-day" class="f-input" required>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="f-label" id="f-day-label">Day</label>
+                <div id="f-weekdays-wrap">
+                    <label class="f-label">Days of the week</label>
                     <div id="ms-weekdays"></div>
-                    <input type="date" id="f-day" class="f-input" required>
-                </div>
-
-                <div>
-                    <label class="f-label" for="f-duration">Duration</label>
-                    <select id="f-duration" class="f-select">
-                        @foreach ($durations as $d)
-                            <option value="{{ $d }}" @selected($d === 60)>{{ $d }} min</option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div>
-                    <label class="f-label">Time</label>
-                    <input type="hidden" id="f-start">
-                    <button type="button" class="f-input f-time-trigger" id="f-time-trigger">
-                        <span id="f-time-trigger-label">Select a time</span>
-                        <span class="f-time-trigger-caret">▾</span>
-                    </button>
-                    <div class="time-grid" id="f-time-grid"></div>
                 </div>
 
                 <div>
                     <label class="f-label">Patient</label>
                     <div id="ms-patients"></div>
+                </div>
+
+                <div id="pkg-info" style="display:none; background:#F3EDE3; border-radius:10px; padding:10px 12px;">
+                    <div style="font:800 12.5px 'Nunito Sans'; color:#2B3A4C; margin-bottom:5px;" id="pkg-info-title"></div>
+                    <div style="display:flex; gap:14px; flex-wrap:wrap; font:700 11.5px 'Nunito Sans'; color:#5A6B7E;">
+                        <span>Allocated: <strong id="pkg-info-total"></strong></span>
+                        <span>Used / Scheduled: <strong id="pkg-info-used"></strong></span>
+                        <span>Available to Schedule: <strong id="pkg-info-left"></strong></span>
+                    </div>
+                    <div style="margin-top:5px; font:700 11.5px 'Nunito Sans'; color:#5A6B7E;" id="pkg-info-scheduled"></div>
+                    <div style="margin-top:6px; font:700 11.5px 'Nunito Sans';" id="pkg-info-preview"></div>
+                </div>
+
+                <div id="f-repeat-bound-wrap">
+                    <label class="f-label" for="f-occurrences">Number of sessions</label>
+                    <input type="number" id="f-occurrences" class="f-input" min="1" max="520" placeholder="Leave blank to use all remaining package hours">
+                </div>
+                <div class="f-help" id="f-repeat-bound-help" style="margin-top:-8px;">Automatically calculated based on the patient’s remaining package hours and selected session duration. You can schedule all available sessions now or reduce the number to schedule only part of them and book the remaining sessions later.</div>
+
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label class="f-label" for="f-duration">Duration</label>
+                        <select id="f-duration" class="f-select">
+                            @foreach ($durations as $d)
+                                <option value="{{ $d }}" @selected($d === 60)>{{ $d }} min</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div style="flex:1;">
+                        <label class="f-label">Time</label>
+                        <input type="hidden" id="f-start">
+                        <button type="button" class="f-input f-time-trigger" id="f-time-trigger">
+                            <span id="f-time-trigger-label">Select a time</span>
+                            <span class="f-time-trigger-caret">▾</span>
+                        </button>
+                        <div class="time-grid" id="f-time-grid"></div>
+                    </div>
                 </div>
 
                 <div>
@@ -362,10 +522,17 @@
                     <select id="f-status" class="f-select">
                         <option value="scheduled">Scheduled</option>
                         <option value="completed" id="f-status-completed" disabled hidden>Completed — automatic</option>
-                        <option value="cancelled:family">Cancelled — family</option>
-                        <option value="cancelled:clinic">Cancelled — clinic</option>
+                        <option value="cancelled_late">Cancelled — late</option>
+                        <option value="cancelled_notice">Cancelled — with notice</option>
+                        <option value="cancelled_clinic">Cancelled — clinic</option>
                         <option value="no_show">No-show</option>
                     </select>
+                </div>
+
+                <div id="f-notice-wrap" style="display:none;">
+                    <label class="f-label" for="f-notice">Notice given (hours)</label>
+                    <input type="number" id="f-notice" class="f-input" min="0" max="720" step="any" placeholder="{{ (int) config('billing.cancel_policy.notice_hours') }}">
+                    <div class="f-help" id="f-notice-help"></div>
                 </div>
 
                 <div class="f-help" id="f-status-help" style="display:none; margin-top:-8px;">Attendance isn’t logged by hand — this session completed automatically when its time ended. Change it only to record a no-show or a cancellation.</div>
@@ -459,8 +626,15 @@
         const TYPES = JSON.parse(root.dataset.types);
         const LEAVE_TYPES = JSON.parse(root.dataset.leaveTypes);
         const CAN_MANAGE = root.dataset.canManage === '1';
+        // Cancellation terms, same source the invoice picker prices from, so
+        // the two screens offer the same statuses and say the same thing.
+        const CANCEL_POLICY = @json(config('billing.cancel_policy'));
+        const NOTICE_STATES = ['cancelled_late', 'cancelled_notice'];
+        // Status key (shared with billing) -> what the calendar API takes.
+        const STATUS_WIRE = { scheduled: 'scheduled', no_show: 'no_show', cancelled_clinic: 'cancelled:clinic', cancelled_late: 'cancelled:family', cancelled_notice: 'cancelled:family' };
         const CAN_BOOK = root.dataset.canBook === '1';
         const FEED_URL = root.dataset.feedUrl;
+        const LEADS_URL = root.dataset.leadsUrl;
         const STORE_URL = root.dataset.storeUrl;
         const BASE_URL = root.dataset.baseUrl;
         const UTIL_URL = root.dataset.utilisationUrl;
@@ -646,11 +820,24 @@
             });
         }
 
+        let dayRenderSeq = 0;
+
         async function renderDay() {
             renderTop();
             const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = '';
+
+            // Two renders can be in flight at once - a second date click, or a
+            // refresh landing on top of one already loading. Emptying the grid
+            // before the await meant both cleared first and both appended their
+            // columns afterwards, so every therapist was listed twice. Clear
+            // only once the data is in hand, and drop any render a newer one
+            // has overtaken. renderWeek and renderMonth already clear after
+            // their await, so only this one was affected.
+            const seq = ++dayRenderSeq;
             const sessions = (await loadRange(anchor, anchor)).sort((a, b) => a.start_time.localeCompare(b.start_time));
+            if (seq !== dayRenderSeq) return;
+
+            grid.innerHTML = '';
 
             STAFF.forEach(t => {
                 const mine = sessions.filter(s => String(s.therapist_id) === String(t.id));
@@ -826,7 +1013,7 @@
                 cell.className = 'month-cell' + (iso === today ? ' is-today' : '') + (weekend ? ' is-weekend' : '');
                 const preview = list.slice(0, 3).map(s => {
                     const c = colorFor(s);
-                    return `<div class="month-chip${s.status === 'cancelled' ? ' is-cancelled' : ''}" style="background:${c.bg}; color:${c.fg};">${escapeHtml(s.start_time)} ${escapeHtml(s.patient_name)}</div>`;
+                    return `<div class="month-chip${s.status === 'cancelled' ? ' is-cancelled' : ''}" style="background:${c.bg}; color:${c.fg};"><span class="month-chip-time">${escapeHtml(s.start_time)}</span> ${escapeHtml(s.patient_name)}</div>`;
                 }).join('');
                 cell.innerHTML = `
                     <div class="month-cell-top"><span class="month-cell-date">${day}</span>${list.length ? `<span class="month-cell-count">${list.length}</span>` : ''}</div>
@@ -954,18 +1141,33 @@
         }
 
         const therapistOpts = {
-            items: STAFF, placeholder: 'Select therapist(s)…', searchPlaceholder: 'Search therapists…',
+            items: STAFF, placeholder: 'Select a therapist…', searchPlaceholder: 'Search therapists…',
+            // One therapist per booking - to give a session to someone else
+            // too, book it again for them. Keeps hours easy to track back to
+            // a single therapist/patient pair instead of splitting silently
+            // across several.
+            single: true,
             // Deferred: createMultiSelect() fires this once synchronously while
             // still constructing itself, before the `msTherapists` const below
             // finishes being assigned - refreshDayBookings() reads
             // msTherapists.getSelected(), so it must run after this call stack
             // (and that assignment) completes.
-            onChange() { setTimeout(refreshDayBookings, 0); },
+            onChange() { setTimeout(() => { refreshDayBookings(); updatePackageInfo(); }, 0); },
         };
         const msTherapists = createMultiSelect(document.getElementById('ms-therapists'), therapistOpts);
         const patientOpts = {
-            items: LEADS, placeholder: 'Select patient(s)…', searchPlaceholder: 'Search patients…',
+            items: LEADS, placeholder: 'Select a patient…', searchPlaceholder: 'Search patients…',
+            // One patient per booking too, for the same reason - book again
+            // for a second patient rather than grouping them into one slot.
+            single: true,
             allowCustom: true, customPlaceholder: '+ Add custom patient',
+            // Deferred for the same reason as therapistOpts.onChange above:
+            // render() fires this once synchronously while createMultiSelect()
+            // is still building the `msPatients` instance it will return, so
+            // calling updatePackageInfo() (which reads msPatients/msTypes/
+            // msWeekdays) right here would hit those consts before they're
+            // initialized.
+            onChange() { setTimeout(updatePackageInfo, 0); },
         };
         const msPatients = createMultiSelect(document.getElementById('ms-patients'), patientOpts);
         const msTypes = createMultiSelect(document.getElementById('ms-types'), {
@@ -975,6 +1177,7 @@
                 const c = sel.length ? (TYPE_COLORS[sel[0].name] || CATEGORY_COLORS[({ Supervision: 'supervision', Observation: 'observation', 'Admin time': 'admin', Training: 'admin' })[sel[0].name]] || NEUTRAL) : { fg: '#C8355F' };
                 document.getElementById('panel-inner').style.borderLeftColor = c.fg;
                 document.getElementById('save-btn').style.background = c.fg;
+                setTimeout(updatePackageInfo, 0);
             },
         });
 
@@ -983,22 +1186,261 @@
         const form = document.getElementById('session-form');
         const repeats = document.getElementById('f-repeats');
         let panelBaseDate = anchor; // the date the booking was opened from ("+ Book", a roster cell, or the current day)
+        // Whether staff have typed their own value into "Number of sessions" -
+        // once they have, updatePackageInfo() stops overwriting it with the
+        // auto-calculated count. Clearing the field by hand turns auto-fill
+        // back on. Reset whenever a fresh panel opens.
+        let occurrencesUserEdited = false;
 
         // "Every week" books a weekday slot (first occurrence on/after the date
         // the panel was opened from); "One-off on a date" books a single date.
         const weekdayOpts = {
             items: [1, 2, 3, 4, 5, 6, 0].map(d => ({ id: d, name: DOW[(d + 6) % 7] })),
             placeholder: 'Select day(s)…', searchPlaceholder: 'Search days…',
+            // Deferred - same reason as patientOpts.onChange above (fires
+            // synchronously during msWeekdays's own construction).
+            onChange() { setTimeout(updatePackageInfo, 0); },
         };
         const msWeekdays = createMultiSelect(document.getElementById('ms-weekdays'), weekdayOpts);
 
+        // How many sessions the matched package's remaining hours allow at the
+        // currently-chosen Duration/Therapists - the same number "using
+        // patient hours" auto-books (mirrors packageSessionBudget() on the
+        // server exactly). Independent of which weekday(s) are picked - that
+        // only decides how the count is spread across dates, not the count
+        // itself. Null when there's nothing to size against (no package
+        // covers the selected type, or no duration chosen yet).
+        function autoSessionCount(packageLeftHours) {
+            if (packageLeftHours == null) return null;
+            const duration = parseInt(document.getElementById('f-duration').value, 10) || 0;
+            const therapistCount = Math.max(1, msTherapists.getSelected().length);
+            const perOccurrence = duration * therapistCount;
+            if (!perOccurrence) return null;
+            return Math.floor((packageLeftHours * 60) / perOccurrence);
+        }
+
+        // How many occurrences the current Repeats/Count inputs (plus, when no
+        // explicit count is given, autoSessionCount() above) work out to -
+        // mirrors the server's own sizing in store() for a live preview.
+        function weeklyOccurrenceEstimate(packageLeftHours) {
+            if (repeats.value !== 'weekly') return 1;
+            const occ = parseInt(document.getElementById('f-occurrences').value, 10);
+            if (occ) return occ;
+            return autoSessionCount(packageLeftHours);
+        }
+
+        function formatSessionWhen(session) {
+            if (!session) return '';
+            const d = new Date(session.date + 'T00:00:00');
+            const dateLabel = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            const [h, m] = session.time.split(':').map(Number);
+            const period = h >= 12 ? 'PM' : 'AM';
+            const h12 = (h % 12) || 12;
+            return `${dateLabel}, ${h12}:${String(m).padStart(2, '0')} ${period}`;
+        }
+
+        // "Already scheduled — next: Sep 19, 10:00 AM · last: Oct 28, 10:00 AM
+        // (+27 more upcoming)" or "Not yet scheduled" - from LEADS[]'s
+        // upcoming_count/next_session/last_session (every still-`scheduled`,
+        // not-yet-past session on the calendar for this patient, regardless
+        // of activity type or package). last_session is only present when
+        // there's more than one upcoming session (otherwise it's the same as
+        // next_session, so there's nothing extra to show).
+        function scheduledStatusText(lead) {
+            if (!lead || !lead.upcoming_count) {
+                return 'Not yet scheduled — no upcoming sessions.';
+            }
+
+            const next = formatSessionWhen(lead.next_session);
+            const last = lead.last_session ? ` · last: ${formatSessionWhen(lead.last_session)}` : '';
+            const more = lead.upcoming_count > 1 ? ` (+${lead.upcoming_count - 1} more upcoming)` : '';
+
+            return `Already scheduled — next: ${next}${last}${more}`;
+        }
+
+        // LEADS is only ever a snapshot from when the page was rendered - a
+        // session booked earlier in this same visit (by this user, or by
+        // anyone else) wouldn't show as "used" here without this. Mutates
+        // LEADS in place (never reassigns the const) so every existing
+        // reference to it - including inside createMultiSelect()'s own
+        // captured `items` list - keeps working.
+        let leadsRefreshInFlight = null;
+        function refreshLeads() {
+            if (!LEADS_URL) return Promise.resolve();
+            if (leadsRefreshInFlight) return leadsRefreshInFlight;
+
+            leadsRefreshInFlight = api(LEADS_URL)
+                .then(data => {
+                    if (Array.isArray(data.leads)) {
+                        LEADS.length = 0;
+                        LEADS.push(...data.leads);
+                    }
+                })
+                .catch(() => { /* stale-but-present data beats none on a transient failure */ })
+                .finally(() => { leadsRefreshInFlight = null; });
+
+            return leadsRefreshInFlight;
+        }
+
+        // The Package info card (Patient / Service / Package / Total / Used /
+        // Remaining) plus a live "this books Xh -> Yh left" preview, read from
+        // LEADS[].packages (each package pre-tagged server-side with the
+        // activity_type codes its service matches). Purely informational -
+        // packageOverbookError() on the server is what actually enforces the
+        // cap, this just lets staff see it before they hit Save.
+        //
+        // Shows as soon as a single patient is picked - staff need to see the
+        // package the family already agreed to before they've necessarily
+        // chosen a Type yet. Once a Type is also picked, the card narrows to
+        // just the package(s) that cover it and adds the "this books Xh"
+        // preview for that specific booking.
+        function updatePackageInfo() {
+            const box = document.getElementById('pkg-info');
+            const patients = msPatients.getSelected();
+
+            if (patients.length !== 1 || patients[0].custom) {
+                box.style.display = 'none';
+                return;
+            }
+
+            const lead = LEADS.find(l => String(l.id) === String(patients[0].id));
+            const allPackages = (lead && lead.packages) || [];
+            const previewEl = document.getElementById('pkg-info-preview');
+
+            if (!allPackages.length) {
+                document.getElementById('pkg-info-title').textContent = `${lead ? lead.name : 'Patient'} — no package on file`;
+                document.getElementById('pkg-info-total').textContent = '—';
+                document.getElementById('pkg-info-used').textContent = '—';
+                document.getElementById('pkg-info-left').textContent = '—';
+                document.getElementById('pkg-info-scheduled').textContent = scheduledStatusText(lead);
+                previewEl.style.color = '#5A6B7E';
+                previewEl.textContent = '';
+                box.style.display = 'block';
+                return;
+            }
+
+            const types = msTypes.getSelected();
+            const type = types[0] && types[0].name;
+            const matches = type ? allPackages.filter(p => (p.types || []).includes(type)) : [];
+            const showing = matches.length ? matches : allPackages;
+
+            const fmt = n => (Math.round(n * 10) / 10).toString();
+            const fmtHours = n => `${fmt(n)} ${fmt(n) === '1' ? 'hour' : 'hours'}`;
+            const total = showing.reduce((s, p) => s + p.total, 0);
+            const used = showing.reduce((s, p) => s + p.used, 0);
+            const left = Math.max(0, total - used);
+
+            // Fill "Number of sessions" with what the package's remaining
+            // hours allow at this Duration, as soon as a patient with a
+            // package is picked - even before a Type is chosen (using the
+            // combined total across all their packages until a Type narrows
+            // it to the one(s) that actually cover it). Staff see the count
+            // right away instead of only in the preview text below, and can
+            // still edit/override it (occurrencesUserEdited then stops this
+            // from overwriting their own value).
+            const isNewBooking = !document.getElementById('f-id').value;
+            if (isNewBooking && repeats.value === 'weekly' && !occurrencesUserEdited) {
+                const auto = autoSessionCount(left);
+                document.getElementById('f-occurrences').value = (auto != null && auto > 0) ? auto : '';
+            }
+
+            document.getElementById('pkg-info-title').textContent = `${lead.name} — ${showing.map(p => p.name).join(' + ')}`;
+            document.getElementById('pkg-info-total').textContent = fmtHours(total);
+            document.getElementById('pkg-info-used').textContent = fmtHours(used);
+            document.getElementById('pkg-info-left').textContent = fmtHours(left);
+            document.getElementById('pkg-info-scheduled').textContent = scheduledStatusText(lead);
+
+            if (type && !matches.length) {
+                // A type IS picked but nothing on file covers it - only then
+                // is there truly nothing to size a booking against.
+                previewEl.style.color = repeats.value === 'weekly' ? '#C8355F' : '#5A6B7E';
+                previewEl.textContent = repeats.value === 'weekly'
+                    ? `No package on file covers "${type}" — enter a number of sessions (there's nothing to size this automatically).`
+                    : `No package on file covers "${type}" — this booking won't be capped against a package.`;
+            } else {
+                const duration = (parseInt(document.getElementById('f-duration').value, 10) || 0) / 60;
+                const therapistCount = Math.max(1, msTherapists.getSelected().length);
+                const occurrences = weeklyOccurrenceEstimate(left);
+
+                if (occurrences === null) {
+                    previewEl.style.color = '#5A6B7E';
+                    previewEl.textContent = 'Pick a duration to preview hours used.';
+                } else if (occurrences === 0 && !occurrencesUserEdited) {
+                    previewEl.style.color = '#C8355F';
+                    previewEl.textContent = 'All allocated hours have been scheduled' + (type ? ' for this type' : '') + ' — nothing will be booked automatically.';
+                } else {
+                    const requested = duration * therapistCount * occurrences;
+                    const remaining = left - requested;
+                    previewEl.style.color = remaining < 0 ? '#C8355F' : '#5A6B7E';
+                    previewEl.textContent = remaining < 0
+                        ? `This books ${fmtHours(requested)} — exceeds what's left by ${fmtHours(-remaining)}.`
+                        : (occurrencesUserEdited
+                            ? `This books ${fmtHours(requested)} → ${fmtHours(remaining)} will remain.`
+                            : `Using patient hours: books ${occurrences} session${occurrences === 1 ? '' : 's'} (${fmtHours(requested)}) → ${fmtHours(remaining)} will remain.`);
+                }
+            }
+
+            box.style.display = 'block';
+        }
+
         function syncRepeatsUi(editing) {
             const weekly = !editing && repeats.value === 'weekly';
-            document.getElementById('ms-weekdays').style.display = weekly ? '' : 'none';
-            document.getElementById('f-day-label').textContent = weekly ? 'Day' : 'Date';
-            document.getElementById('f-day').style.display = weekly ? 'none' : '';
+            document.getElementById('f-weekdays-wrap').style.display = weekly ? '' : 'none';
+            // The Date field stays visible either way now - for a weekly
+            // booking it's the series' start date, staff pick which
+            // weekday(s) to repeat on separately, right below.
+            document.getElementById('f-day-label').textContent = weekly ? 'Start date' : 'Date';
+            document.getElementById('f-repeat-bound-wrap').style.display = weekly ? 'block' : 'none';
+            document.getElementById('f-repeat-bound-help').style.display = weekly ? '' : 'none';
+            updatePackageInfo();
         }
         repeats.addEventListener('change', () => syncRepeatsUi(false));
+        document.getElementById('f-occurrences').addEventListener('input', () => {
+            // A real keystroke, not our own auto-fill (setting .value in JS
+            // doesn't fire 'input') - clearing the field by hand turns
+            // auto-fill back on instead of leaving it stuck off.
+            occurrencesUserEdited = document.getElementById('f-occurrences').value !== '';
+            updatePackageInfo();
+        });
+
+        // ---- Cancellation status: the hours of notice decide whether the
+        // session is chargeable, so the box and the dropdown move together.
+        function defaultNotice(key) { return key === 'cancelled_notice' ? CANCEL_POLICY.notice_hours : Math.max(0, CANCEL_POLICY.notice_hours - 1); }
+        function statusKey(s) {
+            if (s.status !== 'cancelled') return s.status;
+            if (s.cancel_reason === 'clinic') return 'cancelled_clinic';
+            const n = s.cancel_notice_hours;
+            return n === null || n === undefined || Number(n) >= CANCEL_POLICY.notice_hours ? 'cancelled_notice' : 'cancelled_late';
+        }
+        function noticeRule(hours) {
+            if (hours === '' || hours === null || isNaN(hours)) return '';
+            return Number(hours) >= CANCEL_POLICY.notice_hours
+                ? `${CANCEL_POLICY.notice_hours} h or more notice — not charged.`
+                : `Less than ${CANCEL_POLICY.notice_hours} h notice — ${CANCEL_POLICY.late_pct}% of the session is charged.`;
+        }
+        function syncNoticeUi() {
+            const key = document.getElementById('f-status').value;
+            const input = document.getElementById('f-notice');
+            const isNotice = NOTICE_STATES.includes(key);
+            document.getElementById('f-notice-wrap').style.display = isNotice ? '' : 'none';
+            if (!isNotice) { input.value = ''; return; }
+            if (input.value === '') input.value = defaultNotice(key);
+            document.getElementById('f-notice-help').textContent = noticeRule(input.value);
+        }
+        document.getElementById('f-status').addEventListener('change', () => {
+            const key = document.getElementById('f-status').value;
+            document.getElementById('f-notice').value = NOTICE_STATES.includes(key) ? defaultNotice(key) : '';
+            syncNoticeUi();
+        });
+        document.getElementById('f-notice').addEventListener('input', () => {
+            const input = document.getElementById('f-notice');
+            // The hours are what decide the charge, so they move the status
+            // rather than sit under one that contradicts them.
+            if (input.value !== '' && Number(input.value) >= 0) {
+                document.getElementById('f-status').value = Number(input.value) >= CANCEL_POLICY.notice_hours ? 'cancelled_notice' : 'cancelled_late';
+            }
+            document.getElementById('f-notice-help').textContent = noticeRule(input.value);
+        });
 
         function setFormDisabled(disabled) {
             form.querySelectorAll('input, select, textarea').forEach(el => { if (el.id !== 'f-id') el.disabled = disabled; });
@@ -1035,12 +1477,10 @@
         }
 
         // The date whose bookings the grid should check for conflicts - the
-        // visible Date field for a one-off booking / edit, or the series'
-        // first-occurrence date (panelBaseDate) while "Day" (weekday picker)
-        // is showing for a weekly booking.
+        // Date field is always visible now (it's also the recurring series'
+        // start date, not just the one-off date), so this is just its value.
         function timeGridReferenceDate() {
-            const dayInput = document.getElementById('f-day');
-            return dayInput.style.display !== 'none' ? dayInput.value : panelBaseDate;
+            return document.getElementById('f-day').value;
         }
 
         // Every non-cancelled session, for any currently selected therapist, on
@@ -1125,6 +1565,7 @@
                 document.getElementById('f-start').value = '';
             }
             renderStartTimeGrid();
+            updatePackageInfo();
         });
         document.getElementById('f-day').addEventListener('change', refreshDayBookings);
 
@@ -1133,14 +1574,14 @@
             form.reset();
             closeTimeGrid();
             msTherapists.clear(); msPatients.clear(); msTypes.clear();
+            occurrencesUserEdited = false;
+            document.getElementById('pkg-info').style.display = 'none';
             document.getElementById('f-supervision-info').style.display = 'none';
             const wasCompleted = !!session && session.status === 'completed';
             document.getElementById('f-status-completed').hidden = !wasCompleted;
             document.getElementById('f-status-help').style.display = wasCompleted ? 'block' : 'none';
             document.getElementById('panel-delete').style.display = session && CAN_MANAGE ? '' : 'none';
             document.getElementById('f-repeats-wrap').style.display = session ? 'none' : '';
-            document.getElementById('f-therapists-help').style.display = session ? 'none' : '';
-            msTherapists.setSingle(!!session);
 
             if (session) {
                 const readOnly = !CAN_MANAGE;
@@ -1159,7 +1600,8 @@
                 document.getElementById('f-activity').value = session.activity_label || '';
                 (session.activity_types || [session.activity_type]).forEach(t => msTypes.addItem({ id: t, name: t }));
                 msTypes.setSelected(session.activity_types || [session.activity_type]);
-                document.getElementById('f-status').value = session.status === 'cancelled' ? `cancelled:${session.cancel_reason || 'clinic'}` : session.status;
+                document.getElementById('f-status').value = statusKey(session);
+                document.getElementById('f-notice').value = session.cancel_notice_hours === null || session.cancel_notice_hours === undefined ? '' : Number(session.cancel_notice_hours);
                 document.getElementById('f-notes').value = session.notes || '';
                 if (session.supervised) {
                     document.getElementById('f-supervision-info').style.display = 'block';
@@ -1179,6 +1621,12 @@
                 syncRepeatsUi(false);
             }
             refreshDayBookings();
+            // Pull fresh package/used-hours data every time the panel opens,
+            // rather than trusting whatever LEADS held from page load -
+            // updates the card in place once it lands (syncRepeatsUi() above
+            // already rendered it once from whatever was on hand already).
+            syncNoticeUi();
+            refreshLeads().then(updatePackageInfo);
             panel.style.display = 'block';
         }
         function closePanel() { panel.style.display = 'none'; }
@@ -1204,7 +1652,15 @@
             };
             // "Completed" is never sent - it's only ever set automatically. Leaving
             // it out keeps an auto-completed session completed on an unrelated edit.
-            if (status !== 'completed') payload.status = status;
+            if (status !== 'completed') {
+                payload.status = STATUS_WIRE[status] || status;
+                // Only a family cancellation carries notice hours; anything
+                // else clears whatever was recorded before.
+                const notice = document.getElementById('f-notice').value;
+                payload.cancel_notice_hours = NOTICE_STATES.includes(status)
+                    ? (notice === '' ? defaultNotice(status) : Number(notice))
+                    : null;
+            }
             const therapists = msTherapists.getSelected().map(t => t.id);
             const errBox = document.getElementById('panel-error');
             errBox.style.display = 'none';
@@ -1218,6 +1674,26 @@
                 errBox.textContent = 'Pick a type.';
                 errBox.style.display = 'block';
                 return;
+            }
+            // With no explicit "Number of sessions", the series is auto-sized
+            // from the patient's remaining package hours (packageSessionBudget()
+            // on the server) - if there's nothing to size against, staff must
+            // give an explicit count instead, so the series still always has a
+            // defined stop. Checked here too so that's caught before a round
+            // trip, not just by the server's own 422.
+            if (!id && repeats.value === 'weekly' && !document.getElementById('f-occurrences').value) {
+                const patientsSel = msPatients.getSelected();
+                let hasBudget = false;
+                if (patientsSel.length === 1 && !patientsSel[0].custom) {
+                    const lead = LEADS.find(l => String(l.id) === String(patientsSel[0].id));
+                    const type = msTypes.getSelected()[0].name;
+                    hasBudget = ((lead && lead.packages) || []).some(p => (p.types || []).includes(type));
+                }
+                if (!hasBudget) {
+                    errBox.textContent = 'Set a number of sessions — this patient has no package on file to size a repeating booking automatically.';
+                    errBox.style.display = 'block';
+                    return;
+                }
             }
             if (!payload.start_time) {
                 errBox.textContent = 'Pick a start time.';
@@ -1234,14 +1710,20 @@
                     payload.therapist_ids = therapists;
                     payload.repeats = repeats.value;
                     if (repeats.value === 'weekly') {
-                        payload.session_date = panelBaseDate;
+                        // payload.session_date already came from the (now
+                        // always-visible) Date field above - it's the
+                        // series' chosen start date, not just implicitly
+                        // wherever the panel happened to be opened from.
                         payload.weekdays = msWeekdays.getSelected().map(d => d.id);
+                        const occ = document.getElementById('f-occurrences').value;
+                        if (occ) payload.occurrences = parseInt(occ, 10);
                     }
                     res = await api(STORE_URL, { method: 'POST', body: JSON.stringify(payload) });
                 }
                 closePanel();
                 toast(res.message || 'Saved.');
                 refresh();
+                refreshLeads(); // so the next time this (or another) patient's panel opens, "used" already reflects what was just booked
             } catch (err) {
                 errBox.textContent = Object.values(err.errors || {})[0]?.[0] || err.message;
                 errBox.style.display = 'block';
@@ -1373,6 +1855,57 @@
         });
         document.getElementById('util-close').addEventListener('click', () => utilModal.classList.remove('open'));
         [leaveModal, utilModal, supModal].forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+
+        // Day view on a phone behaves like the leads pipeline: every therapist
+        // shut to their header, one open at a time. The grid is rebuilt on every
+        // date change, booking and refresh, so this listens on the container
+        // rather than on columns that will not be there a moment later.
+        (function () {
+            const grid = document.getElementById('calendar-grid');
+            if (!grid) return;
+
+            const onNarrowScreen = () => window.matchMedia('(max-width: 820px)').matches;
+
+            function setOpen(col, open) {
+                col.classList.toggle('is-open', open);
+
+                const body = col.querySelector('.col-body');
+                if (!body) return;
+
+                // Animating towards a guessed height would run the transition at
+                // a different speed for every therapist, so the target is the
+                // real content height - capped, past which the column scrolls
+                // inside itself rather than pushing the next one off-screen.
+                body.style.maxHeight = open
+                    ? Math.min(body.scrollHeight, Math.round(window.innerHeight * 0.62)) + 'px'
+                    : '';
+            }
+
+            grid.addEventListener('click', e => {
+                if (!onNarrowScreen()) return;
+
+                const header = e.target.closest('.therapist-col-header');
+                if (!header) return;
+
+                const col = header.closest('.therapist-col');
+                const opening = !col.classList.contains('is-open');
+
+                grid.querySelectorAll('.therapist-col').forEach(c => setOpen(c, false));
+                if (opening) setOpen(col, true);
+            });
+
+            // The height above is written inline, so it would follow the columns
+            // up to the wide layout and cap one that is no longer collapsible.
+            window.addEventListener('resize', () => {
+                if (onNarrowScreen()) return;
+
+                grid.querySelectorAll('.therapist-col').forEach(c => {
+                    c.classList.remove('is-open');
+                    const body = c.querySelector('.col-body');
+                    if (body) body.style.maxHeight = '';
+                });
+            });
+        })();
 
         renderDay().then(() => {
             if (INITIAL_SESSION_ID && sessionsById[INITIAL_SESSION_ID]) {

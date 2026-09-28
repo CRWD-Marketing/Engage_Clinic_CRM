@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\CalendarSession;
 use App\Models\Lead;
+use App\Models\Package;
 use App\Models\PatientAuthorization;
 use App\Models\PatientNote;
 use App\Models\StaffLeave;
@@ -70,22 +71,7 @@ class CalendarController extends Controller
             // Only converted clients (a Lead with a Patient record) are bookable
             // here - a lead still in the pipeline isn't an enrolled client yet.
             // "+ Add custom patient" stays the escape hatch for anyone else.
-            'leadsForJs' => Lead::with('patient.authorizations')->whereHas('patient')->orderBy('child_name')->get()
-                ->map(function (Lead $l) {
-                    $auth = $l->patient?->primaryAuthorization();
-
-                    return [
-                        'id' => $l->id,
-                        'name' => $l->child_name,
-                        // Drives the "books N sessions" preview in the booking panel.
-                        'auth' => $auth && $auth->authorized_hours_total ? [
-                            'payer' => $auth->payer_name,
-                            'total' => (int) $auth->authorized_hours_total,
-                            'left' => $auth->hoursLeft(),
-                            'covers' => $auth->covers_services ?? [],
-                        ] : null,
-                    ];
-                })->values(),
+            'leadsForJs' => $this->leadsPayload(),
             'types' => array_values(array_unique(array_merge(CalendarSession::DEFAULT_TYPES, $customTypes->all()))),
             'leaveTypes' => StaffLeave::TYPES,
             'durations' => self::DURATIONS,
@@ -221,10 +207,24 @@ class CalendarController extends Controller
     }
 
     /**
+     * Fresh copy of leadsForJs (package/authorization hours, upcoming-session
+     * status) for the booking panel to re-pull whenever it opens. index()'s
+     * own copy is only ever a snapshot from when the page was last loaded -
+     * without this, a session booked earlier in the same page visit (by this
+     * user or anyone else) wouldn't show as "used" until a full page reload.
+     */
+    public function leads()
+    {
+        return response()->json(['leads' => $this->leadsPayload()]);
+    }
+
+    /**
      * Book session(s). One session is created per selected therapist per
-     * occurrence (single date, or every week / every 2 weeks until
-     * repeat_until). Slots that would double-book a therapist are skipped and
-     * reported rather than failing the whole batch.
+     * occurrence (a single date, or every week / every 2 weeks for either an
+     * explicit number of occurrences or, left blank, however many the
+     * patient's remaining package hours allow at this duration - see
+     * packageSessionBudget()). Slots that would double-book a therapist are
+     * skipped and reported rather than failing the whole batch.
      */
     public function store(Request $request)
     {
@@ -253,15 +253,21 @@ class CalendarController extends Controller
             'room' => ['nullable', 'string', 'max:100'],
             'status' => ['nullable', 'in:'.implode(',', CalendarSession::MANUAL_STATUSES)],
             'cancel_reason' => ['nullable', 'in:'.implode(',', CalendarSession::CANCEL_REASONS)],
+            'cancel_notice_hours' => ['nullable', 'numeric', 'between:0,720'],
             'notes' => ['nullable', 'string'],
             'repeats' => ['nullable', 'in:none,weekly,biweekly'],
-            'repeat_until' => ['nullable', 'date', 'after_or_equal:session_date'],
             // Weekly bookings can run on several weekdays (Mon–Thu, say) - one
             // series per day, all starting on/after session_date. 0 = Sunday.
             'weekdays' => ['nullable', 'array'],
             'weekdays.*' => ['integer', 'between:0,6'],
-        ], [
-            'repeat_until.after_or_equal' => 'Until must be on or after the From date.',
+            // How many occurrences a recurring booking should create right now.
+            // Optional - left blank, the series is auto-sized from the single
+            // selected patient's remaining package hours for this duration (see
+            // packageSessionBudget()); given explicitly, exactly that many
+            // occurrences are created and no more, whatever the weekday pattern
+            // works out to. Either way the series always stops on its own -
+            // there is no "repeat until" date to bound it instead.
+            'occurrences' => ['nullable', 'integer', 'min:1', 'max:520'],
         ]);
 
         $validator->after(function ($v) use ($input) {
@@ -282,32 +288,49 @@ class CalendarController extends Controller
 
         $repeats = $data['repeats'] ?? 'none';
         $dates = [$data['session_date']];
-        $budgetNote = null;
 
         if ($repeats !== 'none') {
             $base = Carbon::parse($data['session_date']);
             $weekdays = ! empty($data['weekdays']) ? array_map('intval', $data['weekdays']) : [$base->dayOfWeek];
-            $limit = ! empty($data['repeat_until']) ? Carbon::parse($data['repeat_until']) : null;
-            $maxOccurrences = null;
+            $maxOccurrences = $data['occurrences'] ?? null;
 
-            // No explicit end date: size the series to the patient's remaining
-            // authorized hours, so the schedule stops exactly when the
-            // authorization would be used up.
-            if (! $limit) {
-                [$maxOccurrences, $budgetNote] = $this->authorizedOccurrences($data, count($data['therapist_ids']));
+            if ($maxOccurrences === null) {
+                // "Using patient hours": no explicit count given, so size the
+                // series to exactly what the single selected patient's
+                // remaining package balance allows at this duration (e.g. 30h
+                // left at 60 min/session -> 30 sessions, at 30 min/session ->
+                // 60 sessions). Null here means there's nothing to size
+                // against at all (group/custom booking, or no package on file
+                // covering this type) - staff must give an explicit count
+                // instead, so the series still always has a defined stop.
+                $maxOccurrences = $this->packageSessionBudget($data, count($data['therapist_ids']));
+
+                if ($maxOccurrences === null) {
+                    $message = 'Set a number of sessions — this patient has no package on file to size a repeating booking automatically.';
+
+                    return $request->wantsJson()
+                        ? response()->json(['message' => $message, 'errors' => ['occurrences' => [$message]]], 422)
+                        : back()->withErrors(['occurrences' => $message])->withInput();
+                }
 
                 if ($maxOccurrences === 0) {
+                    $message = 'No package hours remain for this type — nothing to book.';
+
                     return $request->wantsJson()
-                        ? response()->json(['message' => $budgetNote.' — nothing booked.', 'errors' => ['patient_ids' => [$budgetNote]]], 422)
-                        : back()->withErrors(['patient_ids' => $budgetNote])->withInput();
+                        ? response()->json(['message' => $message, 'errors' => ['occurrences' => [$message]]], 422)
+                        : back()->withErrors(['occurrences' => $message])->withInput();
                 }
+
+                // Same safety ceiling as an explicit `occurrences` value - a
+                // mistyped package total (e.g. 10,000h instead of 100h)
+                // shouldn't be able to spin up thousands of rows in one request.
+                $maxOccurrences = min($maxOccurrences, 520);
             }
 
-            // Sized by hours: run for as many weeks as the hours need (the
-            // occurrence count is the real stop; the date is only a backstop).
-            $end = $limit ?? ($maxOccurrences !== null
-                ? $base->copy()->addWeeks((int) ceil($maxOccurrences / max(1, count($weekdays))) + 2)
-                : $base->copy()->addWeeks(8));
+            // The occurrence count (explicit, or just sized above) is the real
+            // stop; this date is only a backstop so the loop below terminates
+            // even for a large count spread across few weekdays.
+            $end = $base->copy()->addWeeks((int) ceil($maxOccurrences / max(1, count($weekdays))) + 2);
             $everyOtherWeek = $repeats === 'biweekly';
             $dates = [];
 
@@ -319,7 +342,7 @@ class CalendarController extends Controller
                     continue;
                 }
                 $dates[] = $cursor->toDateString();
-                if ($maxOccurrences !== null && count($dates) >= $maxOccurrences) {
+                if (count($dates) >= $maxOccurrences) {
                     break;
                 }
             }
@@ -327,14 +350,24 @@ class CalendarController extends Controller
 
         $group = $repeats !== 'none' ? (string) Str::uuid() : null;
 
-        // The open-ended-recurring branch above already sizes $dates to fit
-        // remaining hours exactly, so it can never overshoot. A single
-        // booking, or a recurring series with an explicit end date, isn't
-        // capped that way - warn (but don't block) when it would still push
-        // the patient past what's authorized.
-        $authWarning = ($repeats === 'none' || ! empty($data['repeat_until']))
-            ? $this->authorizationWarning($data, $dates, count($data['therapist_ids']))
-            : null;
+        // Hard stop: this booking (whatever combination of therapists, dates
+        // and duration it works out to) must not ask for more hours than the
+        // patient's matching package has left. Checked against the exact
+        // $dates about to be created, not an estimate, and before anything is
+        // written - so a rejected booking creates nothing at all.
+        $packageError = $this->packageOverbookError($data, $dates, count($data['therapist_ids']));
+        if ($packageError) {
+            return $request->wantsJson()
+                ? response()->json(['message' => $packageError, 'errors' => ['duration_minutes' => [$packageError]]], 422)
+                : back()->withErrors(['duration_minutes' => $packageError])->withInput();
+        }
+
+        // Nothing above caps $dates to fit remaining hours anymore (booking
+        // only ever creates what staff explicitly asked for) - warn (but
+        // don't block) when it would still push the patient past what's
+        // authorized by insurance specifically, a separate, billing-routing
+        // concern from the package-hours check above.
+        $authWarning = $this->authorizationWarning($data, $dates, count($data['therapist_ids']));
 
         $created = [];
         $skipped = [];
@@ -381,8 +414,11 @@ class CalendarController extends Controller
         }
 
         $message = count($created).' session'.(count($created) === 1 ? '' : 's').' booked.';
-        if ($budgetNote && $created) {
-            $message .= ' '.$budgetNote.'.';
+        if ($created) {
+            $packageNote = $this->packageRemainingNote($data);
+            if ($packageNote) {
+                $message .= ' '.$packageNote.'.';
+            }
         }
         if ($skipped) {
             $message .= ' '.count($skipped).' skipped — therapist already booked in that slot.';
@@ -435,6 +471,7 @@ class CalendarController extends Controller
             'room' => ['sometimes', 'nullable', 'string', 'max:100'],
             'status' => ['sometimes', 'required', 'in:'.implode(',', CalendarSession::MANUAL_STATUSES)],
             'cancel_reason' => ['sometimes', 'nullable', 'in:'.implode(',', CalendarSession::CANCEL_REASONS)],
+            'cancel_notice_hours' => ['sometimes', 'nullable', 'numeric', 'between:0,720'],
             'notes' => ['sometimes', 'nullable', 'string'],
         ]);
 
@@ -445,10 +482,17 @@ class CalendarController extends Controller
         $data = $validator->validated();
         $changes = [];
 
-        foreach (['therapist_id', 'session_date', 'start_time', 'duration_minutes', 'room', 'status', 'cancel_reason', 'notes'] as $key) {
+        foreach (['therapist_id', 'session_date', 'start_time', 'duration_minutes', 'room', 'status', 'cancel_reason', 'cancel_notice_hours', 'notes'] as $key) {
             if (array_key_exists($key, $data)) {
                 $changes[$key] = $data[$key];
             }
+        }
+
+        // Only a family cancellation keeps notice hours; every other status
+        // drops them so a stale number can't price the next invoice.
+        if (array_key_exists('status', $changes)
+            && ! ($changes['status'] === 'cancelled' && ($changes['cancel_reason'] ?? $calendarSession->cancel_reason) === 'family')) {
+            $changes['cancel_notice_hours'] = null;
         }
 
         if (array_key_exists('patient_ids', $data) || array_key_exists('custom_patient', $data) || array_key_exists('activity_label', $data)) {
@@ -719,6 +763,77 @@ class CalendarController extends Controller
 
     // ------------------------------------------------------------------
 
+    /**
+     * Per-patient data the booking panel needs: package/authorization hours
+     * and upcoming-session status - all computed live from CalendarSession,
+     * never a stored counter, so it's only ever as stale as the last time it
+     * was fetched (see leads(), which lets the panel re-pull this on demand
+     * instead of only once at page load).
+     */
+    private function leadsPayload()
+    {
+        return Lead::with('patient.authorizations')->whereHas('patient')->orderBy('child_name')->get()
+            ->map(function (Lead $l) {
+                $auth = $l->patient?->primaryAuthorization();
+
+                // Whether this patient already has session(s) on the calendar -
+                // shown in the booking panel so staff don't have to leave the
+                // panel to check before deciding whether/how much more to book.
+                $upcoming = $l->calendarSessions()
+                    ->where('status', 'scheduled')
+                    ->where('session_date', '>=', now()->toDateString())
+                    ->orderBy('session_date')->orderBy('start_time')
+                    ->get(['session_date', 'start_time']);
+
+                return [
+                    'id' => $l->id,
+                    'name' => $l->child_name,
+                    'upcoming_count' => $upcoming->count(),
+                    'next_session' => $upcoming->first() ? [
+                        'date' => $upcoming->first()->session_date->format('Y-m-d'),
+                        'time' => substr($upcoming->first()->start_time, 0, 5),
+                    ] : null,
+                    // The last (furthest-out) session already on the calendar -
+                    // so staff can see exactly where the current schedule ends
+                    // before deciding to extend it. Same list as next_session,
+                    // ordered ascending, so the last entry is the latest date.
+                    'last_session' => $upcoming->last() && $upcoming->count() > 1 ? [
+                        'date' => $upcoming->last()->session_date->format('Y-m-d'),
+                        'time' => substr($upcoming->last()->start_time, 0, 5),
+                    ] : null,
+                    // Drives the "books N sessions" preview in the booking panel.
+                    'auth' => $auth && $auth->authorized_hours_total ? [
+                        'payer' => $auth->payer_name,
+                        'total' => (int) $auth->authorized_hours_total,
+                        'left' => $auth->hoursLeft(),
+                        'covers' => $auth->covers_services ?? [],
+                    ] : null,
+                    // Drives the Package info card in the booking panel (total/used/
+                    // remaining hours) - one entry per package assigned at intake,
+                    // each tagged with the calendar activity_type codes it covers so
+                    // the panel can pick the right one once staff choose a Type.
+                    'packages' => $l->packages()->get()->map(function (Package $p) use ($l) {
+                        $types = $p->matchingActivityTypes();
+                        $usedMinutes = $types
+                            ? $l->calendarSessions()->notCancelled()->whereIn('activity_type', $types)->sum('duration_minutes')
+                            : 0;
+                        $total = (float) $p->hours_per_week;
+                        $used = round($usedMinutes / 60, 1);
+
+                        return [
+                            'id' => $p->id,
+                            'name' => $p->name,
+                            'service' => $p->service?->name,
+                            'types' => $types,
+                            'total' => $total,
+                            'used' => $used,
+                            'left' => max(0, round($total - $used, 1)),
+                        ];
+                    })->values(),
+                ];
+            })->values();
+    }
+
     private function rosterStaff()
     {
         $user = auth()->user();
@@ -860,6 +975,11 @@ class CalendarController extends Controller
                 'room' => $data['room'] ?? null,
                 'status' => $status,
                 'cancel_reason' => $status === 'cancelled' ? ($data['cancel_reason'] ?? null) : null,
+                // Notice hours belong to a family cancellation only - that's
+                // the one case billing prices off them.
+                'cancel_notice_hours' => $status === 'cancelled' && ($data['cancel_reason'] ?? null) === 'family'
+                    ? ($data['cancel_notice_hours'] ?? null)
+                    : null,
                 'notes' => $data['notes'] ?? null,
             ];
     }
@@ -910,12 +1030,13 @@ class CalendarController extends Controller
     }
 
     /**
-     * Non-blocking check for a single-patient booking (one that isn't
-     * already being sized to fit, see authorizedOccurrences()) that would
-     * push a covered service's committed hours past what's left on the
-     * matching authorization. Staff can still book it - clinical scheduling
+     * Non-blocking check for a single-patient booking that would push a
+     * covered service's committed hours past what's left on the matching
+     * insurance authorization. Staff can still book it - clinical scheduling
      * shouldn't be hard-blocked by a billing constraint - but sees why the
-     * excess will end up billed to the family instead of insurance.
+     * excess will end up billed to the family instead of insurance. This is
+     * separate from, and checked in addition to, packageOverbookError()'s
+     * hard block on the package-hours balance itself.
      */
     private function authorizationWarning(array $data, array $dates, int $therapistCount): ?string
     {
@@ -954,56 +1075,118 @@ class CalendarController extends Controller
             return null;
         }
 
-        $fmt = fn (float $h) => rtrim(rtrim(number_format($h, 1), '0'), '.');
-
         return sprintf(
-            'This books %s h but %s only has %s h left on the %s authorization — the excess will bill to the family, not insurance.',
-            $fmt($newMinutes / 60),
+            'This books %s but %s only has %s left on the %s authorization — the excess will bill to the family, not insurance.',
+            $this->fmtHours($newMinutes / 60),
             $lead->child_name,
-            $fmt($leftMinutes / 60),
+            $this->fmtHours($leftMinutes / 60),
             $auth->payer_name
         );
     }
 
     /**
-     * How many occurrences a recurring booking may create before the single
-     * selected patient's authorized hours run out - null when there's nothing
-     * to size against (group/custom booking, no authorization on file, or a
-     * service that payer doesn't cover), in which case the series just runs
-     * for the default 8 weeks. Returns [count, human note].
+     * How many occurrences a recurring booking with no explicit `occurrences`
+     * should create, sized to exactly use up the single selected patient's
+     * remaining package hours at this duration (e.g. 30h left / 60 min ->
+     * 30 sessions, 30h left / 30 min -> 60 sessions) - this is what "using
+     * patient hours" means. Null when there's nothing to size against
+     * (group/custom booking, or no package on file covers this activity
+     * type) - the caller then requires an explicit count instead, so a
+     * series never gets created without a defined stop either way.
      */
-    private function authorizedOccurrences(array $data, int $therapistCount): array
+    private function packageSessionBudget(array $data, int $therapistCount): ?int
     {
         $ids = $data['patient_ids'] ?? [];
         if (count($ids) !== 1) {
-            return [null, null];
+            return null;
         }
 
-        $lead = Lead::with('patient.authorizations')->find($ids[0]);
-        $auth = $lead?->patient?->primaryAuthorization();
-        if (! $auth || ! $auth->authorized_hours_total) {
-            return [null, null];
+        $lead = Lead::find($ids[0]);
+        $budget = $lead?->packageHours(trim($data['activity_types'][0] ?? ''));
+        if (! $budget) {
+            return null;
+        }
+
+        $leftMinutes = (int) round($budget['left'] * 60);
+        $perOccurrence = (int) $data['duration_minutes'] * max(1, $therapistCount);
+
+        return intdiv($leftMinutes, max(1, $perOccurrence));
+    }
+
+    /**
+     * Hard stop for the core scheduling rule: a booking action must never ask
+     * for more hours than the single selected patient's matching package has
+     * left. Null when there's nothing to check against (group/custom
+     * booking, or nothing assigned covers this activity type) - in that
+     * case scheduling proceeds uncapped, same as before this feature existed.
+     */
+    private function packageOverbookError(array $data, array $dates, int $therapistCount): ?string
+    {
+        $ids = $data['patient_ids'] ?? [];
+        if (count($ids) !== 1 || ! $dates) {
+            return null;
+        }
+
+        $lead = Lead::find($ids[0]);
+        if (! $lead) {
+            return null;
         }
 
         $type = trim($data['activity_types'][0] ?? '');
-        $covers = $auth->covers_services ?? [];
-        if ($covers && ! in_array($type, $covers, true)) {
-            return [null, null];
+        $budget = $lead->packageHours($type);
+        if (! $budget) {
+            return null;
         }
 
-        $leftMinutes = max(0, $auth->authorized_hours_total * 60 - $auth->minutesCommitted());
-        $perOccurrence = (int) $data['duration_minutes'] * max(1, $therapistCount);
-        $count = intdiv($leftMinutes, $perOccurrence);
+        $newMinutes = count($dates) * max(1, $therapistCount) * (int) $data['duration_minutes'];
+        $leftMinutes = (int) round($budget['left'] * 60);
 
-        $note = sprintf(
-            '%s has %s h of %s h left on the %s authorization',
+        if ($newMinutes <= $leftMinutes) {
+            return null;
+        }
+
+        return sprintf(
+            'This books %s but %s only has %s left on the %s package (%s total). Reduce the hours or number of sessions to fit what remains.',
+            $this->fmtHours($newMinutes / 60),
             $lead->child_name,
-            rtrim(rtrim(number_format($leftMinutes / 60, 1), '0'), '.'),
-            $auth->authorized_hours_total,
-            $auth->payer_name
+            $this->fmtHours($budget['left']),
+            $budget['label'],
+            $this->fmtHours($budget['total'])
         );
+    }
 
-        return [$count, $note];
+    /**
+     * "10.5 hours left on the ABA package" - appended to the success message so
+     * staff immediately see the balance a booking just left behind, without
+     * reopening the panel. Computed fresh (post-create), same source
+     * Lead::packageHours() and the panel's own preview both use, so what's
+     * shown here can never drift from what the next booking attempt sees.
+     */
+    private function packageRemainingNote(array $data): ?string
+    {
+        $ids = $data['patient_ids'] ?? [];
+        if (count($ids) !== 1) {
+            return null;
+        }
+
+        $lead = Lead::find($ids[0]);
+        $budget = $lead?->packageHours(trim($data['activity_types'][0] ?? ''));
+        if (! $budget) {
+            return null;
+        }
+
+        return sprintf('%s left on the %s package', $this->fmtHours($budget['left']), $budget['label']);
+    }
+
+    /**
+     * "1 hour" / "10.5 hours" - spelled out rather than the "h"/"hr"
+     * abbreviation, for every package/authorization hours message above.
+     */
+    private function fmtHours(float $hours): string
+    {
+        $n = rtrim(rtrim(number_format($hours, 1), '0'), '.');
+
+        return $n.' '.($n === '1' ? 'hour' : 'hours');
     }
 
     private function sessionPayload(CalendarSession $s): array
@@ -1028,6 +1211,7 @@ class CalendarController extends Controller
             'room' => $s->room,
             'status' => $s->status,
             'cancel_reason' => $s->cancel_reason,
+            'cancel_notice_hours' => $s->cancel_notice_hours,
             'status_label' => $s->statusLabel(),
             'category' => $s->category(),
             'notes' => $s->notes,

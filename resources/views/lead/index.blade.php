@@ -128,6 +128,14 @@
         .kanban-column-body::-webkit-scrollbar-thumb { background: #DDD4C8; border-radius: 5px; }
         .kanban-column-body::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
         .kanban-empty { text-align: center; color: #B0A493; font: 600 12px 'Nunito Sans'; padding: 20px 0; }
+        /* Only drawn in the phone layout, where a stage is something you open. */
+        .kanban-column-caret {
+            display: none; flex: none; color: #8A7D6C; font-size: 11px;
+            transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .kanban-column-body, .kanban-column-caret { transition: none; }
+        }
 
         /* ===========================
            Lead card
@@ -356,6 +364,8 @@
 
         /* Intake checklist */
         .ic-progress { font: 800 11.5px 'Nunito Sans'; color: #98897A; }
+        .ic-progress-track { height: 6px; border-radius: 4px; background: #F3EDE3; margin-top: 10px; overflow: hidden; }
+        .ic-progress-fill { height: 100%; width: 0%; background: #C8355F; border-radius: 4px; transition: width 0.25s ease; }
         .ic-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
         .ic-row {
             display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #EBE4DA;
@@ -492,6 +502,37 @@
             .kanban-board { padding: 12px 16px 16px 16px; gap: 10px; grid-template-columns: 1fr; }
             .kanban-column { max-height: none; }
 
+            /* Four stages of cards stacked end to end is a very long scroll on a
+               phone, so each stage collapses to its header - the count stays
+               visible, which is most of what the board is read for - and opening
+               one closes whichever was open before it. */
+            .kanban-column-head {
+                padding: 4px 6px 8px;
+                gap: 10px;
+                cursor: pointer;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .kanban-column-caret { display: block; }
+            .kanban-column.is-open .kanban-column-caret { transform: rotate(90deg); }
+            /* Height rather than display, so it can be animated. The open height
+               is set on the element by the script, since only it knows how tall
+               the cards inside actually are. */
+            .kanban-column-body {
+                display: flex;
+                /* min-height would otherwise win over max-height and hold the
+                   collapsed stage open at 40px. */
+                min-height: 0;
+                max-height: 0;
+                opacity: 0;
+                overflow: hidden;
+                transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s ease;
+            }
+            .kanban-column.is-open .kanban-column-body {
+                opacity: 1;
+                overflow-y: auto;
+            }
+
             .modal-box, .modal-box.modal-box-narrow {
                 width: 100%; max-width: 100%; max-height: 92vh; padding: 20px 16px; border-radius: 14px;
             }
@@ -607,9 +648,10 @@
                         $colLeads = $leads->whereIn('status', $col['statuses'])->reject(fn ($lead) => $lead->patient);
                     @endphp
                     <div class="kanban-column">
-                        <div class="kanban-column-head">
+                        <div class="kanban-column-head" role="button" tabindex="0" aria-expanded="false" aria-controls="{{ $colKey }}Leads">
                             <div class="kanban-column-title">{{ $col['label'] }}</div>
                             <span class="kanban-column-count" id="{{ $colKey }}Count">{{ $colLeads->count() }}</span>
+                            <span class="kanban-column-caret"><i class="fas fa-chevron-right"></i></span>
                         </div>
                         <div class="kanban-column-body" id="{{ $colKey }}Leads">
                             @forelse ($colLeads as $lead)
@@ -712,6 +754,7 @@
                         Intake checklist before conversion
                         <span class="ic-progress" id="icProgress">0 of 7 complete</span>
                     </div>
+                    <div class="ic-progress-track"><div class="ic-progress-fill" id="icProgressFill"></div></div>
                     <div class="ic-list">
                         <div class="ic-row" id="icRow-parent_contact">
                             <div class="ic-num">1</div>
@@ -1442,6 +1485,33 @@
 
     const intakeStepColumns = @json(\App\Models\Lead::INTAKE_STEPS);
 
+    // Once a step is done, its row shows what was actually captured instead of
+    // the generic instructional text - e.g. "Omar Haddad · Father · +971 50
+    // 337 6690" instead of "Phone and email confirmed with the parent". Falls
+    // back to the original text if a field is missing (older leads may have
+    // completed_at set without every sub-field filled in).
+    function icFormatDate(value) {
+        if (!value) return null;
+        const d = new Date(String(value).slice(0, 10) + 'T00:00:00');
+        if (isNaN(d.getTime())) return null;
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    const icSummaryBuilders = {
+        parent_contact: lead => [lead.parent_guardian_name, lead.parent_relationship, lead.phone].filter(Boolean).join(' · '),
+        child_details: lead => [lead.child_name, icFormatDate(lead.child_date_of_birth), lead.child_gender].filter(Boolean).join(' · '),
+        intake_form: lead => [icFormatDate(lead.intake_form_received_on), lead.intake_form_received_via, lead.allergies].filter(Boolean).join(' · '),
+        assessment: lead => [icFormatDate(lead.assessment_date), lead.assessment_tool, lead.assessment_clinician ? `${lead.assessment_clinician.first_name} ${lead.assessment_clinician.last_name}`.trim() : null].filter(Boolean).join(' · '),
+        funding: lead => [lead.funding_type, lead.funding_insurer].filter(Boolean).join(' · '),
+        package: lead => {
+            const names = (lead.agreed_packages || []).map(p => p.name).filter(Boolean).join(', ');
+            return [names || null, lead.package_sessions_per_week ? lead.package_sessions_per_week + 'x/week' : null, lead.package_agreed_by].filter(Boolean).join(' · ');
+        },
+        consent: lead => [icFormatDate(lead.consent_signed_date), lead.consent_signed_by, lead.consent_signature_method].filter(Boolean).join(' · '),
+    };
+
+    const icOriginalSub = {};
+
     const nextStatusMap = {
         'new': 'contacted',
         'contacted': 'assessment_booked',
@@ -1464,6 +1534,27 @@
 
     function csrfToken() {
         return document.querySelector('input[name="_token"]').value || '{{ csrf_token() }}';
+    }
+
+    // A stage-change action (Success/Terminate/the card's advance arrow) is a
+    // flow a coordinator expects to just work when clicked - a dropped
+    // connection or a slow server waking back up shouldn't dead-end it on a
+    // "Network error" toast the user then has to notice and retry by hand.
+    // Retries with backoff on a genuinely failed request - offline, timeout,
+    // or a non-JSON error page (a Laravel 500/419 HTML page fails right here
+    // at the .json() parse, not at fetch() itself, so both must be inside
+    // the retried block). A normal JSON error response from the server
+    // (validation failure, business rule) is NOT retried and resolves
+    // straight through - only an actual throw counts as "network".
+    function fetchJsonWithRetry(url, options, attempts = 3, delayMs = 900) {
+        return fetch(url, options)
+            .then(response => response.json())
+            .catch(err => {
+                if (attempts <= 1) throw err;
+
+                return new Promise(resolve => setTimeout(resolve, delayMs))
+                    .then(() => fetchJsonWithRetry(url, options, attempts - 1, delayMs * 1.6));
+            });
     }
 
     // ===== Toast =====
@@ -1549,7 +1640,7 @@
             button.disabled = true;
         }
 
-        fetch(url, {
+        fetchJsonWithRetry(url, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -1558,7 +1649,6 @@
             },
             body: JSON.stringify({ status: nextStatus })
         })
-        .then(response => response.json())
         .then(data => {
             if (data.success) {
                 moveLeadCard(leadId, currentStatus, nextStatus);
@@ -1785,9 +1875,21 @@
             if (!row) return;
             row.classList.toggle('is-done', isDone);
             row.querySelector('.ic-fillin').textContent = isDone ? 'Edit' : 'Fill in';
+
+            const subEl = row.querySelector('.ic-sub');
+            if (subEl) {
+                if (icOriginalSub[step] === undefined) icOriginalSub[step] = subEl.textContent;
+
+                const summary = isDone && icSummaryBuilders[step] ? icSummaryBuilders[step](apLead) : null;
+                subEl.textContent = summary || icOriginalSub[step];
+            }
         });
 
-        document.getElementById('icProgress').textContent = done + ' of 7 complete';
+        const total = Object.keys(intakeStepColumns).length;
+        document.getElementById('icProgress').textContent = done + ' of ' + total + ' complete';
+
+        const fill = document.getElementById('icProgressFill');
+        if (fill) fill.style.width = Math.round((done / total) * 100) + '%';
     }
 
     function icPopulateForm(step) {
@@ -2267,12 +2369,11 @@
             if (apLead[key] !== null && apLead[key] !== undefined) formData.append(key, apLead[key]);
         });
 
-        fetch(url, {
+        fetchJsonWithRetry(url, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
             body: formData
         })
-        .then(response => response.json())
         .then(data => {
             if (!data.success) {
                 let errorMsg = 'Could not update lead.';
@@ -2296,13 +2397,13 @@
             if (mode === 'advance' && nextStatus) {
                 const statusUrl = updateStatusUrl.replace('__LEAD_ID__', apLead.id);
                 const fromStatus = apLead.status;
+                btn.textContent = 'Moving to next stage…';
 
-                return fetch(statusUrl, {
+                return fetchJsonWithRetry(statusUrl, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
                     body: JSON.stringify({ status: nextStatus })
                 })
-                .then(response => response.json())
                 .then(statusData => {
                     if (!statusData.success) {
                         showNotification(statusData.message || 'Could not move lead to the next stage.', 'error');
@@ -2368,12 +2469,11 @@
         formData.append('termination_reason', document.getElementById('terminateReason').value);
         formData.append('termination_note', document.getElementById('terminateNote').value);
 
-        fetch(url, {
+        fetchJsonWithRetry(url, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': csrfToken(), 'Accept': 'application/json' },
             body: formData
         })
-        .then(response => response.json())
         .then(data => {
             if (!data.success) {
                 const errorMsg = data.errors ? Object.values(data.errors).flat().join(', ') : (data.message || 'Could not terminate lead.');
@@ -2601,6 +2701,66 @@
             submitBtn.disabled = false;
         });
     }
+
+    // Pipeline stages are an accordion on a phone: all shut to begin with, one
+    // open at a time. A wide screen shows all four columns side by side, so the
+    // headers do nothing there and the bodies are never hidden.
+    (function () {
+        const board = document.getElementById('kanbanBoard');
+        if (!board) return;
+
+        const onNarrowScreen = () => window.matchMedia('(max-width: 768px)').matches;
+
+        function setOpen(column, open) {
+            column.classList.toggle('is-open', open);
+
+            const head = column.querySelector('.kanban-column-head');
+            if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+            const body = column.querySelector('.kanban-column-body');
+            if (!body) return;
+
+            // Animating to a guessed height would run the transition at the wrong
+            // speed for every stage that holds a different number of cards, so the
+            // target is the real content height - capped, past which the stage
+            // scrolls inside itself rather than pushing the next one off-screen.
+            body.style.maxHeight = open
+                ? Math.min(body.scrollHeight, Math.round(window.innerHeight * 0.68)) + 'px'
+                : '';
+        }
+
+        board.querySelectorAll('.kanban-column-head').forEach(function (head) {
+            function toggle() {
+                if (!onNarrowScreen()) return;
+
+                const column = head.closest('.kanban-column');
+                const opening = !column.classList.contains('is-open');
+
+                board.querySelectorAll('.kanban-column').forEach(c => setOpen(c, false));
+                if (opening) setOpen(column, true);
+            }
+
+            head.addEventListener('click', toggle);
+            head.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggle();
+                }
+            });
+        });
+
+        // The height above is written inline, so it would follow the board up to
+        // the wide layout and cap a column that is meant to run full height.
+        window.addEventListener('resize', function () {
+            if (onNarrowScreen()) return;
+
+            board.querySelectorAll('.kanban-column').forEach(function (column) {
+                column.classList.remove('is-open');
+                const body = column.querySelector('.kanban-column-body');
+                if (body) body.style.maxHeight = '';
+            });
+        });
+    })();
 
     document.addEventListener('DOMContentLoaded', function() {
         // Deep-link support: ?lead={id} (used by topbar search/activity/notifications)

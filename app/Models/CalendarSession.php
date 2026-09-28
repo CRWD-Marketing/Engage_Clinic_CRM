@@ -258,7 +258,20 @@ class CalendarSession extends Model
     public function statusLabel(): string
     {
         if ($this->isCancelled()) {
-            return $this->cancel_reason ? 'Cancelled — '.$this->cancel_reason : 'Cancelled';
+            if ($this->cancel_reason === 'clinic') {
+                return 'Cancelled — clinic';
+            }
+
+            // A family cancellation is named the way billing prices it, so the
+            // calendar card and the invoice picker never disagree.
+            if ($this->cancel_reason === 'family') {
+                return $this->cancel_notice_hours === null
+                    || (float) $this->cancel_notice_hours >= (float) config('billing.cancel_policy.notice_hours')
+                    ? 'Cancelled — with notice'
+                    : 'Cancelled — late';
+            }
+
+            return 'Cancelled';
         }
 
         return match ($this->status) {

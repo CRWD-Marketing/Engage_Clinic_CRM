@@ -37,6 +37,19 @@
     .kb-card-sub { font: 600 12px/1.5 'Nunito Sans'; color: #98897A; max-width: 640px; }
     .kb-count-pill { background: #F6F3EE; color: #5A6B7E; border-radius: 20px; padding: 3px 11px; font: 800 11px 'Nunito Sans'; white-space: nowrap; }
 
+    /* A card whose body folds away. Only the phone layout acts on it - a wide
+       screen has the room to show everything at once, so the head is inert
+       there and the body is never hidden. */
+    .kb-collapse-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .kb-collapse-caret {
+        display: none; flex: none; margin-top: 3px; color: #98897A;
+        transition: transform .22s cubic-bezier(.4, 0, .2, 1);
+    }
+    .kb-collapsible.is-open .kb-collapse-caret { transform: rotate(90deg); }
+    @media (prefers-reduced-motion: reduce) {
+        .kb-collapse-body, .kb-collapse-caret { transition: none; }
+    }
+
     /* Form fields */
     .kb-field { display: flex; flex-direction: column; gap: 6px; }
     .kb-field label { font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -96,6 +109,63 @@
     .kb-entry-form-actions { display: flex; align-items: center; gap: 16px; }
 
     .kb-empty-state { text-align: center; color: #98897A; padding: 44px 20px; font: 600 12.5px/1.6 'Nunito Sans'; }
+
+    /* On a phone the layout's 22px/28px gutter costs width this page cannot
+       spare, so the wrapper keeps only a hairline of it - the cards carry
+       their own inner padding, so nothing ends up flush against its text. */
+    @media (max-width: 768px) {
+        .main-content-inner { padding: 0 3px !important; }
+        .kb-wrap { padding: 0 0 20px !important; }
+
+        .kb-card { padding: 16px 14px; border-radius: 14px; }
+        .kb-header { gap: 10px; }
+        .kb-header-icon { width: 38px; height: 38px; font-size: 18px; border-radius: 11px; }
+        /* basis 0, not auto: a wrapping flex line breaks on an item whose
+           natural width does not fit, before it ever gets to shrink it. */
+        .kb-header-text { flex: 1 1 0; min-width: 0; }
+        .kb-header-title { font-size: 18px; }
+        .kb-header-sub { font-size: 11.5px; }
+        .kb-header-status { margin-left: 0; }
+
+        /* Settings is configuration you set once, so it folds away and leaves
+           the knowledge base - the thing this page is actually opened for -
+           at the top of the screen. */
+        .kb-collapse-head { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .kb-collapse-caret { display: block; }
+        .kb-collapsible { gap: 0; }
+        /* Height rather than display, so it can be animated; the open height is
+           written onto the element by the script, which is the only thing that
+           knows how tall the form inside actually is. */
+        .kb-collapse-body {
+            max-height: 0; opacity: 0; overflow: hidden;
+            transition: max-height .3s cubic-bezier(.4, 0, .2, 1), opacity .22s ease;
+        }
+        .kb-collapsible.is-open .kb-collapse-body { opacity: 1; overflow-y: auto; padding-top: 16px; }
+
+        /* The entries table wants 720px before it stops cramping, so each row
+           becomes a card here and the columns stack in reading order: title,
+           then its chips, then the content preview. */
+        .kb-table { min-width: 0; }
+        .kb-table thead { display: none; }
+        .kb-table, .kb-table tbody, .kb-table tr { display: block; width: 100%; }
+        /* Width stays auto so the chips can share a line - the row below is a
+           flex container and sizes them. */
+        .kb-table td { display: block; padding: 0; border-bottom: none; }
+        .kb-table tbody tr.kb-row-main {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+            margin-top: 10px; padding: 12px;
+            background: #FDFBF7; border: 1px solid #EFE7DA; border-radius: 12px;
+        }
+        .kb-row-main td:nth-child(1) { flex: 1 1 100%; order: 1; }
+        .kb-row-main td:nth-child(2) { flex: 0 0 auto; order: 2; }
+        .kb-row-main td:nth-child(4) { flex: 0 0 auto; order: 3; }
+        .kb-row-main td:nth-child(5) { flex: 0 0 auto; order: 4; }
+        .kb-row-main td:nth-child(6) { flex: 0 0 auto; order: 5; margin-left: auto; }
+        .kb-row-main td:nth-child(3) { flex: 1 1 100%; order: 6; }
+        .kb-content-preview { max-width: none; }
+        .kb-card-title-row { gap: 12px; }
+        .kb-entry-form { padding: 14px 12px; }
+    }
 </style>
 
 <div class="kb-wrap">
@@ -103,7 +173,7 @@
     <!-- Page header -->
     <div class="kb-header">
         <div class="kb-header-icon">🤖</div>
-        <div>
+        <div class="kb-header-text">
             <div class="kb-header-title">AI Employee</div>
             <div class="kb-header-sub">Manage what your AI Employee knows, and how it behaves across WhatsApp, Instagram, and Facebook.</div>
         </div>
@@ -117,11 +187,17 @@
     @endif
 
     <!-- Global AI Employee settings -->
-    <div class="kb-card">
-        <div>
-            <div class="kb-card-title">⚙️ Settings</div>
-            <div class="kb-card-sub">Controls whether the AI auto-responds at all, and how it's tuned. The kill switch starts off on purpose - only enable it once you've confirmed a queue worker is running and you've reviewed the knowledge base below.</div>
+    <div class="kb-card kb-collapsible">
+        <div class="kb-collapse-head" role="button" tabindex="0" aria-expanded="false" aria-controls="kb-settings-body">
+            <div>
+                <div class="kb-card-title">⚙️ Settings</div>
+                <div class="kb-card-sub">Controls whether the AI auto-responds at all, and how it's tuned. The kill switch starts off on purpose - only enable it once you've confirmed a queue worker is running and you've reviewed the knowledge base below.</div>
+            </div>
+            <span class="kb-collapse-caret">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </span>
         </div>
+        <div class="kb-collapse-body" id="kb-settings-body">
         <form action="{{ route('knowledge_base.updateSettings') }}" method="POST" style="display: flex; flex-direction: column; gap: 16px;">
             @csrf
             @method('PUT')
@@ -169,35 +245,15 @@
                 <span class="kb-field-hint">Optional - fully replaces the built-in prompt when set</span>
             </div>
 
-            <hr class="kb-divider">
-
-            <div class="kb-toggle-row">
-                <label class="kb-switch">
-                    <input type="checkbox" name="voice_enabled" value="1" onchange="this.form.querySelector('.kb-toggle-label-voice').textContent = this.checked ? 'Voice calling is ON' : 'Voice calling is OFF';" {{ $settings->voice_enabled ? 'checked' : '' }}>
-                    <span class="kb-switch-track"></span>
-                    <span class="kb-switch-thumb"></span>
-                </label>
-                <div>
-                    <div class="kb-toggle-label kb-toggle-label-voice">Voice calling is {{ $settings->voice_enabled ? 'ON' : 'OFF' }}</div>
-                    <div class="kb-toggle-sub">Separate switch from chat - answer inbound phone calls with a live AI conversation</div>
-                </div>
-            </div>
-
-            <div class="kb-row">
-                <div class="kb-field">
-                    <label for="voice_greeting">Voice greeting</label>
-                    <textarea id="voice_greeting" name="voice_greeting" rows="2" placeholder="Thanks for calling. How can I help you today?">{{ $settings->voice_greeting }}</textarea>
-                    <span class="kb-field-hint">Spoken automatically when the AI answers a call</span>
-                </div>
-                <div class="kb-field">
-                    <label for="human_handoff_phone_number">Human handoff number</label>
-                    <input type="text" id="human_handoff_phone_number" name="human_handoff_phone_number" value="{{ $settings->human_handoff_phone_number }}" placeholder="+971501234567">
-                    <span class="kb-field-hint">Live calls transfer here on escalation. Leave blank to end the call with a follow-up message instead of transferring.</span>
-                </div>
-            </div>
+            {{-- Voice calling has been taken out of the app alongside the
+                 Voice Calls screen, so its switch, greeting and handoff number
+                 are no longer shown here. The stored settings are left alone -
+                 updateSettings() no longer writes them - so the call handling
+                 that still runs behind the scenes keeps its configuration. --}}
 
             <button type="submit" class="kb-btn">💾 Save settings</button>
         </form>
+        </div>
     </div>
 
     <!-- Knowledge base entries -->
@@ -305,4 +361,64 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Folds the Settings card away on a phone, where it otherwise fills the
+    // screen ahead of the knowledge base. Above the breakpoint the card is
+    // always open, so the head does nothing.
+    (function () {
+        const cards = document.querySelectorAll('.kb-collapsible');
+        if (!cards.length) return;
+
+        const onNarrowScreen = () => window.matchMedia('(max-width: 768px)').matches;
+
+        function setOpen(card, open) {
+            card.classList.toggle('is-open', open);
+
+            const head = card.querySelector('.kb-collapse-head');
+            if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+            const body = card.querySelector('.kb-collapse-body');
+            if (!body) return;
+
+            // Animating towards a guessed height would run the transition at the
+            // wrong speed for a card of any other size, so the target is the real
+            // content height - capped, past which the body scrolls inside itself
+            // rather than running off the bottom of the screen.
+            body.style.maxHeight = open
+                ? Math.min(body.scrollHeight, Math.round(window.innerHeight * 0.72)) + 'px'
+                : '';
+        }
+
+        cards.forEach(function (card) {
+            const head = card.querySelector('.kb-collapse-head');
+            if (!head) return;
+
+            function toggle() {
+                if (!onNarrowScreen()) return;
+                setOpen(card, !card.classList.contains('is-open'));
+            }
+
+            head.addEventListener('click', toggle);
+            head.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggle();
+                }
+            });
+        });
+
+        // The height above is written inline, so it would follow the card up to
+        // the wide layout and cap a body that is no longer collapsible.
+        window.addEventListener('resize', function () {
+            if (onNarrowScreen()) return;
+
+            cards.forEach(function (card) {
+                card.classList.remove('is-open');
+                const body = card.querySelector('.kb-collapse-body');
+                if (body) body.style.maxHeight = '';
+            });
+        });
+    })();
+</script>
 @endsection

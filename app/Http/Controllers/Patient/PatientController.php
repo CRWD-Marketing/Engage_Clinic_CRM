@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CalendarSession;
 use App\Models\Insurance;
 use App\Models\Lead;
+use App\Models\Package;
 use App\Models\Patient;
 use App\Models\PatientAuthorization;
 use App\Models\PatientGoal;
@@ -43,11 +44,36 @@ class PatientController extends Controller
             $query->whereIn('lead_id', $assignedLeadIds);
         }
 
-        $patients = $query->get()->sortBy(fn ($p) => $p->lead->child_name ?? '')->values();
+        $period = $request->query('period', 'all');
+        if ($range = $this->periodRange($period)) {
+            $query->whereBetween('created_at', $range);
+        }
+
+        $patients = $query->get()->sortByDesc(fn ($p) => $p->created_at)->values();
 
         $insurances = Insurance::where('is_active', true)->orderBy('name')->get();
+        $packages = Package::where('is_active', true)->orderBy('name')->get();
 
-        return view('patient.index', compact('patients', 'insurances'));
+        return view('patient.index', compact('patients', 'insurances', 'packages', 'period'));
+    }
+
+    /**
+     * [start, end] timestamps for the "converted" filter dropdown on the
+     * Patients list, keyed off when the Patient record itself was created.
+     * Null means no filter (all time).
+     */
+    private function periodRange(string $period): ?array
+    {
+        $now = now();
+
+        return match ($period) {
+            'today' => [$now->copy()->startOfDay(), $now->copy()->endOfDay()],
+            'week' => [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()],
+            'month' => [$now->copy()->startOfMonth(), $now->copy()->endOfMonth()],
+            'last_month' => [$now->copy()->subMonthNoOverflow()->startOfMonth(), $now->copy()->subMonthNoOverflow()->endOfMonth()],
+            'year' => [$now->copy()->startOfYear(), $now->copy()->endOfYear()],
+            default => null,
+        };
     }
 
     /**
@@ -65,6 +91,16 @@ class PatientController extends Controller
         $upcomingSessions = $sessions->filter(fn ($s) => $s->session_date->isToday() || $s->session_date->isFuture())
             ->sortBy(fn ($s) => $s->session_date->toDateString().' '.$s->start_time)
             ->take(5);
+
+        // Session history is the record of what has happened. A session still
+        // sitting in the diary is listed under Upcoming sessions, so showing it
+        // here too made the history read as though it had already taken place -
+        // and counted it against the attended tally. Once it has an outcome
+        // (completed, no-show, cancelled) it belongs here whatever its date.
+        $pastSessions = $sessions->reject(
+            fn ($s) => $s->status === 'scheduled'
+                && ($s->session_date->isToday() || $s->session_date->isFuture())
+        )->values();
 
         $todaysSession = $sessions->first(fn ($s) => $s->session_date->isToday());
 
@@ -88,10 +124,12 @@ class PatientController extends Controller
         $therapists = User::where('role', 'THERAPIST')->orderBy('first_name')->get(['id', 'first_name', 'last_name']);
 
         $insurances = Insurance::where('is_active', true)->orderBy('name')->get();
+        $packages = Package::where('is_active', true)->orderBy('name')->get();
 
         return view('patient.show', compact(
             'patient',
             'sessions',
+            'pastSessions',
             'upcomingSessions',
             'todaysSession',
             'recommendedGoals',
@@ -100,7 +138,8 @@ class PatientController extends Controller
             'collectedTotal',
             'outstandingTotal',
             'therapists',
-            'insurances'
+            'insurances',
+            'packages'
         ));
     }
 

@@ -34,26 +34,45 @@ class ActivityController extends Controller
                 ->all());
         }
 
-        $items = array_merge($items, Activity::with('user')
-            ->latest()
-            ->limit(20)
-            ->get()
-            ->map(fn (Activity $activity) => [
-                'icon' => match ($activity->type) {
-                    'session_moved' => 'fa-calendar-days',
-                    'credit_note' => 'fa-file-invoice-dollar',
-                    'invoice_voided' => 'fa-ban',
-                    'claim_status' => 'fa-file-medical',
-                    'bulk_run' => 'fa-layer-group',
-                    default => 'fa-clock-rotate-left',
-                },
-                'title' => $activity->title,
-                'actor' => $activity->actor_name,
-                'url' => $activity->url,
-                'timestamp' => $activity->created_at,
-                'created_at' => $activity->created_at->diffForHumans(),
-            ])
-            ->all());
+        // Each Activity type belongs to one module - gate it the same way the
+        // module's own page is gated, so e.g. a Therapist (no 'billing'
+        // feature) never sees credit notes/voided invoices in this feed just
+        // because it's a shared, un-scoped table under the hood.
+        $activityFeatureByType = [
+            'session_moved' => 'calendar',
+            'bulk_run' => 'billing',
+            'credit_note' => 'billing',
+            'invoice_voided' => 'billing',
+            'claim_status' => 'billing',
+        ];
+        $allowedActivityTypes = array_keys(array_filter(
+            $activityFeatureByType,
+            fn ($feature) => $request->user()->canAccessFeature($feature)
+        ));
+
+        if ($allowedActivityTypes) {
+            $items = array_merge($items, Activity::with('user')
+                ->whereIn('type', $allowedActivityTypes)
+                ->latest()
+                ->limit(20)
+                ->get()
+                ->map(fn (Activity $activity) => [
+                    'icon' => match ($activity->type) {
+                        'session_moved' => 'fa-calendar-days',
+                        'credit_note' => 'fa-file-invoice-dollar',
+                        'invoice_voided' => 'fa-ban',
+                        'claim_status' => 'fa-file-medical',
+                        'bulk_run' => 'fa-layer-group',
+                        default => 'fa-clock-rotate-left',
+                    },
+                    'title' => $activity->title,
+                    'actor' => $activity->actor_name,
+                    'url' => $activity->url,
+                    'timestamp' => $activity->created_at,
+                    'created_at' => $activity->created_at->diffForHumans(),
+                ])
+                ->all());
+        }
 
         usort($items, fn ($a, $b) => $b['timestamp']->timestamp <=> $a['timestamp']->timestamp);
         $items = array_map(function ($item) {

@@ -23,8 +23,6 @@
         .wa-send-btn:active { transform: scale(0.97); }
         .wa-view-lead { transition: background 0.12s ease; }
         .wa-view-lead:hover { background: #AD2A52; }
-        .wa-book-btn { transition: background 0.12s ease, border-color 0.12s ease; }
-        .wa-book-btn:hover { background: #F5EFE7; border-color: #C8AF8F; }
         .wa-live-dot { position: relative; }
         .wa-live-dot::after {
             content: ''; position: absolute; inset: 0; border-radius: 50%;
@@ -52,21 +50,129 @@
         #wa-channel-filter { overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
         #wa-channel-filter::-webkit-scrollbar { display: none; }
         .wa-filter-pill { flex-shrink: 0; white-space: nowrap; }
+        .wa-msg-status { font: 700 10px 'Nunito Sans'; color: #98897A; padding-right: 3px; }
+        .wa-msg-status:empty { display: none; }
+        .wa-msg-status.is-failed { color: #C8355F; cursor: help; }
+        .wa-chat-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .wa-panel-backdrop { display: none !important; }
+
+        /* --- Responsive -------------------------------------------------------
+           Three columns on a wide screen. Under 1180px the family panel leaves
+           the flow and becomes a slide-over drawer, so the thread keeps a usable
+           width. Under 820px it goes one pane at a time the way a phone
+           messaging app does: the conversation list, or the thread with a back
+           arrow. Which one shows is decided by whether a conversation is
+           selected, so the existing ?contact=... navigation already drives it
+           and there is no extra client-side routing to keep in sync.           */
+        @media (max-width: 1180px) {
+            .wa-sidebar { width: 272px !important; }
+            .wa-chat { min-width: 0 !important; }
+            .wa-details-toggle { display: inline-flex !important; }
+            .wa-panel-close { display: inline-flex !important; }
+            .wa-panel {
+                position: fixed; top: 0; right: 0; bottom: 0;
+                width: min(320px, 86vw) !important;
+                z-index: 1200; /* above the layout's own mobile sidebar rail */
+                transform: translateX(102%);
+                transition: transform 0.22s ease;
+                box-shadow: -14px 0 44px rgba(43, 58, 76, 0.18);
+            }
+            .wa-panel.is-open { transform: translateX(0); }
+            .wa-panel-backdrop.is-open {
+                display: block !important;
+                position: fixed; inset: 0; z-index: 1190;
+                background: rgba(43, 58, 76, 0.34);
+            }
+        }
+
+        /* --- Phone: Facebook Messenger's shape in Engage Clinic's colours -----
+           One pane at a time - the conversation list, then the thread behind a
+           back arrow - with the roomier rows, round avatars, pill search, fully
+           rounded bubbles and circular send button Messenger uses. The chat's
+           controls sit behind the header's person button, which is where
+           Messenger keeps a conversation's settings too.                       */
+        @media (max-width: 820px) {
+            .wa-inbox { overflow-x: hidden !important; }
+            .wa-sidebar { width: 100% !important; border-right: none !important; }
+            .wa-inbox.wa-has-active .wa-sidebar { display: none !important; }
+            .wa-inbox:not(.wa-has-active) .wa-chat { display: none !important; }
+            /* The controller preselects the newest conversation so the desktop
+               three-pane view is never empty; on a phone that pane is not on
+               screen yet, so it must not look picked either. */
+            .wa-inbox:not(.wa-has-active) .wa-contact-row.is-active { background: transparent !important; }
+
+            /* Conversation list */
+            .wa-list-header { padding: 14px 16px 12px !important; border-bottom: none !important; }
+            .wa-list-title { font-size: 25px !important; letter-spacing: -0.3px; }
+            .wa-list-sub { display: none; }
+            .wa-search-input { border-radius: 22px !important; padding: 10px 14px 10px 34px !important; background: #F1EDE6 !important; }
+            .wa-contact-row { padding: 9px 14px !important; gap: 13px !important; border-bottom: none !important; }
+            .wa-row-avatar { width: 52px !important; height: 52px !important; font-size: 18px !important; }
+            .wa-row-name { font-size: 15px !important; }
+            .wa-row-preview { font-size: 13.5px !important; }
+            .wa-row-time { font-size: 12px !important; }
+            .wa-unread {
+                min-width: 19px; height: 19px; align-self: center;
+                display: flex; align-items: center; justify-content: center;
+                border-radius: 50% !important; padding: 0 4px !important; font-size: 10.5px !important;
+            }
+
+            /* Thread */
+            .wa-chat-header { padding: 8px 12px !important; gap: 10px !important; flex-wrap: nowrap !important; }
+            .wa-back-btn { display: inline-flex !important; }
+            .wa-chat-actions { flex: 0 0 auto; gap: 5px; }
+            .wa-chat-header .wa-ai-state-form { display: none !important; }
+            .wa-details-toggle { border-radius: 50% !important; }
+            .wa-messages { padding: 14px 12px !important; gap: 6px !important; }
+            .wa-msg-avatar { display: block !important; }
+            .wa-bubble { max-width: 78% !important; border-radius: 18px !important; }
+            .wa-send-error { padding: 10px 14px !important; }
+
+            /* Composer */
+            .wa-send-form { padding: 9px 12px !important; gap: 8px !important; align-items: center; }
+            .wa-msg-input { border-radius: 22px !important; padding: 10px 16px !important; }
+            .wa-send-btn {
+                width: 42px; height: 42px; flex-shrink: 0;
+                padding: 0 !important; border-radius: 50% !important; justify-content: center;
+            }
+            .wa-send-btn-label { display: none; }
+
+            /* iOS zooms the whole page in when a focused field is under 16px. */
+            .wa-msg-input, .wa-search-input { font-size: 16px !important; }
+
+            /* Details sheet - full width, the way Messenger's chat settings open. */
+            .wa-panel { width: 100% !important; }
+            .wa-panel-mobile-actions { display: flex !important; }
+        }
+
+        @media (max-width: 480px) {
+            .wa-list-title { font-size: 23px !important; }
+            .wa-row-avatar { width: 48px !important; height: 48px !important; }
+            .wa-bubble { max-width: 82% !important; }
+        }
+
+        /* A phone's browser chrome eats into 100vh, which would push the reply
+           box below the fold; dvh tracks the height actually on screen. */
+        @supports (height: 100dvh) {
+            @media (max-width: 820px) {
+                body.admin-body, body.admin-body .main-content { height: 100dvh; }
+            }
+        }
     </style>
 
     <!-- WhatsApp Inbox -->
-    <div style="flex: 1; display: flex; min-height: 0; overflow-x: auto; margin: -22px -28px;">
+    <div class="wa-inbox {{ request()->filled('contact') && $activeContact ? 'wa-has-active' : '' }}" style="flex: 1; display: flex; min-height: 0; overflow-x: auto; margin: -22px -28px;">
 
         <!-- Left Sidebar - Chat List -->
-        <div style="width: 320px; min-height: 0; border-right: 1px solid #EBE4DA; background: #FFFDFA; display: flex; flex-direction: column; flex-shrink: 0;">
-            <div style="padding: 16px 18px; border-bottom: 1px solid #EBE4DA;">
+        <div class="wa-sidebar" style="width: 320px; min-height: 0; border-right: 1px solid #EBE4DA; background: #FFFDFA; display: flex; flex-direction: column; flex-shrink: 0;">
+            <div class="wa-list-header" style="padding: 16px 18px; border-bottom: 1px solid #EBE4DA;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="position: relative; width: 8px; height: 8px;">
                         <span class="wa-live-dot" style="display: block; width: 8px; height: 8px; border-radius: 50%; background: #1FA855;"></span>
                     </span>
-                    <div style="font: 600 16px 'Baloo 2'; color: #16436E;">Messages</div>
+                    <div class="wa-list-title" style="font: 600 16px 'Baloo 2'; color: #16436E;">Messages</div>
                 </div>
-                <div style="font: 600 11.5px 'Nunito Sans'; color: #98897A; margin-top: 1px;">WhatsApp + Instagram · leads auto-captured</div>
+                <div class="wa-list-sub" style="font: 600 11.5px 'Nunito Sans'; color: #98897A; margin-top: 1px;">WhatsApp + Instagram · leads auto-captured</div>
 
                 @if ($contacts->isNotEmpty())
                     <div style="position: relative; margin-top: 12px;">
@@ -106,10 +212,15 @@
         </div>
 
         <!-- Middle - Chat Messages -->
-        <div style="flex: 1; display: flex; flex-direction: column; min-width: 380px; min-height: 0; background: #F1EBE1;">
+        <div class="wa-chat" style="flex: 1; display: flex; flex-direction: column; min-width: 380px; min-height: 0; background: #F1EBE1;">
             @if ($activeContact)
                 <!-- Chat Header -->
-                <div style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #E4DCCE; background: #FFFDFA;">
+                <div class="wa-chat-header" style="display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #E4DCCE; background: #FFFDFA; flex-wrap: wrap;">
+                    {{-- Only ever on screen in the one-pane phone layout, where the
+                         conversation list is hidden while a chat is open. --}}
+                    <a href="{{ route('whatsapp.index') }}" class="wa-back-btn" aria-label="Back to conversations" style="display: none; align-items: center; justify-content: center; width: 30px; height: 30px; margin-left: -6px; border-radius: 9px; text-decoration: none; flex-shrink: 0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 18L9 12L15 6" stroke="#16436E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
                     <div style="position: relative; flex-shrink: 0;">
                         @if ($activeContact->avatar_url)
                             <img src="{{ $activeContact->avatar_url }}" alt="" style="width: 38px; height: 38px; border-radius: 50%; object-fit: cover; display: block;">
@@ -120,9 +231,9 @@
                         @endif
                         {!! $channelBadge($activeContact->channel) !!}
                     </div>
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 7px;">
-                            <div style="font: 800 14.5px 'Nunito Sans'; color: #2B3A4C;">{{ $activeContact->name ?? $activeContact->wa_id }}</div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 7px; min-width: 0;">
+                            <div style="font: 800 14.5px 'Nunito Sans'; color: #2B3A4C; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ $activeContact->name ?? $activeContact->wa_id }}</div>
                             @if ($activeContact->needs_human_attention)
                                 <span title="{{ $activeContact->needs_human_reason }}" style="display: inline-flex; align-items: center; gap: 4px; background: #FDECEE; color: #C8355F; border-radius: 999px; padding: 2px 8px; font: 800 10px 'Nunito Sans';">● Needs attention</span>
                             @endif
@@ -137,15 +248,21 @@
                             @endif
                         </div>
                     </div>
-                    <form action="{{ route('whatsapp.updateAiState', $activeContact->id) }}" method="POST" style="margin: 0;">
-                        @csrf
-                        <select name="ai_state" onchange="this.form.submit()" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 9px; padding: 7px 10px; font: 800 12px 'Nunito Sans'; cursor: pointer;">
-                            @foreach (\App\Models\WhatsappContact::aiStateLabels() as $value => $label)
-                                <option value="{{ $value }}" @selected($activeContact->ai_state === $value)>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </form>
-                    <a href="{{ route('calendar.index') }}" class="wa-book-btn" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 9px; padding: 8px 14px; font: 800 12px 'Nunito Sans'; cursor: pointer; text-decoration: none; white-space: nowrap;">Book assessment</a>
+                    <div class="wa-chat-actions">
+                        <form action="{{ route('whatsapp.updateAiState', $activeContact->id) }}" method="POST" class="wa-ai-state-form" style="margin: 0;">
+                            @csrf
+                            <select name="ai_state" onchange="this.form.submit()" class="wa-ai-state-select" style="background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 9px; padding: 7px 10px; font: 800 12px 'Nunito Sans'; cursor: pointer;">
+                                @foreach (\App\Models\WhatsappContact::aiStateLabels() as $value => $label)
+                                    <option value="{{ $value }}" @selected($activeContact->ai_state === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </form>
+                        {{-- Below 1180px the family panel is a drawer rather than a
+                             column, so it needs something to open it. --}}
+                        <button type="button" id="wa-details-toggle" class="wa-details-toggle" aria-label="Family details" style="display: none; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; background: #FFFFFF; border: 1px solid #E2DACE; border-radius: 9px; cursor: pointer;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="#16436E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="4" stroke="#16436E" stroke-width="1.8"/></svg>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Messages -->
@@ -162,14 +279,12 @@
                     @endif
                 </div>
 
-                @if ($errors->any())
-                    <div style="flex-shrink: 0; padding: 10px 20px; background: #FDECEE; border-top: 1px solid #F3C9D5; font: 700 12.5px 'Nunito Sans'; color: #C8355F;">
-                        {{ $errors->first() }}
-                    </div>
-                @endif
+                <div id="wa-send-error" class="wa-send-error" style="flex-shrink: 0; padding: 10px 20px; background: #FDECEE; border-top: 1px solid #F3C9D5; font: 700 12.5px 'Nunito Sans'; color: #C8355F; {{ $errors->any() ? '' : 'display: none;' }}">
+                    {{ $errors->first() }}
+                </div>
 
                 <!-- Message Input -->
-                <form id="wa-send-form" action="{{ route('whatsapp.send') }}" method="POST" style="flex-shrink: 0; display: flex; gap: 10px; padding: 14px 20px; background: #FFFDFA; border-top: 1px solid #E4DCCE;">
+                <form id="wa-send-form" class="wa-send-form" action="{{ route('whatsapp.send') }}" method="POST" style="flex-shrink: 0; display: flex; gap: 10px; padding: 14px 20px; background: #FFFDFA; border-top: 1px solid #E4DCCE;">
                     @csrf
                     <input type="hidden" name="contact_id" value="{{ $activeContact->id }}">
                     <input
@@ -195,6 +310,11 @@
                         // reply box so it scrolls in place — the reply box stays put instead of
                         // being pushed off-screen once a conversation has a lot of messages.
                         function sizeMessages() {
+                            // Stay pinned to the newest message across a resize if that
+                            // is where the thread already was - on a phone this fires
+                            // when the keyboard opens, and the reply being typed must
+                            // not slide out of view behind it.
+                            var wasNearBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 80;
                             var top = messages.getBoundingClientRect().top;
                             var after = 0;
                             var sibling = messages.nextElementSibling;
@@ -202,34 +322,113 @@
                                 after += sibling.getBoundingClientRect().height;
                                 sibling = sibling.nextElementSibling;
                             }
-                            messages.style.maxHeight = Math.max(window.innerHeight - top - after, 160) + 'px';
+                            var viewport = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+                            messages.style.maxHeight = Math.max(viewport - top - after, 160) + 'px';
+                            if (wasNearBottom) messages.scrollTop = messages.scrollHeight;
                         }
 
                         sizeMessages();
                         messages.scrollTop = messages.scrollHeight;
                         window.addEventListener('resize', sizeMessages);
+                        window.addEventListener('orientationchange', sizeMessages);
+                        // iOS resizes the visual viewport for the on-screen keyboard
+                        // without ever firing a window resize event.
+                        if (window.visualViewport) window.visualViewport.addEventListener('resize', sizeMessages);
                     })();
                     (function () {
                         var form = document.getElementById('wa-send-form');
                         if (!form) return;
 
-                        form.addEventListener('submit', function (e) {
-                            if (form.dataset.submitting === 'true') {
-                                e.preventDefault();
-                                return;
-                            }
+                        var messagesEl = document.getElementById('wa-messages');
+                        var errorBox = document.getElementById('wa-send-error');
 
-                            form.dataset.submitting = 'true';
+                        // Send over fetch instead of a normal form POST, so replying
+                        // doesn't navigate/reload the page - the new bubble is appended
+                        // straight into the thread from the JSON response below.
+                        form.addEventListener('submit', function (e) {
+                            e.preventDefault();
 
                             var btn = form.querySelector('.wa-send-btn');
-                            var label = form.querySelector('.wa-send-btn-label');
                             var input = form.querySelector('.wa-msg-input');
+                            var csrf = form.querySelector('input[name="_token"]').value;
+                            var body = new FormData(form);
 
-                            btn.disabled = true;
-                            input.readOnly = true;
-                            btn.style.opacity = '0.6';
-                            btn.style.cursor = 'not-allowed';
-                            if (label) label.textContent = 'Sending…';
+                            if (!input.value.trim()) return;
+
+                            // The composer frees up straight away and the button
+                            // never sits in a loading state: the message is
+                            // written server-side before the response comes back,
+                            // so its own bubble reports where it has got to.
+                            input.value = '';
+                            input.focus();
+                            if (errorBox) errorBox.style.display = 'none';
+
+                            var reloading = false;
+
+                            fetch(form.action, {
+                                method: 'POST',
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                                body: body,
+                            })
+                                .then(function (r) {
+                                    // Read as text first: an expired session makes the auth
+                                    // middleware redirect to the login page, which fetch
+                                    // follows silently and resolves as a 200 whose body is
+                                    // login HTML, not JSON - calling r.json() directly on
+                                    // that throws a confusing parse error instead of the
+                                    // "your session expired" message this can show instead.
+                                    return r.text().then(function (text) {
+                                        var data = null;
+                                        try { data = text ? JSON.parse(text) : null; } catch (e) { /* not JSON */ }
+                                        return { ok: r.ok, status: r.status, data: data };
+                                    });
+                                })
+                                .then(function (result) {
+                                    // 419 = CSRF token mismatch; a non-JSON 200 body here means
+                                    // the request got bounced to a login page instead - either
+                                    // way the session is gone and the embedded CSRF token can
+                                    // never become valid again without a fresh page load.
+                                    if (result.status === 419 || (result.ok && !result.data)) {
+                                        reloading = true;
+                                        if (errorBox) {
+                                            errorBox.textContent = 'Your session expired - reloading…';
+                                            errorBox.style.display = 'block';
+                                        }
+                                        setTimeout(function () { location.reload(); }, 1200);
+                                        return;
+                                    }
+
+                                    if (!result.ok) throw new Error((result.data && result.data.message) || 'Failed to send message.');
+
+                                    if (messagesEl && result.data.message_html) {
+                                        var newId = result.data.latest_message_id;
+                                        // The regular poll tick can win the race and render this
+                                        // same message first if it resolves before this request
+                                        // does (the row is committed to the DB before this
+                                        // response is even built) - skip re-inserting it.
+                                        if (!document.getElementById('wa-msg-' + newId)) {
+                                            messagesEl.insertAdjacentHTML('beforeend', result.data.message_html);
+                                            messagesEl.scrollTop = messagesEl.scrollHeight;
+                                        }
+                                        if (window.__waAdvanceCursor) window.__waAdvanceCursor(newId);
+                                    }
+
+                                    // Pick up the updated sidebar preview/order right away
+                                    // instead of waiting for the next 4s poll tick.
+                                    if (window.__waPollNow) window.__waPollNow();
+                                })
+                                .catch(function (err) {
+                                    if (errorBox) {
+                                        errorBox.textContent = err.message || 'Failed to send message.';
+                                        errorBox.style.display = 'block';
+                                    }
+                                })
+                                .finally(function () {
+                                    // Only an expired session locks the composer -
+                                    // the page is about to reload under it.
+                                    btn.disabled = reloading;
+                                    input.readOnly = reloading;
+                                });
                         });
                     })();
                 </script>
@@ -245,8 +444,26 @@
         </div>
 
         <!-- Right Sidebar - Family Details -->
-        <div id="wa-family-panel" style="width: 290px; min-height: 0; border-left: 1px solid #EBE4DA; background: #FFFDFA; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; overflow-y: auto;">
-            <div style="font: 600 16px 'Baloo 2'; color: #16436E;">Family details</div>
+        <div id="wa-family-panel" class="wa-panel" style="width: 290px; min-height: 0; border-left: 1px solid #EBE4DA; background: #FFFDFA; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; overflow-y: auto;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+                <div style="flex: 1; font: 600 16px 'Baloo 2'; color: #16436E;">Family details</div>
+                <button type="button" id="wa-panel-close" class="wa-panel-close" aria-label="Close family details" style="display: none; align-items: center; justify-content: center; width: 30px; height: 30px; flex-shrink: 0; background: #F6F3EE; border: 1px solid #E2DACE; border-radius: 9px; cursor: pointer;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6L18 18" stroke="#5A6B7E" stroke-width="2.2" stroke-linecap="round"/></svg>
+                </button>
+            </div>
+
+            @if ($activeContact)
+                <div class="wa-panel-mobile-actions" style="display: none; flex-direction: column; gap: 9px;">
+                    <form action="{{ route('whatsapp.updateAiState', $activeContact->id) }}" method="POST" style="margin: 0;">
+                        @csrf
+                        <select name="ai_state" onchange="this.form.submit()" style="width: 100%; background: #FFFFFF; color: #16436E; border: 1px solid #E2DACE; border-radius: 10px; padding: 11px 10px; font: 800 12.5px 'Nunito Sans'; cursor: pointer;">
+                            @foreach (\App\Models\WhatsappContact::aiStateLabels() as $value => $label)
+                                <option value="{{ $value }}" @selected($activeContact->ai_state === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </form>
+                </div>
+            @endif
 
             @if ($activeContact?->lead)
                 @php $lead = $activeContact->lead; @endphp
@@ -276,59 +493,35 @@
                 <div style="text-align: center; background: #E3F1E9; color: #1F7A4D; border-radius: 10px; padding: 12px; font: 800 13px 'Nunito Sans';">In leads pipeline &#10003;</div>
             @elseif ($activeContact)
                 @php
-                    $childName = $activeContact->child_name ?? $leadHints['child_name'] ?? '';
-                    $interestedIn = $activeContact->interested_in ?? $leadHints['interested_in'] ?? '';
-                    $insurance = $activeContact->insurance ?? $leadHints['insurance'] ?? '';
-                    $fieldLabelStyle = "font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px; display: block; margin-bottom: 4px;";
-                    $fieldInputStyle = "width: 100%; box-sizing: border-box; font: 700 12px 'Nunito Sans'; color: #2B3A4C; padding: 6px 8px; border: 1px solid #EBE4DA; border-radius: 8px; background: #FFFFFF;";
+                    $childName = $activeContact->child_name ?? $leadHints['child_name'] ?? null;
+                    $interestedIn = $activeContact->interested_in ?? $leadHints['interested_in'] ?? null;
+                    $insurance = $activeContact->insurance ?? $leadHints['insurance'] ?? null;
                 @endphp
-                <form action="{{ route('whatsapp.updateFamilyDetails', $activeContact->id) }}" method="POST">
-                    @csrf
-                    <div style="display: flex; flex-direction: column;">
-                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
-                            <label style="{{ $fieldLabelStyle }}">Child</label>
-                            <input type="text" name="child_name" value="{{ old('child_name', $childName) }}" placeholder="Child's name" style="{{ $fieldInputStyle }}">
-                            @if($leadHints['child_age'] ?? null)
-                                <div style="font: 600 10.5px 'Nunito Sans'; color: #98897A; margin-top: 3px;">Detected age: {{ $leadHints['child_age'] }} yrs</div>
-                            @endif
-                        </div>
-                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
-                            <label style="{{ $fieldLabelStyle }}">Interested in</label>
-                            <select name="interested_in" style="{{ $fieldInputStyle }}">
-                                <option value="">—</option>
-                                @foreach ($services as $service)
-                                    <option value="{{ $service->name }}" @selected(old('interested_in', $interestedIn) === $service->name)>{{ $service->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
-                            <label style="{{ $fieldLabelStyle }}">Source</label>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ ucfirst($activeContact->channel) }}</div>
-                        </div>
-                        <div style="padding: 6px 0; border-bottom: 1px solid #F3EDE3;">
-                            <label style="{{ $fieldLabelStyle }}">First contact</label>
-                            <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $activeContact->created_at->format('M j, H:i') }}</div>
-                        </div>
-                        <div style="padding: 6px 0;">
-                            <label style="{{ $fieldLabelStyle }}">Insurance mentioned</label>
-                            <select name="insurance" style="{{ $fieldInputStyle }}">
-                                <option value="">—</option>
-                                <option value="Not sure yet" @selected(old('insurance', $insurance) === 'Not sure yet')>Not sure yet</option>
-                                <option value="Daman" @selected(old('insurance', $insurance) === 'Daman')>Daman</option>
-                                <option value="Daman Enhanced" @selected(old('insurance', $insurance) === 'Daman Enhanced')>Daman Enhanced</option>
-                                <option value="Thiqa" @selected(old('insurance', $insurance) === 'Thiqa')>Thiqa</option>
-                                <option value="ADNIC" @selected(old('insurance', $insurance) === 'ADNIC')>ADNIC</option>
-                                <option value="AXA / GIG" @selected(old('insurance', $insurance) === 'AXA / GIG')>AXA / GIG</option>
-                                <option value="Self-pay" @selected(old('insurance', $insurance) === 'Self-pay')>Self-pay</option>
-                            </select>
-                        </div>
+                <div style="display: flex; flex-direction: column;">
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Child</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $childName ?? '—' }} @if($leadHints['child_age'] ?? null) · {{ $leadHints['child_age'] }} @endif</div>
                     </div>
-
-                    <button type="submit" style="width: 100%; text-align: center; background: #FFFFFF; color: #16436E; border: 1px solid #16436E; border-radius: 10px; padding: 10px; font: 800 13px 'Nunito Sans'; cursor: pointer; margin-top: 10px;">Save details</button>
-                </form>
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Interested in</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $interestedIn ?? '—' }}</div>
+                    </div>
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Source</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ ucfirst($activeContact->channel) }}</div>
+                    </div>
+                    <div style="padding: 10px 0; border-bottom: 1px solid #F3EDE3;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">First contact</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $activeContact->created_at->format('M j, H:i') }}</div>
+                    </div>
+                    <div style="padding: 10px 0;">
+                        <div style="font: 700 10.5px 'Nunito Sans'; color: #98897A; text-transform: uppercase; letter-spacing: 0.6px;">Insurance mentioned</div>
+                        <div style="font: 800 13px 'Nunito Sans'; color: #2B3A4C; margin-top: 2px;">{{ $insurance ?? '—' }}</div>
+                    </div>
+                </div>
 
                 <div style="background: #F3EDE3; border-radius: 10px; padding: 12px 14px; font: 600 12px/1.5 'Nunito Sans'; color: #5A6B7E;">
-                    Child/interested in/insurance are auto-detected from the conversation until you edit and save them here. No lead created yet — review and convert when ready.
+                    Auto-detected from the conversation. No lead created yet — review and convert when ready.
                 </div>
 
                 <form action="{{ route('whatsapp.convertToLead', $activeContact->id) }}" method="POST">
@@ -346,6 +539,8 @@
                 </div>
             @endif
         </div>
+
+        <div id="wa-panel-backdrop" class="wa-panel-backdrop"></div>
 
     </div>
 
@@ -389,11 +584,13 @@
             function sizeContactList() {
                 if (!list) return;
                 var top = list.getBoundingClientRect().top;
-                var maxHeight = window.innerHeight - top;
-                list.style.maxHeight = Math.max(maxHeight, 160) + 'px';
+                var viewport = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+                list.style.maxHeight = Math.max(viewport - top, 160) + 'px';
             }
             sizeContactList();
             window.addEventListener('resize', sizeContactList);
+            window.addEventListener('orientationchange', sizeContactList);
+            if (window.visualViewport) window.visualViewport.addEventListener('resize', sizeContactList);
 
             if (filterBar) {
                 filterBar.querySelectorAll('.wa-filter-pill').forEach(function (pill) {
@@ -412,9 +609,25 @@
             var pollUrl = @json(route('whatsapp.poll'));
             var activeContactId = new URLSearchParams(window.location.search).get('contact');
             var messagesEl = document.getElementById('wa-messages');
+            var pollInFlight = false;
+
+            // Never move the cursor backwards - a manual poll (fired right after a
+            // send) and the regular interval tick can both be in flight at once, and
+            // whichever response happens to resolve second must not undo a cursor
+            // the other one already advanced.
+            function advanceCursor(id) {
+                if (!messagesEl || !id) return;
+                var current = parseInt(messagesEl.dataset.lastMessageId || '0', 10);
+                if (id > current) messagesEl.dataset.lastMessageId = String(id);
+            }
 
             function poll() {
                 if (document.visibilityState === 'hidden') return;
+                // Two overlapping requests with the same stale `after` cursor would
+                // both come back with the same "new" messages and each insert them,
+                // producing duplicate bubbles - only one poll may be in flight.
+                if (pollInFlight) return;
+                pollInFlight = true;
 
                 var params = new URLSearchParams();
                 if (activeContactId) params.set('contact', activeContactId);
@@ -431,14 +644,72 @@
                         if (messagesEl && data.messages_html) {
                             var wasNearBottom = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight < 80;
                             messagesEl.insertAdjacentHTML('beforeend', data.messages_html);
-                            messagesEl.dataset.lastMessageId = data.latest_message_id;
+                            advanceCursor(data.latest_message_id);
                             if (wasNearBottom) messagesEl.scrollTop = messagesEl.scrollHeight;
                         }
+
+                        // A bubble is drawn before its send has finished, so the
+                        // word underneath it ("Sending") has to be brought up to
+                        // date here rather than only on a reload.
+                        (data.statuses || []).forEach(function (s) {
+                            var el = document.querySelector('[data-msg-status="' + s.id + '"]');
+                            if (el && el.textContent !== s.label) {
+                                el.textContent = s.label;
+                                el.classList.toggle('is-failed', s.status === 'failed');
+                                if (s.error) el.setAttribute('title', s.error);
+                                else el.removeAttribute('title');
+                            }
+
+                            var tick = document.querySelector('[data-msg-tick="' + s.id + '"]');
+                            if (tick && tick.innerHTML !== s.tick) tick.innerHTML = s.tick;
+                        });
                     })
-                    .catch(function () { /* transient network hiccup - just try again next tick */ });
+                    .catch(function () { /* transient network hiccup - just try again next tick */ })
+                    .finally(function () { pollInFlight = false; });
             }
 
+            // Exposed so a just-sent message can force an immediate refresh of the
+            // sidebar (preview text, ordering) instead of waiting for the next tick.
+            window.__waPollNow = poll;
+            window.__waAdvanceCursor = advanceCursor;
+
             setInterval(poll, 4000);
+        })();
+
+        // Family details drawer - only reachable below 1180px, where the panel
+        // is a slide-over instead of a third column.
+        (function () {
+            var panel = document.getElementById('wa-family-panel');
+            var backdrop = document.getElementById('wa-panel-backdrop');
+            var toggle = document.getElementById('wa-details-toggle');
+            var closeBtn = document.getElementById('wa-panel-close');
+            if (!panel) return;
+
+            function open() {
+                panel.classList.add('is-open');
+                if (backdrop) backdrop.classList.add('is-open');
+            }
+
+            function close() {
+                panel.classList.remove('is-open');
+                if (backdrop) backdrop.classList.remove('is-open');
+            }
+
+            if (toggle) toggle.addEventListener('click', function () {
+                panel.classList.contains('is-open') ? close() : open();
+            });
+            if (backdrop) backdrop.addEventListener('click', close);
+            if (closeBtn) closeBtn.addEventListener('click', close);
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') close();
+            });
+
+            // Widening past the breakpoint puts the panel back in the flow; drop
+            // the open state with it so the backdrop can't linger over a layout
+            // that no longer has a drawer.
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 1180) close();
+            });
         })();
     </script>
 @endsection
