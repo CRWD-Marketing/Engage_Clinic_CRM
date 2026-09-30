@@ -20,6 +20,37 @@ class Contact extends Model
     const STATUS_CLOSED = 'closed';
 
     /**
+     * Free-consultation start times (Abu Dhabi time), offered by the website
+     * booking, the contact form and staff rescheduling in CRM -> Contacts.
+     */
+    const CONSULTATION_TIMES = [
+        '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+        '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM',
+    ];
+
+    /**
+     * Insurance choices, value => label: the clinic's active payers (Billing ->
+     * Insurances) plus the two answers every family can give. Same values Leads
+     * uses, so they carry over on convert.
+     */
+    public static function insuranceOptions(): array
+    {
+        return Insurance::where('is_active', true)->orderBy('name')->pluck('name')
+            ->reject(fn ($name) => in_array(mb_strtolower($name), ['self-pay', 'self pay', 'not sure yet'], true))
+            ->mapWithKeys(fn ($name) => [$name => $name])
+            ->merge(['Self-pay' => 'Self-pay (no insurance)', 'Not sure yet' => 'Not sure yet'])
+            ->all();
+    }
+
+    /**
+     * The slot can be set or moved until the decision has been emailed.
+     */
+    public function isSlotEditable(): bool
+    {
+        return in_array($this->status, [self::STATUS_NEW, self::STATUS_APPROVED, self::STATUS_REJECTED], true);
+    }
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var array<int, string>
@@ -31,6 +62,7 @@ class Contact extends Model
         'email',
         'phone',
         'interested_in',
+        'insurance',
         'message',
         'booking_date',
         'booking_time',

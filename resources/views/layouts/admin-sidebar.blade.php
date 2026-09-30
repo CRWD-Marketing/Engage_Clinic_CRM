@@ -811,6 +811,21 @@
             </a>
             @endif
 
+            @if(Auth::user()->canAccessFeature('cms_forms'))
+            <a href="{{ route('cms.forms.index') }}" class="sidebar-link {{ request()->routeIs('cms.forms.*') ? 'active' : '' }}" title="CMS Forms">
+                <i class="fas fa-clipboard-list"></i> <span class="link-label">CMS Forms</span>
+                @php
+                    $formResponseCount = \App\Models\FormSubmission::where('status', \App\Models\FormSubmission::STATUS_NEW)->count();
+                @endphp
+                @if($formResponseCount > 0)
+                    <span class="badge badge-pulse">{{ $formResponseCount }}</span>
+                    <span class="collapsed-dot"></span>
+                @else
+                    <span class="badge badge-zero">0</span>
+                @endif
+            </a>
+            @endif
+
             @if(Auth::user()->canAccessFeature('whatsapp'))
             <a href="{{ route('whatsapp.index') }}" class="sidebar-link {{ request()->routeIs('whatsapp.index') ? 'active' : '' }}" title="WhatsApp">
                 <i class="fab fa-whatsapp"></i> <span class="link-label">WhatsApp</span>

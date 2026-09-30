@@ -38,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'voice/bridge/call-start',
             'voice/bridge/turn',
             'voice/bridge/call-end',
+            // Public CMS form submissions - see routes/cms_forms.php.
+            'forms/*',
         ]);
 
     })

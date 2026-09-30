@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ContactController extends Controller
 {
@@ -41,7 +42,9 @@ class ContactController extends Controller
             fn ($label, $key) => [$key => $allContacts->where('status', $key)->count()]
         )->all();
 
-        return view('contact.index', compact('contacts', 'activeContact', 'statuses', 'newCount', 'totalCount', 'statusCounts'));
+        $consultationTimes = Contact::CONSULTATION_TIMES;
+
+        return view('contact.index', compact('contacts', 'activeContact', 'statuses', 'newCount', 'totalCount', 'statusCounts', 'consultationTimes'));
     }
 
     /**
@@ -57,7 +60,23 @@ class ContactController extends Controller
             'phone' => 'nullable|string|max:20',
             'interested_in' => 'nullable|string|max:100',
             'message' => 'nullable|string',
+            // Staff set or move the requested consultation from the Contacts dialog.
+            'booking_date' => 'nullable|date|after_or_equal:today',
+            'booking_time' => ['nullable', 'required_with:booking_date', Rule::in(Contact::CONSULTATION_TIMES)],
+        ], [
+            'booking_date.after_or_equal' => 'Pick today or a later date.',
+            'booking_time.required_with' => 'Choose a time for the consultation.',
+            'booking_time.in' => 'Choose one of the consultation times.',
         ]);
+
+        $validator->after(function ($v) use ($request, $contact) {
+            if ($request->has('booking_date') && ! $contact->isSlotEditable()) {
+                $v->errors()->add('booking_date', 'The decision has already been emailed, so this slot can no longer be changed.');
+            }
+            if ($request->has('booking_date') && $request->filled('booking_date')
+                && in_array(\Carbon\Carbon::parse($request->input('booking_date'))->dayOfWeek, [\Carbon\Carbon::FRIDAY, \Carbon\Carbon::SATURDAY], true)) {
+                $v->errors()->add('booking_date', 'The clinic is closed on Fridays and Saturdays.');
+            }        });
 
         if ($validator->fails()) {
             return response()->json([
@@ -66,7 +85,11 @@ class ContactController extends Controller
             ], 422);
         }
 
-        $contact->update($validator->validated());
+        $data = $validator->validated();
+        if (array_key_exists('booking_date', $data) && ! $data['booking_date']) {
+            $data['booking_time'] = null; // clearing the date clears the slot
+        }
+        $contact->update($data);
 
         return response()->json([
             'success' => true,
@@ -202,6 +225,7 @@ class ContactController extends Controller
             'email' => $contact->email,
             'source' => 'Contact Us',
             'interested_in' => $contact->interested_in,
+            'insurance' => $contact->insurance,
             'notes' => $contact->message ?: '',
         ]);
 
@@ -226,9 +250,10 @@ class ContactController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'required|string|max:20',
             'interested_in' => 'nullable|string|max:100',
+            'insurance' => 'nullable|string|max:50',
             'message' => 'nullable|string',
-            'booking_date' => 'nullable|date',
-            'booking_time' => 'nullable|string|max:20',
+            'booking_date' => 'nullable|date|after_or_equal:today',
+            'booking_time' => ['nullable', 'required_with:booking_date', Rule::in(Contact::CONSULTATION_TIMES)],
         ]);
 
         if ($validator->fails()) {

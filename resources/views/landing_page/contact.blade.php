@@ -17,6 +17,25 @@
   </div>
 </section>
 
+<style>
+  /* Preferred consultation: a date field that drops down the booking modal's
+     month calendar (.cal-* styles), and a time dropdown. */
+  .ct-date-field { position: relative; }
+  .ct-date-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; color: var(--text); }
+  .ct-date-btn svg { color: var(--text-muted); flex-shrink: 0; }
+  .ct-date-btn[aria-expanded=true] { border-color: var(--pink); box-shadow: 0 0 0 3px rgba(200,53,95,.1); }
+  .ct-placeholder { color: var(--text-muted); }
+  .ct-cal { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 310px; max-width: calc(100vw - 48px); padding: 14px; background: #fff; border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 18px 40px -12px rgba(22, 67, 110, .28); }
+  .ct-cal[hidden] { display: none; }
+  .ct-cal .cal-day { font-size: 12.5px; }
+  .ct-cal .cal-legend { margin-top: 10px; gap: 12px; font-size: 11.5px; }
+  .ct-cal .carousel-btn:disabled { opacity: .35; pointer-events: none; }
+  select.crm-select:disabled { opacity: .6; cursor: not-allowed; }
+  .ct-slot-note { margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+  .ct-slot-note.is-set { color: var(--navy); font-weight: 700; }
+  .ct-slot-note button { margin-left: 6px; font-weight: 700; color: var(--pink); text-decoration: underline; }
+</style>
+
 <!-- Contact info + form -->
 <section class="py-16 md:py-24 dotted">
   <div class="max-w-6xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -96,14 +115,68 @@
           <label class="crm-label">Phone Number</label>
           <input type="tel" id="ct_phone" placeholder="+971 5x xxx xxxx" class="crm-input" required>
         </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="crm-label">Service of Interest</label>
+            <select id="ct_interested_in" class="crm-select">
+              <option value="">Select a program…</option>
+              @foreach ($publicServices as $service)
+                <option value="{{ $service->name }}">{{ $service->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          <div>
+            <label class="crm-label">Insurance</label>
+            <select id="ct_insurance" class="crm-select">
+              <option value="">Select your insurance…</option>
+              @foreach ($publicInsurances as $value => $label)
+                <option value="{{ $value }}">{{ $label }}</option>
+              @endforeach
+            </select>
+          </div>
+        </div>
+
+        <!-- Preferred consultation time - same days and slots as the Free Consultation booking. -->
         <div>
-          <label class="crm-label">Service of Interest</label>
-          <select id="ct_interested_in" class="crm-select">
-            <option value="">Select a program…</option>
-            @foreach ($publicServices as $service)
-              <option value="{{ $service->name }}">{{ $service->name }}</option>
-            @endforeach
-          </select>
+          <div class="flex items-baseline justify-between gap-2 mb-1">
+            <span class="crm-label !mb-0">Preferred consultation</span>
+            <span class="text-[11px] text-[var(--text-muted)]">Optional</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="ct-date-field">
+              <label class="crm-label" for="ctDateBtn">Date</label>
+              <button type="button" id="ctDateBtn" class="crm-select ct-date-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="ctCal">
+                <span id="ctDateText" class="ct-placeholder">Select a date…</span>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              </button>
+              <div class="ct-cal" id="ctCal" role="dialog" aria-label="Choose a date" hidden>
+                <div class="cal-nav">
+                  <button type="button" class="carousel-btn" id="ctCalPrev" aria-label="Previous month">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                  </button>
+                  <span id="ctCalLabel" class="display"></span>
+                  <button type="button" class="carousel-btn" id="ctCalNext" aria-label="Next month">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                  </button>
+                </div>
+                <div class="cal-weekdays">
+                  <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+                <div class="cal-grid" id="ctCalGrid"></div>
+                <div class="cal-legend">
+                  <span><i class="swatch today"></i> Today</span>
+                  <span><i class="swatch unavailable"></i> Closed (Fri–Sat)</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label class="crm-label" for="ctTime">Time</label>
+              <select id="ctTime" class="crm-select" disabled>
+                <option value="">Pick a date first</option>
+              </select>
+            </div>
+          </div>
+          <p class="ct-slot-note" id="ctSlotNote">All times are Abu Dhabi time (GST). We're closed Fridays and Saturdays.</p>
         </div>
         <div>
           <label class="crm-label">Tell us about your child</label>
@@ -127,142 +200,7 @@
   </div>
 </section>
 
-<!-- Booking modal -->
-<div class="modal-overlay" id="bookingOverlay">
-  <div class="modal-card">
-    <div class="modal-header">
-      <div>
-        <h3 class="display">Book a Free Consultation</h3>
-        <p>30 minutes · No obligation · Health insurance accepted</p>
-      </div>
-      <button type="button" class="modal-close" onclick="closeBookingModal()" aria-label="Close">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>
-    </div>
-
-    <div class="modal-stepper">
-      <div class="step-node" id="stepNode1"><span class="step-circle">1</span><span class="step-label">Pick a Date</span></div>
-      <span class="step-line"></span>
-      <div class="step-node" id="stepNode2"><span class="step-circle">2</span><span class="step-label">Choose a Time</span></div>
-      <span class="step-line"></span>
-      <div class="step-node" id="stepNode3"><span class="step-circle">3</span><span class="step-label">Your Details</span></div>
-    </div>
-
-    <div class="modal-body">
-
-      <!-- Step 1: Date -->
-      <div class="modal-step" id="modalStep1">
-        <div class="cal-nav">
-          <button type="button" class="carousel-btn" onclick="changeMonth(-1)" aria-label="Previous month">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-          </button>
-          <span id="calMonthLabel" class="display"></span>
-          <button type="button" class="carousel-btn" onclick="changeMonth(1)" aria-label="Next month">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
-        </div>
-        <div class="cal-weekdays">
-          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-        </div>
-        <div class="cal-grid" id="calGrid"></div>
-        <div class="cal-legend">
-          <span><i class="swatch today"></i> Today</span>
-          <span><i class="swatch unavailable"></i> Unavailable (Fri–Sat)</span>
-        </div>
-        <div class="modal-footer">
-          <span></span>
-          <button type="button" class="btn-pink" id="dateContinueBtn" disabled onclick="goToStep(2)">Continue →</button>
-        </div>
-      </div>
-
-      <!-- Step 2: Time -->
-      <div class="modal-step hidden" id="modalStep2">
-        <button type="button" class="step-back" onclick="goToStep(1)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <h4 class="display modal-step-title">Choose a time</h4>
-        <p class="modal-step-subtitle" id="timeStepDate"></p>
-        <div class="time-grid" id="timeGrid"></div>
-        <p class="tz-note">All times are Abu Dhabi Standard Time (GST, UTC+4)</p>
-        <div class="modal-footer">
-          <button type="button" class="btn-ghost" onclick="goToStep(1)">Back</button>
-          <button type="button" class="btn-pink" id="timeContinueBtn" disabled onclick="goToStep(3)">Continue →</button>
-        </div>
-      </div>
-
-      <!-- Step 3: Details -->
-      <div class="modal-step hidden" id="modalStep3">
-        <button type="button" class="step-back" onclick="goToStep(2)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <h4 class="display modal-step-title">Your details</h4>
-        <p class="modal-step-subtitle" id="detailsStepDate"></p>
-
-        <div class="booking-summary">
-          <div class="icon-box !rounded-full">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </div>
-          <div>
-            <p class="font-bold text-[var(--navy)] text-sm" id="summaryDate"></p>
-            <p class="text-xs text-[var(--text-secondary)] mt-0.5" id="summaryTime"></p>
-          </div>
-        </div>
-
-        <div id="bookingSuccess" style="display:none;background:#E4F6EB;color:#1E8A4C;padding:12px 14px;border-radius:10px;margin:15px 0 0;font-size:13.5px;font-weight:600;border:1px solid #BFE9CE;"></div>
-        <div id="bookingError" style="display:none;background:#FEF2F2;color:#B91C1C;padding:12px 14px;border-radius:10px;margin:15px 0 0;font-size:13.5px;font-weight:600;border:1px solid #FECACA;"></div>
-
-        <form id="bookingForm" class="space-y-4 mt-5" onsubmit="submitBooking(event)">
-          <div class="grid grid-cols-1 sm:grid-cols-[1fr_110px] gap-3">
-            <div>
-              <label class="crm-label">Child's name *</label>
-              <input type="text" id="bk_child_name" placeholder="e.g. Hamad" class="crm-input" required>
-            </div>
-            <div>
-              <label class="crm-label">Age</label>
-              <input type="text" id="bk_child_age" placeholder="5" class="crm-input">
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="crm-label">Full name *</label>
-              <input type="text" id="bk_name" placeholder="Parent / Guardian name" class="crm-input" required>
-            </div>
-            <div>
-              <label class="crm-label">Phone *</label>
-              <input type="tel" id="bk_phone" placeholder="+971 5x xxx xxxx" class="crm-input" required>
-            </div>
-          </div>
-          <div>
-            <label class="crm-label">Email address *</label>
-            <input type="email" id="bk_email" placeholder="you@email.com" class="crm-input" required>
-          </div>
-          <div>
-            <label class="crm-label">Service of interest</label>
-            <select id="bk_service" class="crm-select">
-              <option value="">Select a service…</option>
-              @foreach ($publicServices as $service)
-                <option value="{{ $service->name }}">{{ $service->name }}</option>
-              @endforeach
-            </select>
-          </div>
-          <div>
-            <label class="crm-label">Notes (optional)</label>
-            <textarea id="bk_notes" rows="3" placeholder="Brief note about your child's needs or any questions you have…" class="crm-input" style="resize:vertical;"></textarea>
-          </div>
-          <div class="modal-footer !border-t-0 !pt-0">
-            <button type="button" class="btn-ghost" onclick="goToStep(2)">Back</button>
-            <button type="submit" class="btn-pink" id="confirmBookingBtn">
-              Confirm Booking
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-            </button>
-          </div>
-          <p class="text-center text-xs text-[var(--text-muted)]">We'll confirm your slot within 24 hours. Health insurance accepted.</p>
-        </form>
-      </div>
-
-    </div>
-  </div>
-</div>
+@include('landing_page.partials.booking-modal')
 
 @endsection
 
@@ -358,6 +296,98 @@
   }
   window.addEventListener('pageshow', syncConsentGate);
 
+  // ---- Preferred consultation (date + time) ----
+  // Date: a collapsed field that drops down the booking modal's month calendar
+  // (past days and Fri–Sat closed). Time: a dropdown of the booking modal's
+  // TIME_SLOTS. Optional - nothing picked sends a plain message; a date
+  // without a time is caught before sending.
+  const ctSlot = { date: null, time: null, monthOffset: 0 };
+  const ctDateBtn = document.getElementById('ctDateBtn');
+  const ctCal = document.getElementById('ctCal');
+  const ctTime = document.getElementById('ctTime');
+
+  function setCtCalOpen(open) {
+    ctCal.hidden = !open;
+    ctDateBtn.setAttribute('aria-expanded', open);
+    if (open) {
+      // Open on the chosen date's month, or the current one.
+      const now = new Date();
+      ctSlot.monthOffset = ctSlot.date ? (ctSlot.date.getFullYear() - now.getFullYear()) * 12 + ctSlot.date.getMonth() - now.getMonth() : 0;
+      renderCtCalendar();
+    }
+  }
+  ctDateBtn.addEventListener('click', () => setCtCalOpen(ctCal.hidden));
+  document.addEventListener('click', (e) => { if (!ctCal.hidden && !e.target.closest('.ct-date-field')) setCtCalOpen(false); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !ctCal.hidden) { setCtCalOpen(false); ctDateBtn.focus(); } });
+
+  function renderCtCalendar() {
+    const base = new Date();
+    base.setDate(1);
+    base.setMonth(base.getMonth() + ctSlot.monthOffset);
+    document.getElementById('ctCalLabel').textContent = base.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    document.getElementById('ctCalPrev').disabled = ctSlot.monthOffset <= 0;
+
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const year = base.getFullYear(), month = base.getMonth();
+    const grid = document.getElementById('ctCalGrid');
+    grid.innerHTML = '';
+    for (let i = 0; i < new Date(year, month, 1).getDay(); i++) {
+      const pad = document.createElement('div');
+      pad.className = 'cal-day faded';
+      grid.appendChild(pad);
+    }
+    for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
+      const day = new Date(year, month, d);
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'cal-day';
+      cell.textContent = d;
+      const closed = day < today || day.getDay() === 5 || day.getDay() === 6;
+      const on = ctSlot.date && day.getTime() === ctSlot.date.getTime();
+      if (closed) { cell.classList.add('disabled'); cell.disabled = true; }
+      if (day.getTime() === today.getTime()) cell.classList.add('today');
+      if (on) cell.classList.add('selected');
+      cell.setAttribute('aria-label', day.toLocaleDateString('en-GB', WEEKDAY_FMT) + (closed ? ' (unavailable)' : ''));
+      if (!closed) cell.addEventListener('click', () => {
+        ctSlot.date = day;
+        setCtCalOpen(false);
+        renderCtSlots();
+        ctTime.focus();
+      });
+      grid.appendChild(cell);
+    }
+  }
+  document.getElementById('ctCalPrev').addEventListener('click', () => { ctSlot.monthOffset = Math.max(0, ctSlot.monthOffset - 1); renderCtCalendar(); });
+  document.getElementById('ctCalNext').addEventListener('click', () => { ctSlot.monthOffset++; renderCtCalendar(); });
+
+  ctTime.addEventListener('change', () => { ctSlot.time = ctTime.value || null; renderCtNote(); });
+
+  function renderCtSlots() {
+    const dateText = document.getElementById('ctDateText');
+    dateText.textContent = ctSlot.date ? ctSlot.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Select a date…';
+    dateText.classList.toggle('ct-placeholder', !ctSlot.date);
+
+    ctTime.disabled = !ctSlot.date;
+    ctTime.innerHTML = '';
+    ctTime.add(new Option(ctSlot.date ? 'Select a time…' : 'Pick a date first', ''));
+    if (ctSlot.date) TIME_SLOTS.forEach(t => ctTime.add(new Option(t, t, false, t === ctSlot.time)));
+    renderCtNote();
+  }
+
+  function renderCtNote() {
+    const note = document.getElementById('ctSlotNote');
+    note.classList.toggle('is-set', !!(ctSlot.date && ctSlot.time));
+    if (ctSlot.date && ctSlot.time) {
+      note.innerHTML = `Requested: ${ctSlot.date.toLocaleDateString('en-GB', WEEKDAY_FMT)} at ${ctSlot.time} · 30-min free consultation <button type="button" id="ctSlotClear">Clear</button>`;
+      document.getElementById('ctSlotClear').addEventListener('click', () => { ctSlot.date = null; ctSlot.time = null; renderCtSlots(); });
+    } else if (ctSlot.date) {
+      note.textContent = 'Now choose a time (Abu Dhabi time).';
+    } else {
+      note.textContent = "All times are Abu Dhabi time (GST). We're closed Fridays and Saturdays.";
+    }
+  }
+  renderCtSlots();
+
   // ---- Inline contact form ----
   async function submitContact(event) {
     event.preventDefault();
@@ -381,7 +411,16 @@
     const phone = document.getElementById('ct_phone').value.trim();
     const email = document.getElementById('ct_email').value.trim();
     const interestedIn = document.getElementById('ct_interested_in').value;
+    const insurance = document.getElementById('ct_insurance').value;
     const message = document.getElementById('ct_message').value.trim();
+
+    if (ctSlot.date && !ctSlot.time) {
+      errorBox.style.display = 'block';
+      errorBox.textContent = 'Choose a time for your consultation, or clear the date you picked.';
+      ctTime.focus();
+      return;
+    }
+    const slotText = ctSlot.date ? `${ctSlot.date.toLocaleDateString('en-GB', WEEKDAY_FMT)} at ${ctSlot.time}` : null;
 
     const btn = ctSubmitBtn;
     const originalText = btn.textContent;
@@ -396,13 +435,19 @@
         email: email,
         phone: phone,
         interested_in: interestedIn,
-        message: message,
+        insurance: insurance,
+        // Same shape as a booking, so the slot shows in CRM -> Contacts.
+        message: slotText ? `Preferred consultation: ${slotText} (30-min free consultation)` + (message ? `\n${message}` : '') : message,
+        booking_date: ctSlot.date ? bookingIsoDate(ctSlot.date) : null,
+        booking_time: ctSlot.date ? ctSlot.time : null,
       });
 
       if (result.ok && result.data && result.data.success) {
         document.getElementById('contactForm').style.display = 'none';
         successBox.style.display = 'block';
-        successBox.textContent = "Message received — we'll be in touch within 24 hours.";
+        successBox.textContent = slotText
+          ? `Message received — we'll confirm your consultation on ${slotText} within 24 hours.`
+          : "Message received — we'll be in touch within 24 hours.";
         return;
       }
 
@@ -428,201 +473,5 @@
     }
   }
 
-  // ---- Booking modal ----
-  const bookingState = { date: null, time: null, monthOffset: 0 };
-  const TIME_SLOTS = ['9:00 AM','9:30 AM','10:00 AM','10:30 AM','11:00 AM','11:30 AM','1:00 PM','1:30 PM','2:00 PM','2:30 PM','3:00 PM','3:30 PM','4:00 PM','4:30 PM'];
-  const WEEKDAY_FMT = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-
-  function openBookingModal() {
-    if (typeof mobileMenu !== 'undefined' && mobileMenu) mobileMenu.classList.add('hidden');
-    document.getElementById('bookingOverlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
-    bookingState.date = null;
-    bookingState.time = null;
-    bookingState.monthOffset = 0;
-    document.getElementById('dateContinueBtn').disabled = true;
-    document.getElementById('timeContinueBtn').disabled = true;
-    document.getElementById('bookingForm').reset();
-    document.getElementById('bookingSuccess').style.display = 'none';
-    document.getElementById('bookingError').style.display = 'none';
-    document.getElementById('bookingForm').style.display = '';
-    renderCalendar();
-    goToStep(1);
-  }
-
-  function closeBookingModal() {
-    document.getElementById('bookingOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  document.getElementById('bookingOverlay').addEventListener('click', (e) => {
-    if (e.target.id === 'bookingOverlay') closeBookingModal();
-  });
-
-  function goToStep(step) {
-    [1, 2, 3].forEach(n => {
-      document.getElementById('modalStep' + n).classList.toggle('hidden', n !== step);
-      const node = document.getElementById('stepNode' + n);
-      node.classList.toggle('active', n === step);
-      node.classList.toggle('done', n < step);
-      node.querySelector('.step-circle').innerHTML = n < step
-        ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>'
-        : n;
-    });
-    if (step === 2 && bookingState.date) {
-      document.getElementById('timeStepDate').textContent = bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT);
-      renderTimeSlots();
-    }
-    if (step === 3 && bookingState.date) {
-      const dateStr = bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT);
-      document.getElementById('detailsStepDate').textContent = dateStr + ' · ' + bookingState.time;
-      document.getElementById('summaryDate').textContent = dateStr;
-      document.getElementById('summaryTime').textContent = bookingState.time + ' · 30 min free consultation';
-    }
-  }
-
-  function changeMonth(dir) {
-    bookingState.monthOffset += dir;
-    renderCalendar();
-  }
-
-  function renderCalendar() {
-    const base = new Date();
-    base.setDate(1);
-    base.setMonth(base.getMonth() + bookingState.monthOffset);
-    document.getElementById('calMonthLabel').textContent = base.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const year = base.getFullYear(), month = base.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const grid = document.getElementById('calGrid');
-    grid.innerHTML = '';
-
-    for (let i = 0; i < firstDay; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'cal-day faded';
-      grid.appendChild(cell);
-    }
-
-    for (let d = 1; d <= daysInMonth; d++) {
-      const cellDate = new Date(year, month, d);
-      const cell = document.createElement('button');
-      cell.type = 'button';
-      cell.className = 'cal-day';
-      cell.textContent = d;
-      const isPast = cellDate < today;
-      const isWeekend = cellDate.getDay() === 5 || cellDate.getDay() === 6;
-      const isToday = cellDate.getTime() === today.getTime();
-      const isSelected = bookingState.date && cellDate.getTime() === bookingState.date.getTime();
-      if (isPast || isWeekend) cell.classList.add('disabled');
-      if (isToday) cell.classList.add('today');
-      if (isSelected) cell.classList.add('selected');
-      if (!isPast && !isWeekend) {
-        cell.addEventListener('click', () => {
-          bookingState.date = cellDate;
-          renderCalendar();
-          document.getElementById('dateContinueBtn').disabled = false;
-        });
-      }
-      grid.appendChild(cell);
-    }
-  }
-
-  function renderTimeSlots() {
-    const grid = document.getElementById('timeGrid');
-    grid.innerHTML = '';
-    TIME_SLOTS.forEach(t => {
-      const el = document.createElement('button');
-      el.type = 'button';
-      el.className = 'time-slot' + (bookingState.time === t ? ' selected' : '');
-      el.textContent = t;
-      el.addEventListener('click', () => {
-        bookingState.time = t;
-        document.getElementById('timeContinueBtn').disabled = false;
-        renderTimeSlots();
-      });
-      grid.appendChild(el);
-    });
-  }
-
-  async function submitBooking(event) {
-    event.preventDefault();
-
-    const childName = document.getElementById('bk_child_name').value.trim();
-    const childAge = document.getElementById('bk_child_age').value.trim();
-    const name = document.getElementById('bk_name').value.trim();
-    const phone = document.getElementById('bk_phone').value.trim();
-    const email = document.getElementById('bk_email').value.trim();
-    const service = document.getElementById('bk_service').value;
-    const notes = document.getElementById('bk_notes').value.trim();
-    const successBox = document.getElementById('bookingSuccess');
-    const errorBox = document.getElementById('bookingError');
-    successBox.style.display = 'none';
-    errorBox.style.display = 'none';
-
-    if (!bookingState.date || !bookingState.time) {
-      errorBox.style.display = 'block';
-      errorBox.textContent = 'Pick a date and time before confirming.';
-      return;
-    }
-
-    const dateStr = bookingState.date.toLocaleDateString('en-GB', WEEKDAY_FMT);
-    // Y-M-D in local time, not toISOString() (which would shift the date
-    // near midnight for GST/UTC+4 users) - this is what the admin list sorts
-    // and displays as the requested consultation slot.
-    const bookingDateIso = `${bookingState.date.getFullYear()}-${String(bookingState.date.getMonth() + 1).padStart(2, '0')}-${String(bookingState.date.getDate()).padStart(2, '0')}`;
-    // A booking request is an enquiry, not a qualified lead yet - it goes to
-    // Contacts like every other website submission, for a staff member to
-    // review and manually convert. The child's name travels as its own field
-    // (so it reaches the lead on convert); the message keeps the slot and
-    // whatever the family wrote.
-    const combinedNotes = `Booking request: ${dateStr} at ${bookingState.time} (30-min free consultation)` + (notes ? `\n${notes}` : '');
-
-    const btn = document.getElementById('confirmBookingBtn');
-    const originalHTML = btn.innerHTML;
-    btn.textContent = 'Booking...';
-    btn.disabled = true;
-
-    try {
-      const result = await postJson('/api/contacts', {
-        name: name,
-        child_name: childName,
-        child_age: childAge,
-        email: email,
-        phone: phone,
-        interested_in: service,
-        message: combinedNotes,
-        booking_date: bookingDateIso,
-        booking_time: bookingState.time,
-      });
-
-      if (result.ok && result.data && result.data.success) {
-        document.getElementById('bookingForm').style.display = 'none';
-        successBox.style.display = 'block';
-        successBox.textContent = `Booking request received for ${dateStr} at ${bookingState.time}. We'll confirm within 24 hours.`;
-        return;
-      }
-
-      errorBox.style.display = 'block';
-      if (result.status === 419) {
-        errorBox.textContent = 'Your session expired. Refresh the page and submit again.';
-      } else if (result.status === 429) {
-        errorBox.textContent = 'Too many attempts. Wait a moment and try again.';
-      } else if (result.data && result.data.errors) {
-        errorBox.textContent = Object.values(result.data.errors).flat().join(', ');
-      } else if (result.data && result.data.message) {
-        errorBox.textContent = result.data.message;
-      } else {
-        errorBox.textContent = `Something went wrong (error ${result.status}). Try again, or call +971 50 884 6801.`;
-      }
-    } catch (e) {
-      errorBox.style.display = 'block';
-      errorBox.textContent = 'Network error. Check your connection and try again.';
-    } finally {
-      btn.innerHTML = originalHTML;
-      btn.disabled = false;
-    }
-  }
 </script>
 @endpush

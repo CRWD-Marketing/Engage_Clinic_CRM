@@ -269,6 +269,41 @@
 }
 .ct-slot-date { font-size: 13.5px; font-weight: 700; }
 .ct-slot-sub { margin-top: 1px; font-size: 12.5px; color: var(--ct-muted-foreground); }
+.ct-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* Slot editor: collapsed date field that drops down a month calendar, plus
+   the consultation times - same days/times as the website booking. */
+.ct-slot-editor { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+.ct-slot-editor[hidden] { display: none; }
+.ct-slot-editor .ct-error { margin: 0; }
+.ct-slot-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ct-slot-fields .ct-label { display: block; margin-bottom: 5px; }
+.ct-slot-fields select.ct-input { height: 38px; padding-top: 0; padding-bottom: 0; }
+.ct-slot-fields select.ct-input:disabled { opacity: .55; cursor: not-allowed; }
+.ct-date-field { position: relative; }
+.ct-date-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 38px; text-align: left; cursor: pointer; }
+.ct-date-btn svg { color: var(--ct-muted-foreground); flex-shrink: 0; }
+.ct-date-btn.is-empty span { color: var(--ct-muted-foreground); }
+.ct-date-btn[aria-expanded=true] { border-color: var(--ct-primary); box-shadow: 0 0 0 3px var(--ct-ring); }
+.ct-cal { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; width: 280px; padding: 12px; background: var(--ct-background); border: 1px solid var(--ct-border); border-radius: var(--ct-radius); box-shadow: 0 16px 36px -12px rgba(9, 9, 11, .25); }
+.ct-cal[hidden] { display: none; }
+.ct-cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 13.5px; font-weight: 700; }
+.ct-cal-arrow { width: 28px; height: 28px; border-radius: var(--ct-radius-sm); border: 1px solid var(--ct-border); background: var(--ct-background); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ct-foreground); }
+.ct-cal-arrow:hover { background: var(--ct-accent); }
+.ct-cal-arrow:disabled { opacity: .35; pointer-events: none; }
+.ct-cal-weekdays, .ct-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.ct-cal-weekdays span { font-size: 11px; font-weight: 600; color: var(--ct-muted-foreground); padding: 4px 0; }
+.ct-cal-day { height: 32px; border: 1px solid transparent; border-radius: var(--ct-radius-sm); background: none; font: 600 12.5px var(--ct-font); color: var(--ct-foreground); cursor: pointer; }
+.ct-cal-day:hover:not(:disabled):not(.is-selected) { background: var(--ct-accent); }
+.ct-cal-day.is-today { border-color: var(--ct-primary); color: var(--ct-primary); }
+.ct-cal-day.is-selected { background: var(--ct-primary); border-color: var(--ct-primary); color: #fff; }
+.ct-cal-day:disabled { color: #d4d4d8; text-decoration: line-through; cursor: default; }
+.ct-cal-legend { display: flex; gap: 12px; margin-top: 8px; font-size: 11.5px; color: var(--ct-muted-foreground); }
+.ct-cal-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.ct-cal-legend i.is-today { border: 1.5px solid var(--ct-primary); }
+.ct-cal-legend i.is-closed { background: #e4e4e7; }
+.ct-slot-actions { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 560px) { .ct-slot-fields { grid-template-columns: 1fr; } .ct-cal { width: 100%; } }
 
 .ct-actions { display: flex; flex-direction: column; gap: 8px; }
 .ct-actions-row { display: flex; gap: 8px; }
@@ -405,11 +440,14 @@
         'email' => $contact->email,
         'child_age' => $contact->child_age,
         'interested_in' => $contact->interested_in,
+        'insurance' => $contact->insurance,
         'message' => $contact->message,
         'status' => $contact->status,
         'status_label' => $contact->status_label,
         'booking_date' => optional($contact->booking_date)->format('M j, Y'),
+        'booking_date_iso' => optional($contact->booking_date)->format('Y-m-d'),
         'booking_time' => $contact->booking_time,
+        'can_edit_slot' => $contact->isSlotEditable(),
         'booking_decision' => $contact->booking_decision,
         'status_email_sent_at' => optional($contact->status_email_sent_at)->format('M j, Y · H:i'),
         'can_send_email' => $contact->canSendStatusEmail(),
@@ -521,7 +559,7 @@
             </td>
             <td>
               <div>{{ $contact->child_name ?: 'Name not provided' }}{{ $contact->child_age ? ' · Age '.$contact->child_age : '' }}</div>
-              <div class="ct-secondary">{{ $contact->interested_in ?: 'No service selected' }}</div>
+              <div class="ct-secondary">{{ $contact->interested_in ?: 'No service selected' }}@if ($contact->insurance) · {{ $contact->insurance }}@endif</div>
             </td>
             <td>
               <div>{{ $contact->phone ?: '—' }}</div>
@@ -580,7 +618,7 @@
                     <div class="ct-secondary">{{ $contact->created_at->diffForHumans() }}</div>
                   </div>
                 </div>
-                <div class="ct-mcard-line">{{ $contact->child_name ?: 'Name not provided' }}{{ $contact->child_age ? ' · Age '.$contact->child_age : '' }} · {{ $contact->interested_in ?: 'No service selected' }}</div>
+                <div class="ct-mcard-line">{{ $contact->child_name ?: 'Name not provided' }}{{ $contact->child_age ? ' · Age '.$contact->child_age : '' }} · {{ $contact->interested_in ?: 'No service selected' }}{{ $contact->insurance ? ' · '.$contact->insurance : '' }}</div>
                 <div class="ct-mcard-line ct-secondary">{{ $contact->phone ?: 'No phone' }} · {{ $contact->email ?: 'No email' }}</div>
                 @if ($slotLabel)
                   <div class="ct-mcard-slot">{{ $slotLabel }} · free 30-min consultation</div>
@@ -644,7 +682,13 @@
         </div>
 
         <div class="ct-panel" id="ctDialogSlotPanel">
-          <div class="ct-panel-title">Requested consultation slot</div>
+          <div class="ct-panel-head">
+            <div class="ct-panel-title">Requested consultation slot</div>
+            <button type="button" class="ct-btn ct-btn-outline ct-btn-sm" id="ctSlotEditBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>Change</span>
+            </button>
+          </div>
           <div class="ct-slot" id="ctDialogSlotCard">
             <div class="ct-slot-icon">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -655,6 +699,43 @@
             </div>
           </div>
           <div class="ct-panel-empty" id="ctDialogSlotEmpty" style="display: none;">No consultation slot was requested.</div>
+          <div class="ct-footnote" id="ctSlotLockedNote" style="display: none;">The decision has been emailed, so this slot is final.</div>
+
+          {{-- Set / move the slot: a collapsed date field with the month
+               calendar as a dropdown, and the consultation times. --}}
+          <div class="ct-slot-editor" id="ctSlotEditor" hidden>
+            <div class="ct-error" id="ctSlotError"></div>
+            <div class="ct-slot-fields">
+              <div class="ct-date-field">
+                <label class="ct-label" for="ctSlotDateBtn">Date</label>
+                <button type="button" class="ct-input ct-date-btn" id="ctSlotDateBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="ctSlotCal">
+                  <span id="ctSlotDateText">Select a date…</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                </button>
+                <div class="ct-cal" id="ctSlotCal" role="dialog" aria-label="Choose a date" hidden>
+                  <div class="ct-cal-nav">
+                    <button type="button" class="ct-cal-arrow" id="ctSlotCalPrev" aria-label="Previous month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+                    <span id="ctSlotCalLabel"></span>
+                    <button type="button" class="ct-cal-arrow" id="ctSlotCalNext" aria-label="Next month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+                  </div>
+                  <div class="ct-cal-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+                  <div class="ct-cal-grid" id="ctSlotCalGrid"></div>
+                  <div class="ct-cal-legend"><span><i class="is-today"></i>Today</span><span><i class="is-closed"></i>Closed (Fri–Sat)</span></div>
+                </div>
+              </div>
+              <div>
+                <label class="ct-label" for="ctSlotTime">Time</label>
+                <select class="ct-input" id="ctSlotTime" disabled><option value="">Pick a date first</option></select>
+              </div>
+            </div>
+            <div class="ct-slot-actions">
+              <button type="button" class="ct-link danger" id="ctSlotRemove">Remove slot</button>
+              <span style="flex:1"></span>
+              <button type="button" class="ct-btn ct-btn-ghost ct-btn-sm" id="ctSlotCancel">Cancel</button>
+              <button type="button" class="ct-btn ct-btn-primary ct-btn-sm" id="ctSlotSave">Save slot</button>
+            </div>
+            <div class="ct-footnote" id="ctSlotApprovedNote" style="display: none;">This slot is approved - after moving it, email the family the new time.</div>
+          </div>
         </div>
       </div>
 
@@ -667,6 +748,7 @@
             <div class="ct-field-row"><span class="ct-field-label">Child's name</span><span class="ct-field-value" id="ctFieldChildName">—</span></div>
             <div class="ct-field-row"><span class="ct-field-label">Child's age</span><span class="ct-field-value" id="ctFieldAge">—</span></div>
             <div class="ct-field-row"><span class="ct-field-label">Service enquiry</span><span class="ct-field-value" id="ctFieldInterest">—</span></div>
+            <div class="ct-field-row"><span class="ct-field-label">Insurance</span><span class="ct-field-value" id="ctFieldInsurance">—</span></div>
             <div class="ct-field-row"><span class="ct-field-label">Channel</span><span class="ct-field-value">Website</span></div>
             <div class="ct-field-row"><span class="ct-field-label">Received</span><span class="ct-field-value" id="ctFieldReceived">—</span></div>
           </div>
@@ -863,6 +945,8 @@ document.addEventListener('DOMContentLoaded', function () {
         statusTemplate = @json(route('contacts.update-status', ['contact' => '__CONTACT__'])),
         convertTemplate = @json(route('contacts.convert-to-lead', ['contact' => '__CONTACT__'])),
         deleteTemplate = @json(route('contacts.destroy', ['contact' => '__CONTACT__'])),
+        updateTemplate = @json(route('contacts.update', ['contact' => '__CONTACT__'])),
+        CT_TIMES = @json($consultationTimes),
         tokens = @json($statusTokens),
         urlFor = (template, id) => template.replace('__CONTACT__', id);
 
@@ -898,6 +982,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('ctFieldChildName').textContent = contact.child_name || 'Not provided';
         document.getElementById('ctFieldAge').textContent = contact.child_age ? ('Age ' + contact.child_age) : 'Not provided';
         document.getElementById('ctFieldInterest').textContent = contact.interested_in || 'Not provided';
+        document.getElementById('ctFieldInsurance').textContent = contact.insurance || 'Not provided';
+        setupSlotEditor(contact);
         document.getElementById('ctFieldReceived').textContent = contact.received;
 
         // Approve/Reject stay available (and swappable) right up until the
@@ -935,6 +1021,127 @@ document.addEventListener('DOMContentLoaded', function () {
 
         overlay.classList.add('open');
     }
+
+    // ---- Saving slot edits ----
+    // PATCH contacts.update; the page reloads onto the same contact afterwards
+    // so the table, badges and dialog all show the saved values.
+    function saveContact(contact, payload) {
+        return fetch(urlFor(updateTemplate, contact.id), {
+            method: 'PATCH',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        }).then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || 'Could not save. Please try again.'));
+            return data;
+        });
+    }
+    function reloadOnContact(id) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('contact', id);
+        window.location.href = url.toString();
+    }
+
+    // ---- Consultation slot editor ----
+    const slotEditor = document.getElementById('ctSlotEditor'), slotEditBtn = document.getElementById('ctSlotEditBtn'),
+        slotDateBtn = document.getElementById('ctSlotDateBtn'), slotCal = document.getElementById('ctSlotCal'),
+        slotTime = document.getElementById('ctSlotTime'), slotError = document.getElementById('ctSlotError');
+    const slotState = { contact: null, date: null, time: null, monthOffset: 0 };
+    const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    function setupSlotEditor(contact) {
+        slotState.contact = contact;
+        const hasSlot = Boolean(contact.booking_date && contact.booking_time);
+        slotEditBtn.style.display = contact.can_edit_slot ? '' : 'none';
+        slotEditBtn.querySelector('span').textContent = hasSlot ? 'Change' : 'Set a slot';
+        document.getElementById('ctSlotLockedNote').style.display = (!contact.can_edit_slot && hasSlot && contact.status_email_sent_at) ? '' : 'none';
+        closeSlotEditor();
+    }
+    function openSlotEditor() {
+        const c = slotState.contact;
+        slotState.date = c.booking_date_iso ? new Date(c.booking_date_iso + 'T00:00:00') : null;
+        slotState.time = c.booking_time || null;
+        slotError.style.display = 'none';
+        document.getElementById('ctSlotRemove').style.display = c.booking_date_iso ? '' : 'none';
+        document.getElementById('ctSlotApprovedNote').style.display = c.status === 'approved' ? '' : 'none';
+        slotEditor.hidden = false;
+        slotEditBtn.style.display = 'none';
+        renderSlotFields();
+        slotDateBtn.focus();
+    }
+    function closeSlotEditor() {
+        slotEditor.hidden = true;
+        setSlotCalOpen(false);
+        if (slotState.contact?.can_edit_slot) slotEditBtn.style.display = '';
+    }
+    function setSlotCalOpen(open) {
+        slotCal.hidden = !open;
+        slotDateBtn.setAttribute('aria-expanded', open);
+        if (open) {
+            const now = new Date();
+            slotState.monthOffset = slotState.date ? Math.max(0, (slotState.date.getFullYear() - now.getFullYear()) * 12 + slotState.date.getMonth() - now.getMonth()) : 0;
+            renderSlotCalendar();
+        }
+    }
+    function renderSlotCalendar() {
+        const base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + slotState.monthOffset);
+        document.getElementById('ctSlotCalLabel').textContent = base.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        document.getElementById('ctSlotCalPrev').disabled = slotState.monthOffset <= 0;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const year = base.getFullYear(), month = base.getMonth();
+        const grid = document.getElementById('ctSlotCalGrid');
+        grid.innerHTML = '';
+        for (let i = 0; i < new Date(year, month, 1).getDay(); i++) grid.appendChild(document.createElement('span'));
+        for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
+            const day = new Date(year, month, d);
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'ct-cal-day';
+            cell.textContent = d;
+            cell.disabled = day < today || day.getDay() === 5 || day.getDay() === 6;
+            if (day.getTime() === today.getTime()) cell.classList.add('is-today');
+            if (slotState.date && day.getTime() === slotState.date.getTime()) cell.classList.add('is-selected');
+            cell.setAttribute('aria-label', day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+            cell.addEventListener('click', () => { slotState.date = day; setSlotCalOpen(false); renderSlotFields(); slotTime.focus(); });
+            grid.appendChild(cell);
+        }
+    }
+    function renderSlotFields() {
+        const text = document.getElementById('ctSlotDateText');
+        text.textContent = slotState.date ? slotState.date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Select a date…';
+        slotDateBtn.classList.toggle('is-empty', !slotState.date);
+        slotTime.disabled = !slotState.date;
+        slotTime.innerHTML = '';
+        slotTime.add(new Option(slotState.date ? 'Select a time…' : 'Pick a date first', ''));
+        if (slotState.date) CT_TIMES.forEach(t => slotTime.add(new Option(t, t, false, t === slotState.time)));
+    }
+    function saveSlot(payload, btn) {
+        const label = btn.textContent;
+        slotError.style.display = 'none';
+        btn.disabled = true; btn.textContent = 'Saving…';
+        saveContact(slotState.contact, payload)
+            .then(() => reloadOnContact(slotState.contact.id))
+            .catch(err => { slotError.textContent = err.message; slotError.style.display = 'block'; btn.disabled = false; btn.textContent = label; });
+    }
+
+    slotEditBtn.addEventListener('click', openSlotEditor);
+    document.getElementById('ctSlotCancel').addEventListener('click', closeSlotEditor);
+    slotDateBtn.addEventListener('click', () => setSlotCalOpen(slotCal.hidden));
+    document.getElementById('ctSlotCalPrev').addEventListener('click', () => { slotState.monthOffset = Math.max(0, slotState.monthOffset - 1); renderSlotCalendar(); });
+    document.getElementById('ctSlotCalNext').addEventListener('click', () => { slotState.monthOffset++; renderSlotCalendar(); });
+    slotTime.addEventListener('change', () => { slotState.time = slotTime.value || null; });
+    document.addEventListener('click', e => { if (!slotCal.hidden && !e.target.closest('.ct-date-field')) setSlotCalOpen(false); });
+    document.getElementById('ctSlotSave').addEventListener('click', function () {
+        if (!slotState.date || !slotState.time) {
+            slotError.textContent = !slotState.date ? 'Pick a date.' : 'Choose a time.';
+            slotError.style.display = 'block';
+            return;
+        }
+        saveSlot({ booking_date: isoOf(slotState.date), booking_time: slotState.time }, this);
+    });
+    document.getElementById('ctSlotRemove').addEventListener('click', function () {
+        if (confirm('Remove the requested consultation slot from this contact?')) saveSlot({ booking_date: null, booking_time: null }, this);
+    });
 
     document.querySelectorAll('.ct-row[data-contact]').forEach(row => row.addEventListener('click', () => {
         openContactDialog(JSON.parse(row.dataset.contact));
@@ -990,6 +1197,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
         if (dropdown && dropdown.classList.contains('is-open')) { closeDropdown(); trigger.focus(); return; }
+        if (!slotCal.hidden) { setSlotCalOpen(false); slotDateBtn.focus(); return; }
         if (emailOverlay?.classList.contains('open')) { closeEmailDialog(); return; }
         if (overlay?.classList.contains('open')) closeContactDialog();
     });

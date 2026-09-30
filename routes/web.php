@@ -57,6 +57,7 @@ require __DIR__.'/auth.php';
 require __DIR__.'/dashboard.php';
 require __DIR__.'/lead.php';
 require __DIR__.'/contact.php';
+require __DIR__.'/cms_forms.php';
 require __DIR__.'/topbar.php';
 require __DIR__.'/career.php';
 require __DIR__.'/patient.php';
