@@ -13,6 +13,14 @@ export function sessionTag(s: CalendarSessionPayload): { label: string; color: s
   return { label: 'Upcoming', color: sessionStatusTagColors.upcoming, cancelled: false };
 }
 
+/** CalendarSession::NON_THERAPY_TYPES */
+const NON_THERAPY_TYPES = ['Supervision', 'Observation', 'Admin time', 'Training', 'Meeting'];
+
+/** CalendarSession::scopeDirectTherapy(): therapy types with a real patient attached. */
+export function isDirectTherapy(s: CalendarSessionPayload): boolean {
+  return !NON_THERAPY_TYPES.includes(s.activity_type) && (s.patient_id !== null || s.patient_ids !== null);
+}
+
 /** Only completed sessions offer "+ Add session note" (the web UI rule). */
 export function canAddTherapistNote(s: CalendarSessionPayload, viewerId: number): boolean {
   return s.status === 'completed' && s.therapist_id === viewerId;

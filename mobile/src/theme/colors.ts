@@ -79,6 +79,20 @@ export const noteAgeColors = {
   overdue: { bg: '#F9E3EA', fg: '#C8355F' },
 } satisfies Record<string, ChipColors>;
 
+/** Month grid (calendar/index.blade.php `.month-*`). */
+export const monthColors = {
+  cellBorder: '#EBE4DA',
+  weekendBg: '#F6F3EE',
+  today: '#C8355F',
+  selected: '#16436E',
+  countBg: '#C8355F',
+  countFg: '#FFFFFF',
+  dow: '#98897A',
+  more: '#98897A',
+  noteMark: '#5A6B7E',
+  cardOverlay: 'rgba(255,255,255,0.7)',
+} as const;
+
 /** "My treatment plans due for review" amber card. */
 export const planCardColors = { bg: '#FBF3E4', border: '#EBDCBB', fg: '#8A5A10' } as const;
 
@@ -110,6 +124,13 @@ export const patientColors = {
   progressLow: '#B3261E',
   listMeta: '#B0A493',
   goalSelectedBg: '#FDF5F7',
+} as const;
+
+/** Session-note review states (mobile sign-off). */
+export const noteStatusColors = {
+  signed: { bg: '#E3F1E9', fg: '#2E7D5B' },
+  awaiting: { bg: '#F7EEDD', fg: '#B97F24' },
+  flagged: { bg: '#F9E3EA', fg: '#C8355F' },
 } as const;
 
 /** Avatar backgrounds, picked by crc32(id) % 7 like the web app. */

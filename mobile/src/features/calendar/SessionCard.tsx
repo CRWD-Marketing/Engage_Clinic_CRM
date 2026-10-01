@@ -3,15 +3,15 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { MySessionPayload } from '@/api/types';
 import { AppText } from '@/components/AppText';
-import { colors, colorsForActivity, fonts, radius, sessionCategoryColors, spacing } from '@/theme';
+import { colors, colorsForActivity, fonts, monthColors, radius, sessionCategoryColors, spacing } from '@/theme';
 import { formatTime } from '@/utils/dates';
 
 import { canAddTherapistNote, sessionTag } from './sessionStatus';
 
-type Props = { session: MySessionPayload; viewerId: number; onPress: () => void };
+type Props = { session: MySessionPayload; viewerId: number; onPress: () => void; showTherapist?: boolean };
 
 /** A session card from calendar/my.blade.php, tinted by activity type. */
-export function SessionCard({ session: s, viewerId, onPress }: Props) {
+export function SessionCard({ session: s, viewerId, onPress, showTherapist = false }: Props) {
   const tint = colorsForActivity(s.activity_type, s.category);
   const tag = sessionTag(s);
   const meta = [s.activity_type, s.notes].filter(Boolean).join(' · ');
@@ -39,9 +39,9 @@ export function SessionCard({ session: s, viewerId, onPress }: Props) {
           {meta}
         </AppText>
       ) : null}
-      {s.room ? (
+      {s.room || showTherapist ? (
         <AppText variant="caption" color={colors.textSecondary}>
-          {s.room}
+          {[showTherapist ? s.therapist_name : null, s.room].filter(Boolean).join(' · ')}
         </AppText>
       ) : null}
 
@@ -56,13 +56,22 @@ export function SessionCard({ session: s, viewerId, onPress }: Props) {
         </View>
       ) : null}
 
+      {s.therapist_note ? (
+        <View style={styles.myNote}>
+          <Ionicons name="document-text-outline" size={14} color={colors.textSecondary} />
+          <AppText variant="caption" color={colors.text} numberOfLines={3} style={styles.flex}>
+            {s.therapist_note}
+          </AppText>
+        </View>
+      ) : null}
+
       <View style={styles.footer}>
         <AppText style={[styles.tag, { color: tag.color }, tag.cancelled && styles.strike]}>{tag.label}</AppText>
         {showNote ? (
           <View style={styles.noteHint}>
-            <Ionicons name={s.therapist_note ? 'document-text-outline' : 'add-circle-outline'} size={14} color={colors.pink} />
+            <Ionicons name={s.therapist_note ? 'create-outline' : 'add-circle-outline'} size={14} color={colors.pink} />
             <AppText variant="link" style={styles.noteHintText}>
-              {s.therapist_note ? 'Note added' : 'Add session note'}
+              {s.therapist_note ? 'Edit note' : 'Add session note'}
             </AppText>
           </View>
         ) : null}
@@ -84,5 +93,15 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   tag: { fontFamily: fonts.bodyExtraBold, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: 0.5 },
   noteHint: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  myNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 6,
+    padding: spacing.sm,
+    borderRadius: radius.chip,
+    backgroundColor: monthColors.cardOverlay,
+  },
+  flex: { flex: 1 },
   noteHintText: { fontSize: 12 },
 });

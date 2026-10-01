@@ -7,8 +7,9 @@ import type { PatientNote } from '@/api/types';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card, Divider } from '@/components/Card';
+import { Chip } from '@/components/Chip';
 import { TextField } from '@/components/TextField';
-import { patientColors, radius, spacing } from '@/theme';
+import { noteStatusColors, patientColors, radius, spacing } from '@/theme';
 import { timeAgo } from '@/utils/dates';
 
 const NOTE_MAX = 2000;
@@ -87,6 +88,7 @@ export function NotesCard({ patientId, notes, conversionSummary, canAdd }: Props
               <AppText variant="caption">{timeAgo(note.created_at)}</AppText>
             </View>
             <AppText variant="body">{note.body}</AppText>
+            <NoteStatus note={note} />
           </View>
         ))
       )}
@@ -94,7 +96,25 @@ export function NotesCard({ patientId, notes, conversionSummary, canAdd }: Props
   );
 }
 
+/** Where the note stands: signed off (and by whom), awaiting sign-off, flagged. */
+function NoteStatus({ note }: { note: PatientNote }) {
+  return (
+    <View style={styles.statusRow}>
+      {note.signed_off_at ? (
+        <Chip
+          label={note.signed_off_by_name ? `Signed off · ${note.signed_off_by_name}` : 'Signed off'}
+          colors={noteStatusColors.signed}
+        />
+      ) : (
+        <Chip label="Awaiting sign-off" colors={noteStatusColors.awaiting} />
+      )}
+      {note.flagged ? <Chip label="Flagged" colors={noteStatusColors.flagged} /> : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 2 },
   card: { gap: spacing.md },
   flex: { flex: 1 },
   conversion: {

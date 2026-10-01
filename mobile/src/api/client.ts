@@ -9,15 +9,20 @@
 
 import { createMockApi } from './mock';
 import type {
+  CalendarFeed,
   LoginRequest,
   LoginResponse,
   MyCalendarWeek,
   MySessionPayload,
+  NoteReviewFilter,
   PatientDetail,
   PatientListItem,
   PatientNote,
   ProfileUpdateRequest,
   ProfileUpdateResponse,
+  SignOffResponse,
+  SuperviseResponse,
+  SupervisorDashboard,
   TherapistDashboard,
   TherapistNoteResponse,
   TodayGoalsRequest,
@@ -43,6 +48,8 @@ export interface ApiClient {
   dashboard: {
     /** GET /dashboard for THERAPIST (DashboardController::therapistMetrics). 403 for other roles. */
     therapist(): Promise<TherapistDashboard>;
+    /** GET /dashboard for CLINICAL_SUPERVISOR (clinicalSupervisorMetrics etc.). 403 for other roles. */
+    supervisor(): Promise<SupervisorDashboard>;
   };
   patients: {
     /**
@@ -57,13 +64,35 @@ export interface ApiClient {
     /** POST /patient/{id}/goals/today — replaces today's session goals. */
     saveTodayGoals(id: number, input: TodayGoalsRequest): Promise<TodayGoalsResponse>;
   };
+  /**
+   * PROPOSED (no Laravel equivalent yet): reviewing therapists' session notes.
+   * The web only lists unsigned/flagged notes on the supervisor dashboard;
+   * these endpoints must be added to Laravel with the mobile API.
+   * Allowed for CLINICAL_SUPERVISOR and FULL_ADMIN (see canReviewNotes).
+   */
+  notes: {
+    /** GET /patient-notes/review?filter=unsigned|flagged — unsigned oldest first, flagged newest first. */
+    review(filter: NoteReviewFilter): Promise<PatientNote[]>;
+    /** POST /patient-notes/sign-off {note_ids} */
+    signOff(noteIds: number[]): Promise<SignOffResponse>;
+    /** POST /patient-notes/{id}/flag {flag_reason} */
+    flag(id: number, reason: string): Promise<{ success: true; note: PatientNote }>;
+    /** DELETE /patient-notes/{id}/flag */
+    unflag(id: number): Promise<{ success: true; note: PatientNote }>;
+  };
   calendar: {
     /** GET /calendar?date= for "own"-level users (CalendarController::myCalendar). */
     myWeek(date?: string): Promise<MyCalendarWeek>;
+    /** GET /calendar/feed?start=&end= — sessions + leave in a date range (own only for therapists). */
+    feed(start: string, end: string): Promise<CalendarFeed>;
     /** GET /calendar/{id} */
     show(id: number): Promise<MySessionPayload>;
     /** PATCH /calendar/{id}/therapist-note — only the session's own therapist. */
     saveTherapistNote(id: number, note: string | null): Promise<TherapistNoteResponse>;
+    /** POST /calendar/{id}/supervision {notes} — managers only; past, non-cancelled sessions. */
+    supervise(id: number, notes: string): Promise<SuperviseResponse>;
+    /** DELETE /calendar/{id}/supervision */
+    unsupervise(id: number): Promise<{ message: string }>;
   };
 }
 

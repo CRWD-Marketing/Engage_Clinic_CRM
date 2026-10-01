@@ -379,10 +379,8 @@ function DetailsForm({ user }: { user: User }) {
 
 /** Whether this module has a real mobile screen for this user yet. */
 function onMobile(user: User, module: ModuleKey): boolean {
-  if (module === 'dashboard') return user.role === 'THERAPIST';
-  if (module === 'calendar') return levelFor(user, 'calendar') === 'own';
-  if (module === 'patients') return true;
-  return false;
+  if (module === 'dashboard') return user.role === 'THERAPIST' || user.role === 'CLINICAL_SUPERVISOR';
+  return module === 'calendar' || module === 'patients';
 }
 
 const LEVEL_LABEL = { full: 'Full', own: 'Own only', view: 'View only', edit: 'Edit' } as const;

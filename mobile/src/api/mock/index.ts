@@ -6,22 +6,20 @@
  * Mock-only differences are marked "MOCK:".
  */
 
-import { levelFor } from '@/auth/permissions';
+import { canManageCalendar, levelFor } from '@/auth/permissions';
 import { addDays, mondayOf, todayYmd } from '@/utils/dates';
-import { fullName } from '@/utils/format';
 
 import type { ApiClient } from '../client';
 import { ApiError } from '../errors';
 import type {
+  CalendarFeed,
   LoginRequest,
   LoginResponse,
   MyCalendarDay,
   MyCalendarWeek,
-  Patient,
-  PatientNote,
   ProfileUpdateRequest,
   ProfileUpdateResponse,
-  TherapistDashboard,
+  SuperviseResponse,
 } from '../types';
 import {
   autoCompletePastSessions,
@@ -29,13 +27,12 @@ import {
   mySessionPayload,
   sessionPayload,
 } from './presenters';
+import { createDashboardApi } from './dashboard';
+import { createNotesApi } from './notes';
 import { createPatientsApi } from './patients';
 import type { UserRow } from './rows';
 import { laravelIso } from './seed';
 import { delay, EMAIL_PATTERN, getDb, requireFeature, requireUser, toApiUser, validationError } from './server';
-
-/** DashboardController header: clinic location line. */
-const LOCATION_LABEL = 'Khalifa City, Abu Dhabi';
 
 // ---------------------------------------------------------------------------
 // Auth
@@ -179,79 +176,6 @@ function updateProfile(input: ProfileUpdateRequest): ProfileUpdateResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Dashboard (DashboardController::scheduleMetrics + therapistMetrics)
-// ---------------------------------------------------------------------------
-
-function attendance(rows: { status: string }[]): number | null {
-  const counted = rows.filter((s) => s.status === 'completed' || s.status === 'no_show');
-  if (counted.length === 0) return null;
-  return Math.round((counted.filter((s) => s.status === 'completed').length / counted.length) * 100);
-}
-
-function therapistDashboard(): TherapistDashboard {
-  const user = requireUser();
-  requireFeature(user, 'dashboard');
-  if (user.role !== 'THERAPIST') {
-    throw new ApiError(403, { message: 'This dashboard is for therapists.' });
-  }
-
-  const data = getDb();
-  const now = new Date();
-  const today = todayYmd(now);
-  autoCompletePastSessions(data, now);
-
-  const mine = data.sessions.filter((s) => s.therapist_id === user.id);
-
-  const todayList = mine
-    .filter((s) => s.session_date === today && s.status !== 'cancelled' && s.status !== 'closed')
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
-  const rooms = new Set(todayList.map((s) => s.room).filter(Boolean));
-
-  const inRange = (from: string, to: string) => mine.filter((s) => s.session_date >= from && s.session_date <= to);
-  const rate = attendance(inRange(addDays(today, -30), today));
-  const prevRate = attendance(inRange(addDays(today, -60), addDays(today, -31)));
-
-  // NOTE: Laravel plucks distinct patient_id including NULL for non-patient
-  // blocks; nulls are excluded here (see CLAUDE.md known issues).
-  const myLeadIds = [...new Set(mine.map((s) => s.patient_id).filter((id): id is number => id !== null))];
-
-  const withLead = (p: Omit<Patient, 'lead'>): Patient => ({
-    ...p,
-    lead: data.leads.find((l) => l.id === p.lead_id),
-  });
-
-  const pendingNotes: PatientNote[] = data.patientNotes
-    .filter((n) => n.user_id === user.id && n.signed_off_at === null)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((n) => {
-      const patient = data.patients.find((p) => p.id === n.patient_id)!;
-      return { ...n, author_name: `${user.first_name} ${user.last_name}`, patient: withLead(patient) };
-    });
-
-  const dueCutoff = new Date(now.getTime() + 7 * 86400_000).toISOString();
-  const plansDue = data.patients
-    .filter((p) => myLeadIds.includes(p.lead_id))
-    .filter((p) => p.treatment_plan_review_due_at !== null && p.treatment_plan_review_due_at <= dueCutoff)
-    .sort((a, b) => a.treatment_plan_review_due_at!.localeCompare(b.treatment_plan_review_due_at!))
-    .map(withLead);
-
-  return {
-    user_full_name: fullName(user),
-    location_label: LOCATION_LABEL,
-    sessions_today_count: todayList.length,
-    rooms_in_use_count: rooms.size,
-    attendance_rate: rate,
-    attendance_delta: rate !== null && prevRate !== null ? rate - prevRate : null,
-    today_sessions: todayList.map((s) => sessionPayload(data, s, now)),
-    my_active_patients_count: myLeadIds.length,
-    my_pending_notes_count: pendingNotes.length,
-    my_notes_awaiting_signoff_list: pendingNotes.slice(0, 3),
-    my_treatment_plans_due_count: plansDue.length,
-    my_treatment_plans_due_list: plansDue.slice(0, 3),
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Calendar (CalendarController)
 // ---------------------------------------------------------------------------
 
@@ -313,6 +237,43 @@ function myWeek(date?: string): MyCalendarWeek {
   };
 }
 
+/** CalendarController::feed() */
+function feed(start: string, end: string): CalendarFeed {
+  const user = requireUser();
+  requireFeature(user, 'calendar');
+  const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!isDate(start) || !isDate(end)) throw validationError('start', 'The start field must be a valid date.');
+
+  const data = getDb();
+  const now = new Date();
+  autoCompletePastSessions(data, now);
+
+  // Therapists are forced to their own sessions and leave, whatever is asked.
+  const own = user.role === 'THERAPIST';
+  const sessions = data.sessions
+    .filter((s) => s.status !== 'closed' && s.session_date >= start && s.session_date <= end)
+    .filter((s) => !own || s.therapist_id === user.id)
+    .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time));
+  const leaves = data.staffLeaves
+    .filter((l) => l.leave_date >= start && l.leave_date <= end)
+    .filter((l) => !own || l.user_id === user.id);
+
+  return {
+    sessions: sessions.map((s) => mySessionPayload(data, s, user.id, now)),
+    leaves: leaves.map((l) => {
+      const owner = data.users.find((u) => u.id === l.user_id);
+      return {
+        id: l.id,
+        user_id: l.user_id,
+        user_name: owner ? `${owner.first_name} ${owner.last_name}` : null,
+        leave_date: l.leave_date,
+        leave_type: l.leave_type,
+        reason: l.reason,
+      };
+    }),
+  };
+}
+
 function findSessionOr404(id: number) {
   const session = getDb().sessions.find((s) => s.id === id);
   if (!session) throw new ApiError(404, { message: 'Not found.' });
@@ -351,6 +312,51 @@ function saveTherapistNote(id: number, note: string | null) {
   return { message: 'Note saved.', therapist_note: session.therapist_note };
 }
 
+/** CalendarController::supervise() — managers log supervision on a past session. */
+function supervise(id: number, notes: string): SuperviseResponse {
+  const user = requireUser();
+  requireFeature(user, 'calendar', true);
+  if (!canManageCalendar(toApiUser(user))) {
+    throw new ApiError(403, { message: 'Only the Clinical Supervisor can change the schedule.' });
+  }
+  const data = getDb();
+  const session = findSessionOr404(id);
+
+  const text = notes.trim();
+  if (!text || text.length > 2000) {
+    const field = text ? 'The notes field must not be greater than 2000 characters.' : 'The notes field is required.';
+    throw new ApiError(422, { message: 'Add a supervision note.', errors: { notes: [field] } });
+  }
+  if (session.status === 'cancelled' || session.status === 'closed') {
+    throw new ApiError(422, { message: 'A cancelled or closed session can’t be supervised.' });
+  }
+  if (!(session.session_date < todayYmd())) {
+    throw new ApiError(422, { message: 'Only a session from a previous day can be supervised.' });
+  }
+
+  const stamp = laravelIso(new Date().toISOString());
+  session.supervised_by = user.id;
+  session.supervised_at = stamp;
+  session.supervision_notes = text;
+  session.updated_at = stamp;
+  return { message: 'Supervision logged.', session: sessionPayload(data, session) };
+}
+
+/** CalendarController::unsupervise() */
+function unsupervise(id: number): { message: string } {
+  const user = requireUser();
+  requireFeature(user, 'calendar', true);
+  if (!canManageCalendar(toApiUser(user))) {
+    throw new ApiError(403, { message: 'Only the Clinical Supervisor can change the schedule.' });
+  }
+  const session = findSessionOr404(id);
+  session.supervised_by = null;
+  session.supervised_at = null;
+  session.supervision_notes = null;
+  session.updated_at = laravelIso(new Date().toISOString());
+  return { message: 'Supervision removed.' };
+}
+
 // ---------------------------------------------------------------------------
 
 export function createMockApi(): ApiClient {
@@ -372,14 +378,16 @@ export function createMockApi(): ApiClient {
     profile: {
       update: (input) => delay(() => updateProfile(input)),
     },
-    dashboard: {
-      therapist: () => delay(therapistDashboard),
-    },
+    dashboard: createDashboardApi(),
+    notes: createNotesApi(),
     patients: createPatientsApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
+      feed: (start, end) => delay(() => feed(start, end)),
       show: (id) => delay(() => showSession(id)),
       saveTherapistNote: (id, note) => delay(() => saveTherapistNote(id, note)),
+      supervise: (id, notes) => delay(() => supervise(id, notes)),
+      unsupervise: (id) => delay(() => unsupervise(id)),
     },
   };
 }

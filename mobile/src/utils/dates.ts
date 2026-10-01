@@ -141,6 +141,33 @@ export function formatWeekdayShort(value: Ymd): string {
   return DAY_NAMES[parseYmd(value).getUTCDay()].slice(0, 3);
 }
 
+/** First day of the month containing `value`. */
+export function monthStartOf(value: Ymd): Ymd {
+  return `${value.slice(0, 7)}-01`;
+}
+
+/** First day of the month `months` after the one containing `value`. */
+export function addMonths(value: Ymd, months: number): Ymd {
+  const d = parseYmd(monthStartOf(value));
+  return ymdFromClock(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1)));
+}
+
+export function daysInMonth(value: Ymd): number {
+  const d = parseYmd(value);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+}
+
+/** Last day of the month containing `value`. */
+export function monthEndOf(value: Ymd): Ymd {
+  return `${value.slice(0, 7)}-${pad(daysInMonth(value))}`;
+}
+
+/** "October 2026" */
+export function formatMonthLong(value: Ymd): string {
+  const d = parseYmd(value);
+  return `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
 /** "WED" */
 export function formatWeekdayAbbrev(value: Ymd): string {
   return DAY_NAMES[parseYmd(value).getUTCDay()].slice(0, 3).toUpperCase();

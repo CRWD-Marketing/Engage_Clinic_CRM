@@ -32,7 +32,8 @@ Mock login: any seeded staff email with password `password`, e.g. therapist `ale
 ```
 src/app/              Expo Router routes (every file is a screen; keep non-route code out)
   (auth)/             login, forgot-password (signed-out stack)
-  (app)/              signed-in tabs; the tab set is built from the user's modules
+  (app)/              signed-in stack: (tabs) holds the tab bar (built from the user's modules);
+                      pushed screens (e.g. notes-review) sit beside it with a back button
 src/api/types.ts      TS types matching the Laravel models and payloads
 src/api/client.ts     ApiClient interface + the active implementation export (`api`)
 src/api/mock/         mock implementation + seed data (from the Laravel seeders)
@@ -80,6 +81,12 @@ These are copied from the web app. Don't hard-code colours in screens.
 ## Backend notes
 
 - **There is no API or Sanctum yet.** Laravel has session + CSRF web routes only, and many pages return HTML only. A real backend will need token auth and JSON endpoints, which requires the user's OK because it means touching the Laravel app.
+- **Proposed endpoints (mobile-only features with no Laravel equivalent yet; add with the API):**
+  - `GET /patient-notes/review?filter=unsigned|flagged`, `POST /patient-notes/sign-off {note_ids}`,
+    `POST /patient-notes/{id}/flag {flag_reason}`, `DELETE /patient-notes/{id}/flag`, and a
+    `signed_off_by_name` append on PatientNote. The web only *lists* unsigned/flagged notes; nothing
+    ever sets `signed_off_at` or `flagged`. Allowed for CLINICAL_SUPERVISOR + FULL_ADMIN
+    (`canReviewNotes` in `src/auth/permissions.ts`).
 - **Known Laravel issues (for later, don't fix):**
   - Suspended users (`is_active = false`) can still log in; `LoginController` never checks. The mock login does reject them.
   - `last_login_at` is never written, so every invited user shows as "invited".
@@ -105,9 +112,10 @@ Paths in these docs are relative to the Laravel root (the parent of `mobile/`).
 | # | Scope | Status |
 |---|---|---|
 | 1 | Login (mock auth), therapist dashboard, "My schedule" (week and day list, session detail, therapist note), tab shell from modules, theme, "My profile" (mirrors web profile page: summary + editable personal details via `PUT /profile`, module access, log out) | Done (2026-09-30): tested on the user's phone in Expo Go; profile screen rebuilt afterwards to mirror the web page (verified on web). Type-check, lint, expo-doctor 21/21, Android + iOS bundles pass |
-| 2 | Patients: list (own-scoped for therapists, search, "Needs details"/"Active" groups), detail (header, renewal/incomplete banners, chips; Overview: goals worked on today, session notes, insurance & authorization, care team, upcoming; Session history). Dashboard note/plan rows open the patient | Built 2026-10-01; mock rules checked by script and walked through in a browser. **Remaining: test on a phone** |
+| 2 | Patients: list (own-scoped for therapists, search, "Needs details"/"Active" groups), detail (header, renewal/incomplete banners, chips; Overview: goals worked on today, session notes, insurance & authorization, care team, upcoming; Session history). Dashboard note/plan rows open the patient | Done 2026-10-01: mock rules checked by script, walked through in a browser, tested on the user's phone |
+| 2c | Calendar: Week / Month toggle. Month grid like the web (`calendar/index.blade.php`: count badge, up to 3 name chips, +N more, today/weekend/leave), tap a day to list its sessions; data from `GET /calendar/feed`. Session cards show the therapist's own note text; month cells mark days with notes | Done 2026-10-01: walked through in a browser, tested on the user's phone |
 | 2b | Patient detail extras: Payments, Documents, Profile & intake tabs; Edit details; add/edit authorizations | Not started |
-| 3 | Clinical supervisor: notes awaiting sign-off, flagged notes, supervision logging, treatment plans due | Not started |
+| 3 | Clinical supervisor: dashboard mirroring `clinical_supervisor.blade.php` (6 stats, today's clinic schedule, notes awaiting sign-off, flagged, plans due, waitlist); **notes review** screen with sign-off (single + multi-select) and flag/unflag (proposed endpoints, user's choice); clinic-wide Week/Month calendar with therapist filter for managers; log/remove supervision on past sessions (real `POST/DELETE /calendar/{id}/supervision` rules); sign-off/flag status on patient notes | Done 2026-10-01: rules checked by script, walked through in a browser (supervisor + therapist regression), tested on the user's phone |
 | 4 | Coordinator: clinic-wide schedule, intake pipeline, no-show follow-ups, WhatsApp inbox | Not started |
 | 5 | Admin overview dashboard | Not started |
 | — | Laravel mobile API (Sanctum + JSON endpoints under `/api/mobile/v1`) | Waiting for the user's signal; don't touch the Laravel app until then |

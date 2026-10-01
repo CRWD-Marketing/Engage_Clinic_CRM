@@ -147,6 +147,8 @@ const FAMILIES: FamilySeed[] = [
   { child: 'Fatima Al Zaabi', parent: 'Ahmed Al Zaabi', age: 3, status: 'contacted', interested_in: 'Speech therapy', insurance: 'Daman', source: 'WhatsApp' },
   { child: 'Hessa Al Nuaimi', parent: 'Marwan Al Nuaimi', age: 6, status: 'new', interested_in: 'Occupational therapy', insurance: 'Thiqa', source: 'Website' },
   { child: 'Saeed Al Mazrouei', parent: 'Khalfan Al Mazrouei', age: 7, status: 'terminated', interested_in: 'ABA therapy', insurance: 'Self-pay', source: 'Google' },
+  { child: 'Rayan Al Marri', parent: 'Noura Al Marri', age: 3, status: 'new', interested_in: 'Speech therapy', insurance: 'Daman', source: 'Instagram' },
+  { child: 'Ali Haddad', parent: 'Rania Haddad', age: 5, status: 'new', interested_in: 'ABA therapy', insurance: 'Not sure yet', source: 'Website' },
 ];
 
 const AGE_BAND = (age: number) => (age <= 4 ? '3-4' : age <= 6 ? '5-6' : '7-8');
@@ -189,6 +191,12 @@ const SUPERVISION_NOTES = [
   'Observed 45 min. Prompt fading on target; mand training to continue at current level.',
   'Good pacing and reinforcement. Tighten data collection on the matching program.',
   'Session well structured. Consider adding a visual timer for transitions.',
+];
+
+/** PatientNoteSeeder flag reasons. */
+const FLAG_REASONS = [
+  'Increase in self-injurious behaviour observed, flagging for BCBA review.',
+  'Family requested a change in session times - needs scheduling follow-up.',
 ];
 
 const PATIENT_NOTE_BODIES = [
@@ -267,7 +275,8 @@ export function buildSeed(now: Date = new Date()): MockDb {
 
   FAMILIES.forEach((f, i) => {
     const id = i + 1;
-    const createdYmd = addDays(today, -rnd.int(60, 140));
+    // Waitlist ("new") enquiries are recent; everyone else enquired months ago.
+    const createdYmd = addDays(today, f.status === 'new' ? -rnd.int(5, 40) : -rnd.int(60, 140));
     const owner = SALES_IDS[i % 2];
     const email = `${f.parent.split(' ')[0].toLowerCase()}.${f.parent.split(' ').slice(-1)[0].toLowerCase()}@gmail.com`;
     leads.push({
@@ -526,13 +535,22 @@ function buildPatientNotes({
         user_id: rnd.pick(therapists),
         body: rnd.pick(PATIENT_NOTE_BODIES),
         flagged,
-        flag_reason: flagged ? 'Increase in self-injurious behaviour observed, flagging for BCBA review.' : null,
+        flag_reason: flagged ? rnd.pick(FLAG_REASONS) : null,
         signed_off_at: signed ? hoursAgoIso(Math.max(1, ageHours - 30), now) : null,
         signed_off_by: signed ? SUPERVISOR_ID : null,
         created_at: createdAt,
       });
     }
   }
+
+  // A couple of guaranteed flags for the supervisor's "Flagged for review" list.
+  notes
+    .filter((n) => n.signed_off_at === null && n.user_id !== 9 && !n.flagged)
+    .slice(0, FLAG_REASONS.length)
+    .forEach((n, i) => {
+      n.flagged = true;
+      n.flag_reason = FLAG_REASONS[i];
+    });
 
   // Alessandra (id 9): a known mix of pending/overdue notes for the dashboard.
   const alessandraPatients = patients.filter((p) =>

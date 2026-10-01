@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { api } from '@/api/client';
 import { errorMessage, isApiError } from '@/api/errors';
 import type { MySessionPayload } from '@/api/types';
+import { canManageCalendar } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
@@ -15,10 +16,11 @@ import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
 import { useApiQuery } from '@/hooks/useApiQuery';
-import { colors, colorsForActivity, fonts, sessionCategoryColors, spacing } from '@/theme';
+import { colors, colorsForActivity, fonts, spacing } from '@/theme';
 import { formatDayShort, formatTime } from '@/utils/dates';
 
 import { canAddTherapistNote, sessionTag } from './sessionStatus';
+import { SupervisionSection } from './SupervisionSection';
 
 const NOTE_MAX = 2000;
 
@@ -46,7 +48,7 @@ export function SessionDetailScreen() {
           <AppText variant="body">{s.notes}</AppText>
         </Card>
       ) : null}
-      {s.supervised ? <SupervisionCard session={s} /> : null}
+      <SupervisionSection key={s.id} session={s} canManage={canManageCalendar(user)} />
     </Screen>
   );
 }
@@ -85,22 +87,6 @@ function DetailRow({ icon, text, strike }: { icon: ComponentProps<typeof Ionicon
         {text}
       </AppText>
     </View>
-  );
-}
-
-function SupervisionCard({ session: s }: { session: MySessionPayload }) {
-  const sup = sessionCategoryColors.supervision;
-  return (
-    <Card style={[styles.section, { backgroundColor: sup.bg, borderColor: sup.bg }]}>
-      <AppText style={[styles.supTitle, { color: sup.fg }]}>★ Supervised</AppText>
-      {s.supervised_by_name ? (
-        <AppText variant="caption" color={sup.fg}>
-          {s.supervised_by_name}
-          {s.supervised_at ? ` · ${s.supervised_at}` : ''}
-        </AppText>
-      ) : null}
-      {s.supervision_notes ? <AppText variant="body">{s.supervision_notes}</AppText> : null}
-    </Card>
   );
 }
 
@@ -190,7 +176,6 @@ const styles = StyleSheet.create({
   tag: { fontFamily: fonts.bodyExtraBold, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 },
   strike: { textDecorationLine: 'line-through' },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  supTitle: { fontFamily: fonts.bodyExtraBold, fontSize: 14 },
   statusLine: { fontFamily: fonts.bodyExtraBold },
   counter: { textAlign: 'right', marginTop: -4 },
   actions: { flexDirection: 'row', gap: spacing.sm },

@@ -165,6 +165,11 @@ export interface PatientNote {
   updated_at: IsoDateTime;
   /** $appends: user's first + last name, or "System". */
   author_name: string;
+  /**
+   * PROPOSED append (mobile sign-off; no Laravel equivalent yet): the
+   * signer's first + last name, or null while unsigned.
+   */
+  signed_off_by_name?: string | null;
   patient?: Patient;
 }
 
@@ -360,6 +365,26 @@ export interface MyCalendarWeek {
   days: MyCalendarDay[];
 }
 
+/** A `leaves` entry of GET /calendar/feed. */
+export interface CalendarFeedLeave {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  leave_date: YmdString;
+  leave_type: string;
+  reason: string;
+}
+
+/**
+ * GET /calendar/feed?start=&end= (CalendarController::feed). Therapists only
+ * ever receive their own sessions and leave. Sessions carry the viewer's own
+ * `therapist_note` (see MySessionPayload).
+ */
+export interface CalendarFeed {
+  sessions: MySessionPayload[];
+  leaves: CalendarFeedLeave[];
+}
+
 /** PATCH /calendar/{id}/therapist-note response. */
 export interface TherapistNoteResponse {
   message: string;
@@ -389,6 +414,57 @@ export interface TherapistDashboard {
   my_treatment_plans_due_count: number;
   /** Soonest first, first 3. Each patient has `lead` loaded. */
   my_treatment_plans_due_list: Patient[];
+}
+
+/** Lead on the waitlist (DashboardController::patientMetrics `$waitlistNextUp`). */
+export interface WaitlistEntry extends Lead {
+  /** Lead::waitingWeeks() */
+  waiting_weeks: number;
+}
+
+/**
+ * DashboardController::clinicalSupervisorMetrics() + scheduleMetrics() +
+ * patientMetrics() view variables as JSON (snake_case). No JSON endpoint yet.
+ */
+export interface SupervisorDashboard {
+  user_full_name: string;
+  location_label: string;
+  sessions_today_count: number;
+  rooms_in_use_count: number;
+  active_therapists_count: number;
+  attendance_rate: number | null;
+  attendance_delta: number | null;
+  /** Clinic-wide, not cancelled/closed, by start time. */
+  today_sessions: CalendarSessionPayload[];
+  pending_notes_count: number;
+  overdue_notes_count: number;
+  /** Oldest first, first 3, each with `patient.lead`. */
+  notes_awaiting_signoff: PatientNote[];
+  /** Newest first, first 3, each with `patient.lead`. */
+  flagged_notes: PatientNote[];
+  active_treatment_plans_count: number;
+  plans_due_for_review_count: number;
+  treatment_plans_due_list: Patient[];
+  avg_caseload_per_therapist: number | null;
+  waitlist_count: number;
+  avg_wait_weeks: number | null;
+  waitlist_next_up: WaitlistEntry[];
+}
+
+/** PROPOSED: which notes the review screen lists. */
+export type NoteReviewFilter = 'unsigned' | 'flagged';
+
+/** PROPOSED: POST /patient-notes/sign-off response. */
+export interface SignOffResponse {
+  success: true;
+  message: string;
+  signed_off_count: number;
+}
+
+/** POST /calendar/{id}/supervision response. */
+export interface SuperviseResponse {
+  message: string;
+  session: CalendarSessionPayload;
 }
 
 // ---------------------------------------------------------------------------

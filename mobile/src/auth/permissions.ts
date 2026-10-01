@@ -67,6 +67,15 @@ export function canWriteIn(user: PermissionUser, module: ModuleKey): boolean {
   return canAccessFeature(user, module) && levelFor(user, module) !== 'view';
 }
 
+/**
+ * PROPOSED (mobile sign-off; no Laravel equivalent yet): who may sign off
+ * and flag therapists' session notes. Mirrors the roles that own clinical
+ * oversight on the web (the supervisor dashboard's sign-off queue).
+ */
+export function canReviewNotes(user: PermissionUser): boolean {
+  return (user.role === 'CLINICAL_SUPERVISOR' || user.role === 'FULL_ADMIN') && canWriteIn(user, 'patients');
+}
+
 /** CalendarController::canManage(): reschedule, cancel, leave, supervision. */
 export function canManageCalendar(user: PermissionUser): boolean {
   return canDo(user, 'assign_change_schedule') || CALENDAR_MANAGE_ROLES.includes(user.role);

@@ -17,10 +17,11 @@ import type {
   TodayGoalsRequest,
   TodayGoalsResponse,
 } from '../types';
+import { presentNote } from './notes';
 import { authorizationHoursUsed, autoCompletePastSessions, sessionPayload, sessionsForLead } from './presenters';
 import type { CalendarSessionRow, MockDb, PatientNoteRow, PatientRow, UserRow } from './rows';
 import { addMinutes, laravelIso } from './seed';
-import { delay, getDb, requireFeature, requireUser, staffDisplayName } from './server';
+import { delay, getDb, requireFeature, requireUser } from './server';
 
 const NOTE_MAX = 2000;
 const GOAL_TITLE_MAX = 255;
@@ -90,12 +91,6 @@ function careTeam(db: MockDb, patient: PatientRow): CareTeamMember[] {
 /** Newest first: session_date desc, then start_time desc. */
 function byNewest(a: CalendarSessionRow, b: CalendarSessionRow): number {
   return b.session_date.localeCompare(a.session_date) || b.start_time.localeCompare(a.start_time);
-}
-
-/** PatientNote with the `author_name` accessor appended. */
-function presentNote(db: MockDb, note: PatientNoteRow): PatientNote {
-  const author = db.users.find((u) => u.id === note.user_id);
-  return { ...note, author_name: author ? staffDisplayName(author) : 'System' };
 }
 
 /**
