@@ -28,6 +28,8 @@ import {
   sessionPayload,
 } from './presenters';
 import { createDashboardApi } from './dashboard';
+import { createInboxApi } from './inbox';
+import { createLeadsApi } from './leads';
 import { createNotesApi } from './notes';
 import { createPatientsApi } from './patients';
 import type { UserRow } from './rows';
@@ -381,6 +383,8 @@ export function createMockApi(): ApiClient {
     dashboard: createDashboardApi(),
     notes: createNotesApi(),
     patients: createPatientsApi(),
+    inbox: createInboxApi(),
+    leads: createLeadsApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),

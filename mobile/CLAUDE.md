@@ -21,9 +21,18 @@ npm install                 # install
 npx expo start              # dev server; scan the QR with Expo Go (same Wi-Fi) or press a / w
 npx expo start --tunnel     # if the phone can't reach the PC on the LAN
 npx tsc --noEmit            # type-check
+npx tsc --noEmit -p tsconfig.check.json   # same, ignoring Expo's generated route types (see note below)
 npx expo lint               # lint (ESLint, eslint-config-expo)
 npx expo install <pkg>      # add packages (never plain npm install <pkg>)
 ```
+
+Route-type note: with typed routes on, a running `expo start` appends every newly added file to
+`.expo/types/router.d.ts`, which makes `tsc` report false errors like `"/inbox" is not assignable…`
+with odd `/../features/...` paths. Restart the dev server (it regenerates the file), or type-check
+with `tsconfig.check.json`.
+
+Navigation: each tab's stack sets `unstable_settings = { anchor: 'index' }`; when pushing a detail
+screen in *another* tab (dashboard → patient, lead → patient…), pass `{ withAnchor: true }` so Back works.
 
 Mock login: any seeded staff email with password `password`, e.g. therapist `alessandra@engagebehavior.com`. Seeded users are listed in `docs/laravel-roles-and-auth.md`.
 
@@ -87,7 +96,15 @@ These are copied from the web app. Don't hard-code colours in screens.
     `signed_off_by_name` append on PatientNote. The web only *lists* unsigned/flagged notes; nothing
     ever sets `signed_off_at` or `flagged`. Allowed for CLINICAL_SUPERVISOR + FULL_ADMIN
     (`canReviewNotes` in `src/auth/permissions.ts`).
+- **Web gaps to decide on (display-only on the web, so display-only on mobile for now):**
+  - No endpoint or UI ever sets `calendar_sessions.follow_up_completed_at`, so "No-shows needing follow-up" can never be cleared.
+  - No "log intake call" action; a lead leaves the intake queue only when its status leaves `new`.
+  - `whatsapp_contacts.assigned_user_id` is accepted by `POST /whatsapp/{id}/ai-state` but no UI sends or shows it.
+  - Family details (`child_name`, `interested_in`, `insurance` on a contact) have no edit endpoint.
+- **Inbox JSON**: `GET /whatsapp/poll` and `POST /whatsapp/send` return rendered HTML fragments, and ai-state / convert-to-lead redirect. The mobile API needs JSON equivalents (shapes in `src/api/types.ts`: InboxContact, InboxThread, InboxPoll).
 - **Known Laravel issues (for later, don't fix):**
+  - Converting a chat to a lead writes `source` as `ucfirst(channel)` ("Whatsapp"), which doesn't match the lead board's "WhatsApp" badge key.
+  - `POST /whatsapp/message/{message}/convert-to-lead` exists but nothing in the UI calls it.
   - Suspended users (`is_active = false`) can still log in; `LoginController` never checks. The mock login does reject them.
   - `last_login_at` is never written, so every invited user shows as "invited".
   - `GET /calendar/{id}` has no ownership check. `PatientDocumentController` has no role or ownership check.
@@ -116,6 +133,11 @@ Paths in these docs are relative to the Laravel root (the parent of `mobile/`).
 | 2c | Calendar: Week / Month toggle. Month grid like the web (`calendar/index.blade.php`: count badge, up to 3 name chips, +N more, today/weekend/leave), tap a day to list its sessions; data from `GET /calendar/feed`. Session cards show the therapist's own note text; month cells mark days with notes | Done 2026-10-01: walked through in a browser, tested on the user's phone |
 | 2b | Patient detail extras: Payments, Documents, Profile & intake tabs; Edit details; add/edit authorizations | Not started |
 | 3 | Clinical supervisor: dashboard mirroring `clinical_supervisor.blade.php` (6 stats, today's clinic schedule, notes awaiting sign-off, flagged, plans due, waitlist); **notes review** screen with sign-off (single + multi-select) and flag/unflag (proposed endpoints, user's choice); clinic-wide Week/Month calendar with therapist filter for managers; log/remove supervision on past sessions (real `POST/DELETE /calendar/{id}/supervision` rules); sign-off/flag status on patient notes | Done 2026-10-01: rules checked by script, walked through in a browser (supervisor + therapist regression), tested on the user's phone |
-| 4 | Coordinator: clinic-wide schedule, intake pipeline, no-show follow-ups, WhatsApp inbox | Not started |
+| 4a | Coordinator dashboard mirroring `coordinator.blade.php` (6 stats, clinic schedule, intake pipeline, WhatsApp preview, no-shows needing follow-up) and the **WhatsApp / Instagram / Facebook inbox** for every role with the `whatsapp` module: list (search, channel pills, AI/staff chips, attention dot, unread), conversation (bubbles, date dividers, reply with Sending/Sent/Delivered, AI-state switch, read-only family details, Convert to Lead), 4-second polling | Built 2026-10-01; rules checked by script, walked through in a browser (plus supervisor/therapist regression). **Remaining: test on a phone** |
+| 4b | Leads for every role with the `leads` module: board as a stage switcher (New / Contacted / Initial assessment / Enrolled + Terminated history with Restore), lead panel (Success → next stage, Follow-up, notes, assign owner, follow-up date, terminate with reason, Convert to client, intake checklist status, "where this lead came from", assignment log), New lead form; all gated by `canDo` like LeadController | Built 2026-10-01; rules checked by script, walked through in a browser. **Remaining: test on a phone** |
+| 4c | Lead intake checklist: the 7 step forms (parent contact, child details, intake form, assessment, funding, package, consent). Today the app shows each step's done/to-do state only | Not started |
 | 5 | Admin overview dashboard | Not started |
+| 6 | Contacts (website enquiries / booking requests) for coordinator + sales | Not started (user asked for it later) |
+| 7 | Therapists page (per-therapist schedule, close/reopen a session) for supervisor | Not started (user asked for it later) |
+| 8 | Reports (read-only summary) for supervisor / admin | Not started (user asked for it later) |
 | — | Laravel mobile API (Sanctum + JSON endpoints under `/api/mobile/v1`) | Waiting for the user's signal; don't touch the Laravel app until then |

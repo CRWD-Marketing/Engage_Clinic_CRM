@@ -133,6 +133,46 @@ export const noteStatusColors = {
   flagged: { bg: '#F9E3EA', fg: '#C8355F' },
 } as const;
 
+/** WhatsApp / social inbox (whatsapp/index.blade.php, dashboard inbox cards). */
+export const inboxColors = {
+  whatsappGreen: '#1FA855',
+  outboundBubble: '#DDF3E0',
+  bubbleTime: '#9AA79B',
+  aiChip: { bg: '#E9EEF3', fg: '#16436E' },
+  staffChip: { bg: '#EEF0F2', fg: '#5A6B7E' },
+  attention: '#C8355F',
+  failed: '#B3261E',
+  /** Channel badge on the avatar (WhatsappContact::channelBadgeHtml; IG/FB gradients flattened). */
+  channel: { whatsapp: '#1FA855', instagram: '#D62976', facebook: '#0662FE', voice: '#B97F24' },
+  /** WhatsappContact::avatarColor() palette (6 colours, crc32(wa_id) % 6). */
+  avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
+} as const;
+
+/** Leads board (lead/index.blade.php, lead/_card.blade.php). */
+export const leadColors = {
+  sourceBadge: {
+    WhatsApp: { bg: '#E3F4E9', fg: '#178A45' },
+    Website: { bg: '#E7EFF7', fg: '#24619C' },
+    Instagram: { bg: '#FAE7F2', fg: '#C13584' },
+    Referral: { bg: '#F7EEDD', fg: '#B97F24' },
+    Google: { bg: '#EEE9F7', fg: '#6E4FA8' },
+    'Walk-in': { bg: '#EDEFF1', fg: '#5A6B7E' },
+    'Phone call': { bg: '#E3F1E9', fg: '#2E7D5B' },
+    Event: { bg: '#F7EEDD', fg: '#8A5A10' },
+  } as Record<string, ChipColors>,
+  defaultBadge: { bg: '#EDEFF1', fg: '#5A6B7E' },
+  statusTag: {
+    new: { bg: '#E7EFF7', fg: '#24619C' },
+    contacted: { bg: '#FBF0DC', fg: '#8A5A10' },
+    assessment_booked: { bg: '#EDE7F5', fg: '#6E4FA8' },
+    assessment_done: { bg: '#EDE7F5', fg: '#6E4FA8' },
+    enrolled: { bg: '#E3F1E9', fg: '#2E7D5B' },
+    terminated: { bg: '#F9E4E2', fg: '#B3261E' },
+  } as Record<string, ChipColors>,
+  due: { bg: '#FBF0DC', fg: '#8A5A10' },
+  overdue: { bg: '#F9E4E2', fg: '#B3261E' },
+} as const;
+
 /** Avatar backgrounds, picked by crc32(id) % 7 like the web app. */
 export const avatarPalette = [
   '#C8355F',

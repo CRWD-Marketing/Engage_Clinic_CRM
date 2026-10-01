@@ -62,7 +62,7 @@ export function NoteReviewCard({ note, selectable, selected, busy, onToggleSelec
         ) : null}
         <Pressable
           style={styles.flex}
-          onPress={() => router.push({ pathname: '/patients/[id]', params: { id: String(note.patient_id) } })}
+          onPress={() => router.push({ pathname: '/patients/[id]', params: { id: String(note.patient_id) } }, { withAnchor: true })}
           accessibilityRole="link">
           <AppText variant="bodyStrong">{child}</AppText>
           <AppText variant="caption">

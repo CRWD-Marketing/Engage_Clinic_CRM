@@ -9,6 +9,7 @@
 import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
 import { addDays, clinicToIso, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
+import { blankLead, INTAKE_STEP_COLUMNS } from './leadDefaults';
 import { authorizationHoursUsed, sessionsForLead } from './presenters';
 import { createRandom, type Random } from './random';
 import type {
@@ -24,6 +25,7 @@ import type {
   StaffLeaveRow,
   UserRow,
 } from './rows';
+import type { WhatsappContact } from '../types';
 
 // ---------------------------------------------------------------------------
 // Serialization helpers (match Laravel's JSON output)
@@ -128,6 +130,10 @@ type FamilySeed = {
   planDueInDays?: number;
   /** Intake step 4 assessment summary (the "Converted from lead" banner). */
   summary?: string;
+  /** Enquiry note shown on the lead card. */
+  note?: string;
+  /** follow_up_due_at relative to today (negative = overdue). */
+  followUpInDays?: number;
 };
 
 const FAMILIES: FamilySeed[] = [
@@ -143,12 +149,15 @@ const FAMILIES: FamilySeed[] = [
   { child: 'Hind Al Falasi', parent: 'Salama Al Falasi', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 2)', programme: 'ABA 20h/wk + Speech 2h', care: [9, 14], interested_in: 'ABA therapy', insurance: 'Daman', source: 'Event', planDueInDays: -2 },
   { child: 'Adam Qureshi', parent: 'Sana Qureshi', age: 4, status: 'enrolled', diagnosis: 'Global Developmental Delay', programme: 'Combined ABA + Speech + OT', care: [13, 11, 15], interested_in: 'Combined program', insurance: 'Self-pay', source: 'Facebook', planDueInDays: 27 },
   { child: 'Maryam Al Blooshi', parent: 'Khalid Al Blooshi', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 15h/wk + OT 1h', care: [10, 15], interested_in: 'ABA therapy', insurance: 'ADNIC', source: 'Google', planDueInDays: 74 },
-  { child: 'Mariam Al Shamsi', parent: 'Faisal Al Shamsi', age: 4, status: 'assessment_booked', interested_in: 'Diagnostic assessment', insurance: 'Not sure yet', source: 'Instagram' },
-  { child: 'Fatima Al Zaabi', parent: 'Ahmed Al Zaabi', age: 3, status: 'contacted', interested_in: 'Speech therapy', insurance: 'Daman', source: 'WhatsApp' },
-  { child: 'Hessa Al Nuaimi', parent: 'Marwan Al Nuaimi', age: 6, status: 'new', interested_in: 'Occupational therapy', insurance: 'Thiqa', source: 'Website' },
+  { child: 'Mariam Al Shamsi', parent: 'Faisal Al Shamsi', age: 4, status: 'assessment_booked', interested_in: 'Diagnostic assessment', insurance: 'Not sure yet', source: 'Instagram', note: 'Assessment booked for next week; parent asked about ADOS-2.', followUpInDays: -1 },
+  { child: 'Fatima Al Zaabi', parent: 'Ahmed Al Zaabi', age: 3, status: 'contacted', interested_in: 'Speech therapy', insurance: 'Daman', source: 'WhatsApp', note: 'Called back, interested in speech therapy. Waiting on insurance card.', followUpInDays: 2 },
+  { child: 'Hessa Al Nuaimi', parent: 'Marwan Al Nuaimi', age: 6, status: 'new', interested_in: 'Occupational therapy', insurance: 'Thiqa', source: 'Website', note: 'Submitted the website form asking about OT availability.' },
   { child: 'Saeed Al Mazrouei', parent: 'Khalfan Al Mazrouei', age: 7, status: 'terminated', interested_in: 'ABA therapy', insurance: 'Self-pay', source: 'Google' },
   { child: 'Rayan Al Marri', parent: 'Noura Al Marri', age: 3, status: 'new', interested_in: 'Speech therapy', insurance: 'Daman', source: 'Instagram' },
   { child: 'Ali Haddad', parent: 'Rania Haddad', age: 5, status: 'new', interested_in: 'ABA therapy', insurance: 'Not sure yet', source: 'Website' },
+  { child: 'Yara Al Hosani', parent: 'Salem Al Hosani', age: 4, status: 'assessment_done', interested_in: 'Combined program', insurance: 'Daman Enhanced', source: 'Referral', note: 'Assessment complete; waiting on consent form.' },
+  // Enrolled with 7/7 intake steps but not converted yet (no diagnosis given here, so no patient row).
+  { child: 'Dana Al Kaabi', parent: 'Hamdan Al Kaabi', age: 5, status: 'enrolled', interested_in: 'ABA therapy', insurance: 'Thiqa', source: 'Walk-in', note: 'All intake steps done. Ready to convert to client.' },
 ];
 
 const AGE_BAND = (age: number) => (age <= 4 ? '3-4' : age <= 6 ? '5-6' : '7-8');
@@ -277,32 +286,47 @@ export function buildSeed(now: Date = new Date()): MockDb {
     const id = i + 1;
     // Waitlist ("new") enquiries are recent; everyone else enquired months ago.
     const createdYmd = addDays(today, f.status === 'new' ? -rnd.int(5, 40) : -rnd.int(60, 140));
-    const owner = SALES_IDS[i % 2];
+    // New enquiries have no owner yet ("Unassigned — open to assign").
+    const owner = f.status === 'new' ? null : SALES_IDS[i % 2];
     const email = `${f.parent.split(' ')[0].toLowerCase()}.${f.parent.split(' ').slice(-1)[0].toLowerCase()}@gmail.com`;
-    leads.push({
-      id,
-      child_name: f.child,
-      child_age: String(f.age),
-      parent_guardian_name: f.parent,
-      phone: `+9715${rnd.int(0, 8)}${String(rnd.int(1000000, 9999999))}`,
-      email,
-      source: f.source,
-      campaign: null,
-      city: 'Abu Dhabi',
-      child_age_band: AGE_BAND(f.age),
-      interested_in: f.interested_in,
-      insurance: f.insurance,
-      estimated_value: `${rnd.int(8, 40) * 1000}.00`,
-      notes: f.status === 'enrolled' ? 'Enrolled and attending regular sessions.' : null,
-      status: f.status,
-      assigned_to: owner,
-      follow_up_due_at: null,
-      assessment_report_summary: f.summary ?? null,
-      created_at: isoAt(createdYmd, '10:15'),
-      updated_at: isoAt(createdYmd, '10:15'),
-      assigned_to_name: userName(owner),
-      intake_steps_complete: STEPS_FOR_STATUS[f.status],
-    });
+    const createdAt = isoAt(createdYmd, '10:15');
+    // LeadSeeder: steps completed by status (enrolled 7, assessment_done 6, booked 3, contacted 1).
+    const stepStamps = Object.fromEntries(
+      Object.values(INTAKE_STEP_COLUMNS)
+        .slice(0, STEPS_FOR_STATUS[f.status])
+        .map((column, step) => [column, isoAt(addDays(createdYmd, step + 1), '11:00')]),
+    );
+    const terminated = f.status === 'terminated';
+    leads.push(
+      blankLead({
+        id,
+        child_name: f.child,
+        child_age: String(f.age),
+        parent_guardian_name: f.parent,
+        phone: `+9715${rnd.int(0, 8)}${String(rnd.int(1000000, 9999999))}`,
+        email,
+        source: f.source,
+        city: 'Abu Dhabi',
+        child_age_band: AGE_BAND(f.age),
+        interested_in: f.interested_in,
+        insurance: f.insurance,
+        estimated_value: `${rnd.int(8, 40) * 1000}.00`,
+        notes: f.note ?? (f.status === 'enrolled' ? 'Enrolled and attending regular sessions.' : null),
+        status: f.status,
+        assigned_to: owner,
+        follow_up_due_at: f.followUpInDays === undefined ? null : isoAt(addDays(today, f.followUpInDays), '00:00'),
+        assessment_report_summary: f.summary ?? null,
+        diagnosis_suspected: f.diagnosis ?? null,
+        termination_reason: terminated ? 'Distance / relocated' : null,
+        termination_note: terminated ? 'Family moved to Al Ain.' : null,
+        terminated_at: terminated ? isoAt(addDays(today, -12), '15:30') : null,
+        status_before_termination: terminated ? 'contacted' : null,
+        ...stepStamps,
+        created_at: createdAt,
+        assigned_to_name: owner === null ? null : userName(owner),
+        intake_steps_complete: STEPS_FOR_STATUS[f.status],
+      }),
+    );
 
     if (f.status === 'enrolled' && f.diagnosis) {
       const enrolledYmd = addDays(createdYmd, rnd.int(7, 21));
@@ -339,12 +363,17 @@ export function buildSeed(now: Date = new Date()): MockDb {
     sessions,
     staffLeaves,
     patientNotes,
+    leadActivities: [],
     patientGoals: [],
     sessionGoals: [],
     authorizations: [],
+    whatsappContacts: [],
+    whatsappMessages: [],
   };
+  buildLeadActivities(db);
   buildGoals({ rnd, db, stamp });
   buildAuthorizations({ rnd, db, today, stamp });
+  buildInbox({ rnd, db, today, stamp });
   return db;
 }
 
@@ -574,6 +603,34 @@ function buildPatientNotes({
 }
 
 // ---------------------------------------------------------------------------
+// Lead activity log (LeadActivitySeeder): assignment entries + a few notes
+// ---------------------------------------------------------------------------
+
+function buildLeadActivities(db: MockDb) {
+  const add = (leadId: number, userId: number, type: 'note' | 'assignment', body: string, at: string) =>
+    db.leadActivities.push({
+      id: db.leadActivities.length + 1,
+      lead_id: leadId,
+      user_id: userId,
+      type,
+      body,
+      created_at: at,
+      updated_at: at,
+    });
+
+  for (const lead of db.leads) {
+    if (lead.assigned_to === null) continue;
+    const owner = db.users.find((u) => u.id === lead.assigned_to);
+    if (!owner) continue;
+    const day = new Date(lead.created_at).getTime();
+    add(lead.id, COORDINATOR_ID, 'assignment', `Assigned to ${owner.first_name} ${owner.last_name}`, laravelIso(new Date(day + 3600_000).toISOString()));
+    if (lead.status !== 'enrolled') {
+      add(lead.id, owner.id, 'note', 'Sent WhatsApp follow-up with the assessment booking link.', laravelIso(new Date(day + 26 * 3600_000).toISOString()));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Goals + session_goals (PatientGoalSeeder) and authorizations
 // ---------------------------------------------------------------------------
 
@@ -717,5 +774,163 @@ function buildAuthorizations({ rnd, db, today, stamp }: { rnd: Random; db: MockD
       default:
         add(patient, family.insurance, kinds);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Inbox (WhatsappContactSeeder + WhatsappMessageSeeder)
+// ---------------------------------------------------------------------------
+
+type ThreadSeed = {
+  wa_id: string;
+  channel: WhatsappContact['channel'];
+  name: string;
+  child?: string;
+  interested_in?: string;
+  insurance?: string;
+  /** Lead (by child name) the conversation is linked to. */
+  leadChild?: string;
+  /** MOCK variety (the Laravel seeder leaves these at defaults): who sent the outbound replies. */
+  outboundBy?: 'ai' | number;
+  aiState?: WhatsappContact['ai_state'];
+  attentionReason?: string;
+  messages: ['in' | 'out', string, string | null][];
+};
+
+const THREADS: ThreadSeed[] = [
+  {
+    wa_id: '971501234501',
+    channel: 'whatsapp',
+    name: 'Mohammed Al Mansoori',
+    leadChild: 'Khalifa Al Mansoori',
+    messages: [
+      ['in', 'text', 'Hi, I saw your page online. Do you offer ABA therapy for a 5 year old?'],
+      ['out', 'text', 'Hello! Yes we do. Could you share a bit about your child so we can guide you to the right programme?'],
+      ['in', 'text', 'My son Khalifa is 5, recently diagnosed with autism. We have Daman Enhanced insurance.'],
+      ['out', 'text', 'Great, Daman Enhanced covers our ABA programme. We can book an assessment this week if that works for you.'],
+      ['in', 'text', 'That would be perfect, thank you!'],
+    ],
+  },
+  {
+    wa_id: '971501234502',
+    channel: 'whatsapp',
+    name: 'Youssef Hassan',
+    outboundBy: 5,
+    messages: [
+      ['in', 'text', 'Salam, what are your working hours?'],
+      ['out', 'text', 'Wa alaikum salam! We are open Sunday to Thursday, 8am to 6pm.'],
+      ['in', 'like', null],
+    ],
+  },
+  {
+    wa_id: '17920001',
+    channel: 'instagram',
+    name: 'aisha.parent',
+    child: 'Aisha Rahman',
+    interested_in: 'Early intervention',
+    insurance: 'Thiqa',
+    outboundBy: 'ai',
+    messages: [
+      ['in', 'text', 'Hii do you have speech therapy available?'],
+      ['out', 'text', 'Hi! Yes, we do. How old is your child and what would you like to work on?'],
+      ['in', 'text', 'She is 3, mostly non-verbal right now.'],
+      ['out', 'text', 'Understood, early intervention would be a great fit. Would you like to book a free consultation?'],
+    ],
+  },
+  {
+    wa_id: '17920002',
+    channel: 'instagram',
+    name: 'noora.mom',
+    outboundBy: 'ai',
+    attentionReason: 'Model determined this needs human review.',
+    messages: [
+      ['in', 'text', 'Hello, I replied to your story about the new sensory room'],
+      ['out', 'text', 'Hi! Yes, we just opened it. Would you like to bring your child for a visit?'],
+      ['in', 'text', 'Yes please, when is a good time?'],
+    ],
+  },
+  {
+    wa_id: '37920003',
+    channel: 'facebook',
+    name: 'Grace Okoro',
+    outboundBy: 6,
+    aiState: 'human_takeover',
+    messages: [
+      ['in', 'text', 'Hi, do you accept self-pay families?'],
+      ['out', 'text', 'Hello Grace, yes we do! Happy to send over our rate card.'],
+      ['in', 'text', 'Yes please, thank you.'],
+    ],
+  },
+  {
+    wa_id: '37920004',
+    channel: 'facebook',
+    name: 'Faisal Al Nuaimi',
+    messages: [
+      ['in', 'text', 'What is the earliest availability for an assessment?'],
+      ['out', 'text', 'We currently have openings next week Tuesday and Thursday mornings.'],
+    ],
+  },
+];
+
+function buildInbox({ rnd, db, today, stamp }: { rnd: Random; db: MockDb; today: Ymd; stamp: string }) {
+  for (const thread of THREADS) {
+    const contactId = db.whatsappContacts.length + 1;
+    // Seeder: threads start two days ago at 09:00, each message 3–40 minutes later.
+    let at = new Date(clinicToIso(addDays(today, -2), '09:00'));
+    let lastBody: string | null = null;
+    let unread = 0;
+
+    for (const [i, [direction, type, body]] of thread.messages.entries()) {
+      at = new Date(at.getTime() + rnd.int(3, 40) * 60_000);
+      const sentAt = laravelIso(at.toISOString());
+      const text = type === 'like' ? '👍' : body;
+      db.whatsappMessages.push({
+        id: db.whatsappMessages.length + 1,
+        whatsapp_contact_id: contactId,
+        wa_message_id: `seed_${thread.wa_id}_${i}`,
+        direction: direction === 'in' ? 'inbound' : 'outbound',
+        type,
+        sticker_id: type === 'like' ? '369239263222822' : null,
+        media_url: null,
+        body: text,
+        status: direction === 'in' ? 'received' : 'read',
+        send_error: null,
+        is_ai_generated: direction === 'out' && thread.outboundBy === 'ai',
+        sent_by_user_id: direction === 'out' && typeof thread.outboundBy === 'number' ? thread.outboundBy : null,
+        ai_processing_status: direction === 'out' && thread.outboundBy === 'ai' ? 'completed' : null,
+        triggered_by_message_id: null,
+        ai_error: null,
+        voice_call_session_id: null,
+        sent_at: sentAt,
+        created_at: sentAt,
+        updated_at: sentAt,
+      });
+      lastBody = text;
+      unread = direction === 'in' ? unread + 1 : 0;
+    }
+
+    const lead = thread.leadChild ? db.leads.find((l) => l.child_name === thread.leadChild) : undefined;
+    db.whatsappContacts.push({
+      id: contactId,
+      wa_id: thread.wa_id,
+      channel: thread.channel,
+      name: thread.name,
+      avatar_url: null,
+      child_name: thread.child ?? null,
+      interested_in: thread.interested_in ?? null,
+      insurance: thread.insurance ?? null,
+      lead_id: lead?.id ?? null,
+      last_message_preview: lastBody,
+      last_message_at: laravelIso(at.toISOString()),
+      unread_count: unread,
+      ai_state: thread.aiState ?? 'ai_active',
+      assigned_user_id: null,
+      needs_human_attention: !!thread.attentionReason,
+      needs_human_reason: thread.attentionReason ?? null,
+      ai_state_changed_by: thread.aiState ? 5 : null,
+      ai_state_changed_at: thread.aiState ? stamp : null,
+      created_at: stamp,
+      updated_at: stamp,
+    });
   }
 }

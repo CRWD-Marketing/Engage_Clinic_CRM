@@ -3,12 +3,19 @@
  * helpers and the per-role views built on them.
  */
 
-import { addDays, todayYmd } from '@/utils/dates';
+import { addDays, mondayOf, todayYmd } from '@/utils/dates';
 import { fullName } from '@/utils/format';
 
 import type { ApiClient } from '../client';
 import { ApiError } from '../errors';
-import type { Patient, SupervisorDashboard, TherapistDashboard, WaitlistEntry } from '../types';
+import type {
+  CoordinatorDashboard,
+  IntakeLead,
+  Patient,
+  SupervisorDashboard,
+  TherapistDashboard,
+  WaitlistEntry,
+} from '../types';
 import { presentNoteWithPatient } from './notes';
 import { autoCompletePastSessions, sessionPayload } from './presenters';
 import type { CalendarSessionRow, MockDb, PatientRow } from './rows';
@@ -196,9 +203,86 @@ function supervisorDashboard(): SupervisorDashboard {
   };
 }
 
+// ---------------------------------------------------------------------------
+// COORDINATOR
+// ---------------------------------------------------------------------------
+
+/** DashboardController::leadMetrics(): leads in the rolling last 7 days vs the 7 before. */
+function newLeads(db: MockDb, now: Date) {
+  const weekStart = new Date(now.getTime() - WEEK_MS).toISOString();
+  const prevStart = new Date(now.getTime() - 2 * WEEK_MS).toISOString();
+  const count = db.leads.filter((l) => l.created_at >= weekStart).length;
+  const prev = db.leads.filter((l) => l.created_at >= prevStart && l.created_at <= weekStart).length;
+  const delta = prev > 0 ? Math.round(((count - prev) / prev) * 100) : count > 0 ? 100 : 0;
+  return { count, delta };
+}
+
+function coordinatorDashboard(): CoordinatorDashboard {
+  const user = requireUser();
+  requireFeature(user, 'dashboard');
+  if (user.role !== 'COORDINATOR') {
+    throw new ApiError(403, { message: 'This dashboard is for coordinators.' });
+  }
+
+  const db = getDb();
+  const now = new Date();
+  const today = todayYmd(now);
+  const schedule = scheduleMetrics(db, now);
+  const leads = newLeads(db, now);
+  const wl = waitlist(db, now);
+
+  // Intake calls: "new" leads, oldest first. Overdue when the follow-up date
+  // has passed, or (with none set) the enquiry is more than 2 days old.
+  const twoDaysAgo = new Date(now.getTime() - 2 * 86400_000).toISOString();
+  const nowIso = now.toISOString();
+  const pending: IntakeLead[] = db.leads
+    .filter((l) => l.status === 'new')
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((l) => ({
+      ...l,
+      is_overdue: l.follow_up_due_at ? l.follow_up_due_at < nowIso : l.created_at < twoDaysAgo,
+    }));
+
+  // This calendar week (Mon–Sun), like now()->startOfWeek()/endOfWeek().
+  const weekStart = mondayOf(today);
+  const weekEnd = addDays(weekStart, 6);
+  const thisWeek = db.sessions.filter((s) => s.session_date >= weekStart && s.session_date <= weekEnd);
+  const noShows = thisWeek.filter((s) => s.status === 'no_show');
+  const needFollowUp = noShows.filter((s) => s.follow_up_completed_at === null);
+
+  // Openings estimate (documented assumption in Laravel): rooms x 8 slots x 5 days - booked.
+  const rooms = Math.max(1, new Set(db.sessions.map((s) => s.room).filter(Boolean)).size);
+  const booked = thisWeek.filter((s) => s.status !== 'cancelled' && s.status !== 'closed').length;
+
+  return {
+    user_full_name: fullName(user),
+    location_label: LOCATION_LABEL,
+    new_leads_count: leads.count,
+    new_leads_delta: leads.delta,
+    pending_intake_calls_count: pending.length,
+    overdue_intake_calls_count: pending.filter((l) => l.is_overdue).length,
+    intake_pipeline: pending.slice(0, 3),
+    no_shows_count: noShows.length,
+    no_show_follow_ups_needed: needFollowUp.length,
+    no_show_follow_up_list: needFollowUp.slice(0, 3).map((s) => sessionPayload(db, s, now)),
+    waitlist_count: wl.count,
+    openings_this_week: Math.max(0, rooms * 8 * 5 - booked),
+    sessions_today_count: schedule.todayList.length,
+    rooms_in_use_count: schedule.roomsInUse,
+    active_therapists_count: schedule.activeTherapists,
+    attendance_rate: schedule.attendanceRate,
+    attendance_delta: schedule.attendanceDelta,
+    today_sessions: schedule.todayList.map((s) => sessionPayload(db, s, now)),
+    whatsapp_inbox: [...db.whatsappContacts]
+      .sort((a, b) => (b.last_message_at ?? '').localeCompare(a.last_message_at ?? ''))
+      .slice(0, 3),
+  };
+}
+
 export function createDashboardApi(): ApiClient['dashboard'] {
   return {
     therapist: () => delay(therapistDashboard),
     supervisor: () => delay(supervisorDashboard),
+    coordinator: () => delay(coordinatorDashboard),
   };
 }

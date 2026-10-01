@@ -29,7 +29,7 @@ import {
 import { todayStatus } from './todayStatus';
 
 export function openPatient(patientId: number) {
-  router.push({ pathname: '/patients/[id]', params: { id: String(patientId) } });
+  router.push({ pathname: '/patients/[id]', params: { id: String(patientId) } }, { withAnchor: true });
 }
 
 export function DashboardHeader({ name, location }: { name: string; location: string }) {
@@ -83,7 +83,7 @@ export function ScheduleTodayCard({
             <View key={s.id}>
               <Divider />
               <Pressable
-                onPress={() => router.push({ pathname: '/calendar/[id]', params: { id: String(s.id) } })}
+                onPress={() => router.push({ pathname: '/calendar/[id]', params: { id: String(s.id) } }, { withAnchor: true })}
                 style={({ pressed }) => [styles.scheduleRow, pressed && styles.pressed]}
                 accessibilityRole="button"
                 accessibilityLabel={`${formatTimeShort(s.start_time)}, ${s.patient_name}, ${s.activity_type}, ${status.label}`}>

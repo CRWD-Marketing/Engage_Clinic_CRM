@@ -26,6 +26,10 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const hasCalendar = canAccessFeature(user, 'calendar');
   const hasPatients = canAccessFeature(user, 'patients');
+  const hasInbox = canAccessFeature(user, 'whatsapp');
+  const hasLeads = canAccessFeature(user, 'leads');
+  // Dashboard + Profile are always there; six tabs need a slightly smaller label to fit a phone.
+  const tabCount = 2 + [hasCalendar, hasPatients, hasInbox, hasLeads].filter(Boolean).length;
 
   return (
     <Tabs
@@ -43,7 +47,7 @@ export default function TabsLayout() {
           paddingTop: 2,
           paddingBottom: insets.bottom + 2,
         },
-        tabBarLabelStyle: { fontFamily: fonts.bodyBold, fontSize: 11, lineHeight: 14 },
+        tabBarLabelStyle: { fontFamily: fonts.bodyBold, fontSize: tabCount > 5 ? 9.5 : 11, lineHeight: 14 },
         sceneStyle: { backgroundColor: colors.page },
       }}>
       <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarIcon: icon('grid-outline') }} />
@@ -60,7 +64,16 @@ export default function TabsLayout() {
         name="patients"
         options={{ title: 'Patients', tabBarIcon: icon('people-outline'), href: hasPatients ? undefined : null }}
       />
-      <Tabs.Screen name="profile" options={{ title: 'My profile', tabBarIcon: icon('person-circle-outline') }} />
+      <Tabs.Screen
+        name="inbox"
+        options={{ title: 'WhatsApp', tabBarIcon: icon('logo-whatsapp'), href: hasInbox ? undefined : null }}
+      />
+      <Tabs.Screen
+        name="leads"
+        options={{ title: 'Leads', tabBarIcon: icon('funnel-outline'), href: hasLeads ? undefined : null }}
+      />
+      {/* "Profile" (not "My profile") so six tabs still fit on a phone. */}
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: icon('person-circle-outline') }} />
     </Tabs>
   );
 }

@@ -7,6 +7,7 @@
 import type {
   CancelReason,
   Lead,
+  LeadActivity,
   Patient,
   PatientAuthorization,
   PatientGoal,
@@ -15,6 +16,8 @@ import type {
   SessionStatus,
   StaffLeave,
   User,
+  WhatsappContact,
+  WhatsappMessage,
 } from '../types';
 
 export type UserRow = Omit<User, 'role_template'> & { password: string };
@@ -22,6 +25,8 @@ export type UserRow = Omit<User, 'role_template'> & { password: string };
 export type RoleTemplateRow = RoleTemplate;
 
 export type LeadRow = Lead;
+
+export type LeadActivityRow = Omit<LeadActivity, 'author_name'>;
 
 export type PatientRow = Omit<Patient, 'lead'>;
 
@@ -78,6 +83,7 @@ export interface MockDb {
   roleTemplates: RoleTemplateRow[];
   users: UserRow[];
   leads: LeadRow[];
+  leadActivities: LeadActivityRow[];
   patients: PatientRow[];
   sessions: CalendarSessionRow[];
   staffLeaves: StaffLeaveRow[];
@@ -85,4 +91,6 @@ export interface MockDb {
   patientGoals: PatientGoalRow[];
   sessionGoals: SessionGoalRow[];
   authorizations: PatientAuthorizationRow[];
+  whatsappContacts: WhatsappContact[];
+  whatsappMessages: WhatsappMessage[];
 }

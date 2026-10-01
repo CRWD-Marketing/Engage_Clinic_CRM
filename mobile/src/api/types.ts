@@ -131,11 +131,108 @@ export interface Lead {
   follow_up_due_at: IsoDateTime | null;
   /** Intake step 4; shown as the "Converted from lead — …" banner on a patient. */
   assessment_report_summary: string | null;
+  ad_name: string | null;
+  lead_form_name: string | null;
+  /** Intake step 2 fields shown on the lead panel / used at conversion. */
+  main_concern: string | null;
+  diagnosis_suspected: string | null;
+  termination_reason: string | null;
+  termination_note: string | null;
+  terminated_at: IsoDateTime | null;
+  status_before_termination: LeadStatus | null;
+  /** Intake checklist: one completion stamp per step (Lead::INTAKE_STEPS). */
+  parent_contact_completed_at: IsoDateTime | null;
+  child_details_completed_at: IsoDateTime | null;
+  intake_form_completed_at: IsoDateTime | null;
+  assessment_completed_at: IsoDateTime | null;
+  funding_completed_at: IsoDateTime | null;
+  package_completed_at: IsoDateTime | null;
+  consent_completed_at: IsoDateTime | null;
   created_at: IsoDateTime;
   updated_at: IsoDateTime;
   /** $appends */
   assigned_to_name: string | null;
   intake_steps_complete: number;
+}
+
+/** `lead_activities` table (notes + assignment log). */
+export interface LeadActivity {
+  id: number;
+  lead_id: number;
+  user_id: number | null;
+  type: 'note' | 'assignment';
+  body: string | null;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+  /** $appends */
+  author_name: string;
+}
+
+/** A lead on the board, plus whether it already became a patient (those are hidden from the board). */
+export interface BoardLead extends Lead {
+  has_patient: boolean;
+}
+
+/**
+ * GET /admin/leads (LeadController::index + lead/index.blade.php) as JSON:
+ * every lead newest first, and the option lists the page embeds.
+ */
+export interface LeadsBoard {
+  leads: BoardLead[];
+  /** Active SALES_STAFF / FULL_ADMIN users (plus anyone already an owner). */
+  assignable_users: { id: number; name: string }[];
+  /** "Not sure yet", active insurances, "Self-pay". */
+  insurance_options: string[];
+}
+
+/** GET /admin/leads/{id} (JSON). */
+export interface LeadDetail {
+  success: true;
+  lead: BoardLead;
+  notes_log: LeadActivity[];
+  assignment_log: LeadActivity[];
+}
+
+/** PUT /admin/leads/{id} — every field optional; "" clears a value. */
+export interface LeadUpdateRequest {
+  child_name?: string | null;
+  child_age?: string | null;
+  parent_guardian_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  source?: string | null;
+  interested_in?: string | null;
+  insurance?: string | null;
+  estimated_value?: string | null;
+  notes?: string | null;
+  status?: LeadStatus;
+  assigned_to?: number | null;
+  /** "YYYY-MM-DD", or null/"" to clear. */
+  follow_up_due_at?: string | null;
+  termination_reason?: string | null;
+  termination_note?: string | null;
+}
+
+/** POST /admin/leads (New Lead modal). */
+export type LeadStoreRequest = Pick<
+  LeadUpdateRequest,
+  | 'child_name'
+  | 'child_age'
+  | 'parent_guardian_name'
+  | 'phone'
+  | 'source'
+  | 'interested_in'
+  | 'insurance'
+  | 'estimated_value'
+  | 'assigned_to'
+  | 'follow_up_due_at'
+  | 'notes'
+>;
+
+export interface LeadMutationResponse {
+  success: true;
+  message: string;
+  lead: BoardLead;
 }
 
 /** `patients` table. Child name/age/parent/phone live on the Lead. */
@@ -465,6 +562,154 @@ export interface SignOffResponse {
 export interface SuperviseResponse {
   message: string;
   session: CalendarSessionPayload;
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp / social inbox
+// ---------------------------------------------------------------------------
+
+export type InboxChannel = 'whatsapp' | 'instagram' | 'facebook' | 'voice';
+export type AiState = 'ai_active' | 'human_assigned' | 'human_takeover' | 'closed';
+
+/** `whatsapp_contacts` table (one conversation per contact, any channel). */
+export interface WhatsappContact {
+  id: number;
+  /** Phone number for WhatsApp, a platform id for Instagram/Facebook. */
+  wa_id: string;
+  channel: InboxChannel;
+  name: string | null;
+  avatar_url: string | null;
+  child_name: string | null;
+  interested_in: string | null;
+  insurance: string | null;
+  lead_id: number | null;
+  last_message_preview: string | null;
+  last_message_at: IsoDateTime | null;
+  unread_count: number;
+  ai_state: AiState;
+  assigned_user_id: number | null;
+  needs_human_attention: boolean;
+  needs_human_reason: string | null;
+  ai_state_changed_by: number | null;
+  ai_state_changed_at: IsoDateTime | null;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+}
+
+export type MessageDirection = 'inbound' | 'outbound';
+export type MessageStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'received';
+
+/** `whatsapp_messages` table. */
+export interface WhatsappMessage {
+  id: number;
+  whatsapp_contact_id: number;
+  wa_message_id: string | null;
+  direction: MessageDirection;
+  /** text, image, video, audio, document, sticker, like, location, story_reply, … */
+  type: string;
+  sticker_id: string | null;
+  media_url: string | null;
+  body: string | null;
+  status: MessageStatus | null;
+  send_error: string | null;
+  is_ai_generated: boolean;
+  sent_by_user_id: number | null;
+  ai_processing_status: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped' | null;
+  triggered_by_message_id: number | null;
+  ai_error: string | null;
+  voice_call_session_id: number | null;
+  sent_at: IsoDateTime;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+}
+
+/**
+ * A conversation in the inbox list. Laravel renders the list as HTML
+ * (whatsapp/partials/contact_row.blade.php); this is the same data as JSON.
+ */
+export interface InboxContact extends WhatsappContact {
+  /** WhatsappMessage::responderLabel() of the latest message: "AI", a staff name, or null. */
+  last_responder: string | null;
+}
+
+/** A message with the values the Blade partial derives (partials/message.blade.php). */
+export interface InboxMessage extends WhatsappMessage {
+  /** body, or WhatsappMessage::fallbackLabel(type) when there is no body. */
+  display_body: string;
+  /** Outbound only: "AI", the sender's name, or null. */
+  responder_label: string | null;
+  /** WhatsappMessage::statusLabel(): Sending / Sent / Delivered / Read / Not sent / "". */
+  status_label: string;
+}
+
+/** The read-only "Family details" panel (whatsapp/index.blade.php). */
+export interface FamilyDetails {
+  child_name: string | null;
+  child_age: string | null;
+  interested_in: string | null;
+  source: string | null;
+  first_contact_at: IsoDateTime | null;
+  insurance: string | null;
+  /** True when the contact is linked to a lead ("In leads pipeline ✓"). */
+  in_pipeline: boolean;
+}
+
+/** One open conversation (index with ?contact=). Opening it resets unread_count. */
+export interface InboxThread {
+  contact: InboxContact;
+  /** Oldest first. */
+  messages: InboxMessage[];
+  family: FamilyDetails;
+}
+
+/**
+ * GET /whatsapp/poll?contact=&after= — same semantics as the web's 4-second
+ * poll, as JSON instead of rendered HTML.
+ */
+export interface InboxPoll {
+  contacts: InboxContact[];
+  /** Messages for `contact` with id > after. */
+  messages: InboxMessage[];
+  latest_message_id: number;
+  /** Last 30 outbound messages of `contact`, for status ticks. */
+  statuses: { id: number; status: MessageStatus | null; label: string; error: string | null }[];
+}
+
+/** Intake pipeline row: a "new" lead plus the overdue rule the Blade view applies. */
+export interface IntakeLead extends Lead {
+  /** follow_up_due_at in the past, or (with none set) enquired more than 2 days ago. */
+  is_overdue: boolean;
+}
+
+/**
+ * DashboardController coordinator view (leadMetrics + scheduleMetrics +
+ * whatsappMetrics + patientMetrics + coordinatorMetrics) as JSON.
+ */
+export interface CoordinatorDashboard {
+  user_full_name: string;
+  location_label: string;
+  /** Leads created in the rolling last 7 days, and % change vs the 7 before. */
+  new_leads_count: number;
+  new_leads_delta: number;
+  pending_intake_calls_count: number;
+  overdue_intake_calls_count: number;
+  /** Oldest first, first 3. */
+  intake_pipeline: IntakeLead[];
+  no_shows_count: number;
+  no_show_follow_ups_needed: number;
+  /** This week's no-shows without follow_up_completed_at, first 3. */
+  no_show_follow_up_list: CalendarSessionPayload[];
+  waitlist_count: number;
+  /** Estimate: distinct rooms x 8 slots x 5 days - sessions booked this week. */
+  openings_this_week: number;
+  sessions_today_count: number;
+  rooms_in_use_count: number;
+  active_therapists_count: number;
+  attendance_rate: number | null;
+  attendance_delta: number | null;
+  today_sessions: CalendarSessionPayload[];
+  /** Latest 3 conversations by last_message_at. */
+  whatsapp_inbox: WhatsappContact[];
 }
 
 // ---------------------------------------------------------------------------

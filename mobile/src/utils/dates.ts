@@ -168,6 +168,19 @@ export function formatMonthLong(value: Ymd): string {
   return `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
+/** ISO timestamp → clinic "HH:mm" (PHP `H:i`). */
+export function formatClockTime(iso: string): string {
+  const c = clinicClock(new Date(iso));
+  return `${pad(c.getUTCHours())}:${pad(c.getUTCMinutes())}`;
+}
+
+/** ISO timestamp → clinic "5:57 PM" (PHP `g:i A`). */
+export function formatClock12(iso: string): string {
+  const c = clinicClock(new Date(iso));
+  const h = c.getUTCHours();
+  return `${h % 12 === 0 ? 12 : h % 12}:${pad(c.getUTCMinutes())} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
 /** "WED" */
 export function formatWeekdayAbbrev(value: Ymd): string {
   return DAY_NAMES[parseYmd(value).getUTCDay()].slice(0, 3).toUpperCase();

@@ -9,7 +9,21 @@
 
 import { createMockApi } from './mock';
 import type {
+  AiState,
   CalendarFeed,
+  InboxContact,
+  InboxMessage,
+  InboxPoll,
+  InboxThread,
+  CoordinatorDashboard,
+  Lead,
+  LeadActivity,
+  LeadDetail,
+  LeadMutationResponse,
+  LeadsBoard,
+  LeadStatus,
+  LeadStoreRequest,
+  LeadUpdateRequest,
   LoginRequest,
   LoginResponse,
   MyCalendarWeek,
@@ -50,6 +64,8 @@ export interface ApiClient {
     therapist(): Promise<TherapistDashboard>;
     /** GET /dashboard for CLINICAL_SUPERVISOR (clinicalSupervisorMetrics etc.). 403 for other roles. */
     supervisor(): Promise<SupervisorDashboard>;
+    /** GET /dashboard for COORDINATOR (coordinatorMetrics etc.). 403 for other roles. */
+    coordinator(): Promise<CoordinatorDashboard>;
   };
   patients: {
     /**
@@ -79,6 +95,53 @@ export interface ApiClient {
     flag(id: number, reason: string): Promise<{ success: true; note: PatientNote }>;
     /** DELETE /patient-notes/{id}/flag */
     unflag(id: number): Promise<{ success: true; note: PatientNote }>;
+  };
+  /** Leads pipeline (LeadController, `feature:leads`). Action checks follow User::canDo(). */
+  leads: {
+    /** GET /admin/leads */
+    board(): Promise<LeadsBoard>;
+    /** GET /admin/leads/{id} */
+    show(id: number): Promise<LeadDetail>;
+    /** POST /admin/leads */
+    store(input: LeadStoreRequest): Promise<LeadMutationResponse>;
+    /**
+     * PUT /admin/leads/{id}. 422 if the lead would be Contacted without an owner,
+     * 403 for assign/reassign/terminate without the matching action, 422 for a
+     * termination without a reason.
+     */
+    update(id: number, input: LeadUpdateRequest): Promise<LeadMutationResponse>;
+    /** PATCH /admin/leads/{id}/status — 422 moving to contacted without an owner. */
+    updateStatus(id: number, status: LeadStatus): Promise<LeadMutationResponse>;
+    /** POST /admin/leads/{id}/notes — needs `add_lead_notes`. */
+    addNote(id: number, body: string): Promise<{ success: true; note: LeadActivity }>;
+    /** POST /admin/leads/{id}/restore — needs `terminate_lead`. */
+    restore(id: number): Promise<LeadMutationResponse>;
+    /**
+     * POST /admin/leads/{id}/convert-to-patient — needs `convert_to_client`, an
+     * enrolled lead and 7/7 intake steps. The web answers with a redirect URL;
+     * `patient_id` is its JSON equivalent.
+     */
+    convertToPatient(id: number): Promise<{ success: true; message: string; patient_id: number }>;
+  };
+  /**
+   * WhatsApp / Instagram / Facebook inbox (WhatsappController). Every user
+   * with the `whatsapp` module can read, reply, change the AI state and
+   * convert to a lead; "view" level blocks writes. The web returns HTML
+   * fragments and redirects; these are the JSON equivalents.
+   */
+  inbox: {
+    /** GET /whatsapp — all conversations, latest activity first. */
+    list(): Promise<InboxContact[]>;
+    /** GET /whatsapp?contact={id} — the conversation; marks it read. */
+    thread(contactId: number): Promise<InboxThread>;
+    /** GET /whatsapp/poll?contact=&after= */
+    poll(contactId: number | null, after: number): Promise<InboxPoll>;
+    /** POST /whatsapp/send {contact_id, message} — 422 empty/too long, 429 over 20/min. */
+    send(contactId: number, message: string): Promise<{ message: InboxMessage; latest_message_id: number }>;
+    /** POST /whatsapp/{id}/ai-state {ai_state} — also clears needs_human_attention. */
+    setAiState(contactId: number, state: AiState): Promise<{ contact: InboxContact }>;
+    /** POST /whatsapp/{id}/convert-to-lead — no-op if already linked. */
+    convertToLead(contactId: number): Promise<{ contact: InboxContact; lead: Lead }>;
   };
   calendar: {
     /** GET /calendar?date= for "own"-level users (CalendarController::myCalendar). */
