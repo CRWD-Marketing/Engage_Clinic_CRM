@@ -88,6 +88,9 @@ These are copied from the web app. Don't hard-code colours in screens.
   - Route files are loaded twice: in `bootstrap/app.php` `web:` and again via `require` in `routes/web.php`.
   - The Calendar capability-strip text says Coordinator is locked, but `canManage()` lets them manage.
   - A stray file named `title)` sits in the Laravel root.
+  - `PatientGoal::sessionsInLast(10)` counts the 10 latest sessions *including future booked ones*, so "used in N of the last 10 sessions" reads 0 whenever sessions are booked ahead. The mock mirrors this.
+  - `updateGoalsForToday` validates `goal_ids` with `exists:patient_goals,id` only, so a goal belonging to another patient can be linked.
+  - Therapist patient scoping (`PatientController::index` / `assertAssignedTherapist`) matches `patient_id` only, ignoring group bookings in `patient_ids`.
 
 ## Research docs
 
@@ -102,4 +105,9 @@ Paths in these docs are relative to the Laravel root (the parent of `mobile/`).
 | # | Scope | Status |
 |---|---|---|
 | 1 | Login (mock auth), therapist dashboard, "My schedule" (week and day list, session detail, therapist note), tab shell from modules, theme, "My profile" (mirrors web profile page: summary + editable personal details via `PUT /profile`, module access, log out) | Done (2026-09-30): tested on the user's phone in Expo Go; profile screen rebuilt afterwards to mirror the web page (verified on web). Type-check, lint, expo-doctor 21/21, Android + iOS bundles pass |
-| 2 | Patients: list (own-scoped for therapists), detail (overview, notes, goals, authorizations, session history) | Not started |
+| 2 | Patients: list (own-scoped for therapists, search, "Needs details"/"Active" groups), detail (header, renewal/incomplete banners, chips; Overview: goals worked on today, session notes, insurance & authorization, care team, upcoming; Session history). Dashboard note/plan rows open the patient | Built 2026-10-01; mock rules checked by script and walked through in a browser. **Remaining: test on a phone** |
+| 2b | Patient detail extras: Payments, Documents, Profile & intake tabs; Edit details; add/edit authorizations | Not started |
+| 3 | Clinical supervisor: notes awaiting sign-off, flagged notes, supervision logging, treatment plans due | Not started |
+| 4 | Coordinator: clinic-wide schedule, intake pipeline, no-show follow-ups, WhatsApp inbox | Not started |
+| 5 | Admin overview dashboard | Not started |
+| — | Laravel mobile API (Sanctum + JSON endpoints under `/api/mobile/v1`) | Waiting for the user's signal; don't touch the Laravel app until then |

@@ -93,6 +93,25 @@ export const profileColors = {
   adminNote: '#A79C8E',
 } as const;
 
+/** Patients list + detail (patient/index.blade.php, patient/show.blade.php). */
+export const patientColors = {
+  activeBadge: { bg: '#E4F6EB', fg: '#1E8A4C' },
+  needsDetailsBadge: { bg: '#FDF6E9', fg: '#8A5A10' },
+  groupDotNeedsDetails: '#C8355F',
+  groupDotActive: '#1E8A4C',
+  programmeChip: { bg: '#F9E7EC', fg: '#C8355F' },
+  payerChip: { bg: '#E7EFF7', fg: '#24619C' },
+  coverageBadge: { bg: '#E7EFF7', fg: '#24619C' },
+  incompleteBanner: { bg: '#FDF6E9', border: '#EBDCC2', title: '#8A5A10', sub: '#8A7D6C' },
+  attentionBanner: { bg: '#FBEAE8', border: '#EFC7C2', fg: '#B3261E' },
+  conversionBanner: { bg: '#F6F3EE', border: '#E2DACE', fg: '#5A6B7E' },
+  progressTrack: '#F3EDE3',
+  progressOk: '#1E8A4C',
+  progressLow: '#B3261E',
+  listMeta: '#B0A493',
+  goalSelectedBg: '#FDF5F7',
+} as const;
+
 /** Avatar backgrounds, picked by crc32(id) % 7 like the web app. */
 export const avatarPalette = [
   '#C8355F',

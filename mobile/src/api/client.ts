@@ -13,10 +13,15 @@ import type {
   LoginResponse,
   MyCalendarWeek,
   MySessionPayload,
+  PatientDetail,
+  PatientListItem,
+  PatientNote,
   ProfileUpdateRequest,
   ProfileUpdateResponse,
   TherapistDashboard,
   TherapistNoteResponse,
+  TodayGoalsRequest,
+  TodayGoalsResponse,
   User,
 } from './types';
 
@@ -38,6 +43,19 @@ export interface ApiClient {
   dashboard: {
     /** GET /dashboard for THERAPIST (DashboardController::therapistMetrics). 403 for other roles. */
     therapist(): Promise<TherapistDashboard>;
+  };
+  patients: {
+    /**
+     * GET /patient?search= — therapists only get patients they have a
+     * session with (PatientController::index). Newest first.
+     */
+    list(search?: string): Promise<PatientListItem[]>;
+    /** GET /patient/{id} — Overview + Session history data. 403 if not assigned. */
+    show(id: number): Promise<PatientDetail>;
+    /** POST /patient/{id}/notes — 403 for coordinators and unassigned therapists. */
+    addNote(id: number, body: string): Promise<{ success: true; note: PatientNote }>;
+    /** POST /patient/{id}/goals/today — replaces today's session goals. */
+    saveTodayGoals(id: number, input: TodayGoalsRequest): Promise<TodayGoalsResponse>;
   };
   calendar: {
     /** GET /calendar?date= for "own"-level users (CalendarController::myCalendar). */

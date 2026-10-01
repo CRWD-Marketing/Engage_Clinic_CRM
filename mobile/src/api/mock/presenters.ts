@@ -14,6 +14,48 @@ const CANCEL_NOTICE_HOURS = 24;
 /** CalendarSession::NON_THERAPY_TYPES */
 export const NON_THERAPY_TYPES = ['Supervision', 'Observation', 'Admin time', 'Training', 'Meeting'];
 
+/** CalendarSession::THERAPY_TYPES */
+export const THERAPY_TYPES = ['ABA', 'Speech', 'OT', 'Assessment', 'Parent training'];
+
+/**
+ * Patient::calendarSessions(): sessions whose patient_id is the lead, or
+ * group bookings whose patient_ids contain it.
+ */
+export function sessionsForLead(db: MockDb, leadId: number): CalendarSessionRow[] {
+  return db.sessions.filter((s) => s.patient_id === leadId || (s.patient_ids ?? []).includes(leadId));
+}
+
+/**
+ * PatientAuthorization::matchingActivityTypes(): covers_services may hold
+ * full labels ("ABA therapy"), so match by case-insensitive substring
+ * either way against the therapy activity codes.
+ */
+export function matchingActivityTypes(covers: string[] | null): string[] {
+  if (!covers || covers.length === 0) return [];
+  return THERAPY_TYPES.filter((type) =>
+    covers.some((cover) => {
+      const t = type.toLowerCase();
+      const c = cover.toLowerCase();
+      return t.includes(c) || c.includes(t);
+    }),
+  );
+}
+
+/** PatientAuthorization::hoursUsed(): past-or-today sessions of covered types, any status. */
+export function authorizationHoursUsed(
+  db: MockDb,
+  leadId: number,
+  covers: string[] | null,
+  today: string,
+): number {
+  if (!covers || covers.length === 0) return 0;
+  const types = matchingActivityTypes(covers);
+  const minutes = sessionsForLead(db, leadId)
+    .filter((s) => s.session_date <= today && types.includes(s.activity_type))
+    .reduce((sum, s) => sum + s.duration_minutes, 0);
+  return Math.round(minutes / 60);
+}
+
 export function displayName(s: CalendarSessionRow): string {
   return s.patient_name || s.activity_label || 'Unassigned';
 }

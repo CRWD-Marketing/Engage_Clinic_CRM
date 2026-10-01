@@ -118,6 +118,29 @@ export function formatDateTimeShort(iso: string): string {
   return `${pad(c.getUTCDate())} ${MONTH_NAMES[c.getUTCMonth()].slice(0, 3)}, ${hour12}:${pad(c.getUTCMinutes())}${h < 12 ? 'am' : 'pm'}`;
 }
 
+/** "30 Sep 2026" without a leading zero on the day (PHP `j M Y`). */
+export function formatDayMonthYearShort(value: Ymd): string {
+  const d = parseYmd(value);
+  return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
+}
+
+/** "3 Oct" (PHP `j M`). */
+export function formatDayMonthShort(value: Ymd): string {
+  const d = parseYmd(value);
+  return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)}`;
+}
+
+/** "Sep 2026" (PHP `M Y`). */
+export function formatMonthYear(value: Ymd): string {
+  const d = parseYmd(value);
+  return `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${d.getUTCFullYear()}`;
+}
+
+/** "Mon" (PHP `D`). */
+export function formatWeekdayShort(value: Ymd): string {
+  return DAY_NAMES[parseYmd(value).getUTCDay()].slice(0, 3);
+}
+
 /** "WED" */
 export function formatWeekdayAbbrev(value: Ymd): string {
   return DAY_NAMES[parseYmd(value).getUTCDay()].slice(0, 3).toUpperCase();

@@ -8,6 +8,8 @@ import type {
   CancelReason,
   Lead,
   Patient,
+  PatientAuthorization,
+  PatientGoal,
   PatientNote,
   RoleTemplate,
   SessionStatus,
@@ -26,6 +28,17 @@ export type PatientRow = Omit<Patient, 'lead'>;
 export type PatientNoteRow = Omit<PatientNote, 'author_name' | 'patient'>;
 
 export type StaffLeaveRow = StaffLeave & { created_by: number | null };
+
+export type PatientGoalRow = PatientGoal;
+
+export type PatientAuthorizationRow = PatientAuthorization;
+
+/** `session_goals` pivot (CalendarSession ↔ PatientGoal). */
+export interface SessionGoalRow {
+  id: number;
+  calendar_session_id: number;
+  patient_goal_id: number;
+}
 
 /** `calendar_sessions` columns (times as "HH:mm:ss", like MySQL TIME). */
 export interface CalendarSessionRow {
@@ -69,4 +82,7 @@ export interface MockDb {
   sessions: CalendarSessionRow[];
   staffLeaves: StaffLeaveRow[];
   patientNotes: PatientNoteRow[];
+  patientGoals: PatientGoalRow[];
+  sessionGoals: SessionGoalRow[];
+  authorizations: PatientAuthorizationRow[];
 }

@@ -377,10 +377,11 @@ function DetailsForm({ user }: { user: User }) {
 // Module access (mobile addition: which modules are on mobile yet)
 // ---------------------------------------------------------------------------
 
-/** Whether this module has a real mobile screen for this user yet (milestone 1). */
+/** Whether this module has a real mobile screen for this user yet. */
 function onMobile(user: User, module: ModuleKey): boolean {
   if (module === 'dashboard') return user.role === 'THERAPIST';
   if (module === 'calendar') return levelFor(user, 'calendar') === 'own';
+  if (module === 'patients') return true;
   return false;
 }
 

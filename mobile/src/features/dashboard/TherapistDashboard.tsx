@@ -63,6 +63,10 @@ export function TherapistDashboard() {
   );
 }
 
+function openPatient(patientId: number) {
+  router.push({ pathname: '/patients/[id]', params: { id: String(patientId) } });
+}
+
 function Stats({ d }: { d: Dashboard }) {
   const delta = d.attendance_delta;
   const deltaText =
@@ -135,7 +139,7 @@ function ScheduleToday({ sessions }: { sessions: CalendarSessionPayload[] }) {
 function NotesAwaitingSignoff({ notes }: { notes: PatientNote[] }) {
   return (
     <Card>
-      <CardHeader title="My notes awaiting sign-off" />
+      <CardHeader title="My notes awaiting sign-off" actionLabel="Review →" onAction={() => router.navigate('/patients')} />
       {notes.length === 0 ? (
         <>
           <Divider />
@@ -150,7 +154,10 @@ function NotesAwaitingSignoff({ notes }: { notes: PatientNote[] }) {
           return (
             <View key={note.id}>
               <Divider />
-              <View style={styles.noteRow}>
+              <Pressable
+                onPress={() => openPatient(note.patient_id)}
+                style={({ pressed }) => [styles.noteRow, pressed && styles.pressed]}
+                accessibilityRole="button">
                 <View style={styles.rowMain}>
                   <AppText variant="bodyStrong">{note.patient?.lead?.child_name ?? 'Unknown patient'}</AppText>
                   <AppText variant="caption">{formatDateTimeShort(note.created_at)}</AppText>
@@ -159,7 +166,7 @@ function NotesAwaitingSignoff({ notes }: { notes: PatientNote[] }) {
                   label={overdue ? `Overdue ${Math.floor(hoursOld / 24)}d` : `Pending ${hoursOld}h`}
                   colors={overdue ? noteAgeColors.overdue : noteAgeColors.pending}
                 />
-              </View>
+              </Pressable>
             </View>
           );
         })
@@ -184,14 +191,18 @@ function TreatmentPlansDue({ patients }: { patients: Patient[] }) {
           const due = isoToYmd(p.treatment_plan_review_due_at!);
           const daysDue = diffDays(today, due);
           return (
-            <View key={p.id} style={styles.planRow}>
+            <Pressable
+              key={p.id}
+              onPress={() => openPatient(p.id)}
+              style={({ pressed }) => [styles.planRow, pressed && styles.planPressed]}
+              accessibilityRole="button">
               <AppText variant="bodyStrong" style={styles.planName}>
                 {p.lead?.child_name ?? 'Unknown'}
               </AppText>
               <AppText variant="caption" color={planCardColors.fg}>
                 {daysDue >= 0 ? `Review due ${formatDayMonth(due)}` : `Review overdue ${Math.abs(daysDue)}d`}
               </AppText>
-            </View>
+            </Pressable>
           );
         })
       )}
@@ -219,6 +230,7 @@ const styles = StyleSheet.create({
   emptyInline: { paddingTop: spacing.sm, fontFamily: fonts.bodyBold },
   planCard: { backgroundColor: planCardColors.bg, borderColor: planCardColors.border, gap: spacing.sm },
   planTitle: { fontSize: 15 },
-  planRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm },
+  planRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, paddingVertical: 4 },
+  planPressed: { opacity: 0.6 },
   planName: { flex: 1, fontSize: 13 },
 });

@@ -106,8 +106,9 @@ export type LeadStatus =
   | 'terminated';
 
 /**
- * `leads` table — core fields. The intake-checklist columns (steps 1–7) are
- * added in milestone 2 when the patient profile needs them.
+ * `leads` table — core fields. Of the intake-checklist columns (steps 1–7),
+ * only those the app shows so far are typed; add the rest when the
+ * "Profile & intake" tab is built.
  */
 export interface Lead {
   id: number;
@@ -128,6 +129,8 @@ export interface Lead {
   status: LeadStatus;
   assigned_to: number | null;
   follow_up_due_at: IsoDateTime | null;
+  /** Intake step 4; shown as the "Converted from lead — …" banner on a patient. */
+  assessment_report_summary: string | null;
   created_at: IsoDateTime;
   updated_at: IsoDateTime;
   /** $appends */
@@ -163,6 +166,106 @@ export interface PatientNote {
   /** $appends: user's first + last name, or "System". */
   author_name: string;
   patient?: Patient;
+}
+
+/** `patient_goals` table. */
+export interface PatientGoal {
+  id: number;
+  patient_id: number;
+  title: string;
+  progress_percent: number;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+}
+
+/** `patient_authorizations` table. `covers_services` has an array cast. */
+export interface PatientAuthorization {
+  id: number;
+  patient_id: number;
+  payer_name: string;
+  coverage_percent: number;
+  covers_services: string[] | null;
+  policy_number: string | null;
+  approval_reference: string | null;
+  authorized_hours_total: number | null;
+  renews_at: IsoDateTime | null;
+  sort_order: number;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+}
+
+/**
+ * An authorization plus the values the web computes for its card
+ * (PatientAuthorization::hoursUsed(), coversLabel()). Hours left on the
+ * card is `authorized_hours_total - hours_used` (floored at 0).
+ */
+export interface PatientAuthorizationSummary extends PatientAuthorization {
+  hours_used: number;
+  covers_label: string;
+}
+
+/**
+ * One row of the patients list (patient/index.blade.php). Laravel renders
+ * these values server-side; a JSON endpoint must append them.
+ */
+export interface PatientListItem extends Patient {
+  lead: Lead;
+  /** Ordered by sort_order — the first is the primary payer. */
+  authorizations: PatientAuthorizationSummary[];
+  attendance_rate: number | null;
+  is_profile_incomplete: boolean;
+}
+
+/** Patient::careTeam() row. */
+export interface CareTeamMember {
+  id: number;
+  first_name: string;
+  last_name: string;
+  job_title: string | null;
+}
+
+/** One entry of PatientController::show() `$recommendedGoals`. */
+export interface RecommendedGoal {
+  goal: PatientGoal;
+  /** sessionsInLast(10) */
+  used: number;
+  /** lastUsedAt(), "YYYY-MM-DD" */
+  last_used_at: YmdString | null;
+}
+
+/**
+ * PatientController::show() view data as JSON (patient/show.blade.php,
+ * Overview + Session history tabs). Session lists use sessionPayload().
+ */
+export interface PatientDetail {
+  patient: Patient & { lead: Lead };
+  authorizations: PatientAuthorizationSummary[];
+  /** Latest first. */
+  notes: PatientNote[];
+  recommended_goals: RecommendedGoal[];
+  todays_session: CalendarSessionPayload | null;
+  todays_goal_ids: number[];
+  care_team: CareTeamMember[];
+  /** Next 5, soonest first. */
+  upcoming_sessions: CalendarSessionPayload[];
+  /** Sessions with an outcome, newest first. */
+  past_sessions: CalendarSessionPayload[];
+  attendance_rate: number | null;
+  is_profile_incomplete: boolean;
+  /** missingFieldsLabel(), e.g. "diagnosis, insurance authorization" */
+  missing_fields_label: string;
+}
+
+/** POST /patient/{id}/goals/today body. */
+export interface TodayGoalsRequest {
+  goal_ids: number[];
+  new_goal_titles: string[];
+}
+
+export interface TodayGoalsResponse {
+  success: true;
+  message: string;
+  created_goals: { id: number; title: string }[];
 }
 
 // ---------------------------------------------------------------------------

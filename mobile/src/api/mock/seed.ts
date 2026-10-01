@@ -9,13 +9,17 @@
 import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
 import { addDays, clinicToIso, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
+import { authorizationHoursUsed, sessionsForLead } from './presenters';
 import { createRandom, type Random } from './random';
 import type {
   CalendarSessionRow,
   LeadRow,
   MockDb,
+  PatientAuthorizationRow,
+  PatientGoalRow,
   PatientNoteRow,
   PatientRow,
+  SessionGoalRow,
   RoleTemplateRow,
   StaffLeaveRow,
   UserRow,
@@ -122,13 +126,15 @@ type FamilySeed = {
   insurance: string;
   source: string;
   planDueInDays?: number;
+  /** Intake step 4 assessment summary (the "Converted from lead" banner). */
+  summary?: string;
 };
 
 const FAMILIES: FamilySeed[] = [
-  { child: 'Khalifa Al Mansoori', parent: 'Mohammed Al Mansoori', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 20h/wk + Speech 2h', care: [9, 11], interested_in: 'ABA therapy', insurance: 'Daman Enhanced', source: 'WhatsApp', planDueInDays: 3 },
+  { child: 'Khalifa Al Mansoori', parent: 'Mohammed Al Mansoori', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 20h/wk + Speech 2h', care: [9, 11], interested_in: 'ABA therapy', insurance: 'Daman Enhanced', source: 'WhatsApp', planDueInDays: 3, summary: 'ADOS-2 consistent with ASD Level 1. Strong visual learner; limited expressive language. Recommend 20h ABA + 2h speech.' },
   { child: 'Layla Hassan', parent: 'Youssef Hassan', age: 4, status: 'enrolled', diagnosis: 'Speech & Language Delay', programme: 'Speech 3h/wk + OT 2h/wk', care: [14, 12], interested_in: 'Speech therapy', insurance: 'Daman', source: 'Facebook', planDueInDays: 41 },
   { child: 'Omar Farooq', parent: 'Bilal Farooq', age: 6, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 2)', programme: 'ABA 25h/wk', care: [10], interested_in: 'ABA therapy', insurance: 'Thiqa', source: 'Referral', planDueInDays: 5 },
-  { child: 'Amina Al Rashidi', parent: 'Fatima Al Rashidi', age: 3, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'Combined ABA + Speech + OT', care: [9, 11, 15], interested_in: 'Early intervention', insurance: 'Daman', source: 'Instagram', planDueInDays: 30 },
+  { child: 'Amina Al Rashidi', parent: 'Fatima Al Rashidi', age: 3, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'Combined ABA + Speech + OT', care: [9, 11, 15], interested_in: 'Early intervention', insurance: 'Daman', source: 'Instagram', planDueInDays: 30, summary: 'M-CHAT-R high risk; ADOS-2 confirms ASD Level 1. Sensory seeking, so OT input advised alongside ABA and speech.' },
   { child: 'Zayed Al Hammadi', parent: 'Hamad Al Hammadi', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 2)', programme: 'ABA 15h/wk + OT 1h', care: [13, 12], interested_in: 'Combined program', insurance: 'ADNIC', source: 'Google', planDueInDays: 55 },
   { child: 'Noor Al Ketbi', parent: 'Aisha Al Ketbi', age: 4, status: 'enrolled', diagnosis: 'Global Developmental Delay', programme: 'ABA 15h/wk + OT 1h', care: [9, 15], interested_in: 'Early intervention', insurance: 'Self-pay', source: 'Website', planDueInDays: 62 },
   { child: 'Yousef Rahman', parent: 'Imran Rahman', age: 7, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 20h/wk + Speech 2h', care: [10, 14], interested_in: 'ABA therapy', insurance: 'AXA / GIG', source: 'Walk-in', planDueInDays: -4 },
@@ -282,6 +288,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
       status: f.status,
       assigned_to: owner,
       follow_up_due_at: null,
+      assessment_report_summary: f.summary ?? null,
       created_at: isoAt(createdYmd, '10:15'),
       updated_at: isoAt(createdYmd, '10:15'),
       assigned_to_name: userName(owner),
@@ -315,7 +322,21 @@ export function buildSeed(now: Date = new Date()): MockDb {
   // --- patient notes ---
   const patientNotes = buildPatientNotes({ rnd, now, patients, sessions });
 
-  return { roleTemplates, users, leads, patients, sessions, staffLeaves, patientNotes };
+  const db: MockDb = {
+    roleTemplates,
+    users,
+    leads,
+    patients,
+    sessions,
+    staffLeaves,
+    patientNotes,
+    patientGoals: [],
+    sessionGoals: [],
+    authorizations: [],
+  };
+  buildGoals({ rnd, db, stamp });
+  buildAuthorizations({ rnd, db, today, stamp });
+  return db;
 }
 
 function nearestWeekday(ymd: Ymd): Ymd {
@@ -532,4 +553,151 @@ function buildPatientNotes({
   });
 
   return notes;
+}
+
+// ---------------------------------------------------------------------------
+// Goals + session_goals (PatientGoalSeeder) and authorizations
+// ---------------------------------------------------------------------------
+
+const GOALS_BY_KIND: Record<TherapistKind, string[]> = {
+  ABA: [
+    'Increase eye contact during structured play to 80% of trials',
+    'Independently request preferred items using PECS',
+    'Follow 2-step instructions independently',
+    'Independently complete a 5-step visual schedule',
+    'Reduce elopement during transitions',
+  ],
+  Speech: [
+    'Expand expressive vocabulary to 50 spontaneous words',
+    'Use 2-word phrases to request',
+    'Answer simple "what" questions',
+  ],
+  OT: [
+    'Improve fine motor skills for pencil grip',
+    'Tolerate tactile input during messy play',
+    'Use scissors to cut along a straight line',
+  ],
+};
+
+function careKinds(family: FamilySeed): TherapistKind[] {
+  return [...new Set((family.care ?? []).map((id) => THERAPIST_KIND[id]))];
+}
+
+/** Lead ids follow FAMILIES order (lead id = index + 1). */
+function familyFor(patient: PatientRow): FamilySeed {
+  return FAMILIES[patient.lead_id - 1];
+}
+
+function buildGoals({ rnd, db, stamp }: { rnd: Random; db: MockDb; stamp: string }) {
+  for (const patient of db.patients) {
+    const kinds = careKinds(familyFor(patient));
+    const goalsByKind = new Map<string, PatientGoalRow[]>();
+
+    kinds.forEach((kind, k) => {
+      const pool = GOALS_BY_KIND[kind];
+      const count = kind === 'ABA' ? rnd.int(2, 3) : k === 0 ? 2 : 1;
+      const start = (patient.id + k) % pool.length;
+      const titles = Array.from({ length: Math.min(count, pool.length) }, (_, i) => pool[(start + i) % pool.length]);
+      goalsByKind.set(
+        kind,
+        titles.map((title) => {
+          const goal: PatientGoalRow = {
+            id: db.patientGoals.length + 1,
+            patient_id: patient.id,
+            title,
+            progress_percent: rnd.int(1, 9) * 10,
+            created_at: patient.created_at,
+            updated_at: stamp,
+          };
+          db.patientGoals.push(goal);
+          return goal;
+        }),
+      );
+    });
+
+    // Link goals to past completed sessions: the first goal of a kind is
+    // worked on most often, so "used in N of the last 10" ranks differ.
+    for (const session of sessionsForLead(db, patient.lead_id)) {
+      if (session.status !== 'completed') continue;
+      const goals = goalsByKind.get(session.activity_type) ?? [];
+      goals.forEach((goal, i) => {
+        if (rnd.chance(i === 0 ? 0.85 : i === 1 ? 0.5 : 0.25)) {
+          const link: SessionGoalRow = {
+            id: db.sessionGoals.length + 1,
+            calendar_session_id: session.id,
+            patient_goal_id: goal.id,
+          };
+          db.sessionGoals.push(link);
+        }
+      });
+    }
+  }
+}
+
+/** InsuranceSeeder default coverage per payer. */
+const DEFAULT_COVERAGE: Record<string, number> = {
+  Daman: 80,
+  'Daman Enhanced': 100,
+  Thiqa: 100,
+  ADNIC: 80,
+  'AXA / GIG': 70,
+};
+
+const POLICY_PREFIX: Record<string, string> = {
+  Daman: 'DA',
+  'Daman Enhanced': 'DA',
+  Thiqa: 'TH',
+  ADNIC: 'AD',
+  'AXA / GIG': 'AX',
+};
+
+type AuthOptions = { tightHours?: boolean; renewInDays?: number };
+
+function buildAuthorizations({ rnd, db, today, stamp }: { rnd: Random; db: MockDb; today: Ymd; stamp: string }) {
+  const add = (patient: PatientRow, payer: string, covers: string[], opts: AuthOptions = {}) => {
+    const used = authorizationHoursUsed(db, patient.lead_id, covers, today);
+    const total = opts.tightHours ? used + 4 : Math.ceil((used + rnd.int(8, 40)) / 10) * 10;
+    const selfPay = payer === 'Self-pay';
+    const row: PatientAuthorizationRow = {
+      id: db.authorizations.length + 1,
+      patient_id: patient.id,
+      payer_name: payer,
+      coverage_percent: selfPay ? 0 : (DEFAULT_COVERAGE[payer] ?? 80),
+      covers_services: covers,
+      policy_number: selfPay ? null : `${POLICY_PREFIX[payer] ?? 'PL'}-${rnd.int(10, 99)}-${rnd.int(100000, 999999)}`,
+      approval_reference: null,
+      authorized_hours_total: total,
+      renews_at: dateCast(addDays(today, opts.renewInDays ?? rnd.int(60, 200))),
+      sort_order: db.authorizations.filter((a) => a.patient_id === patient.id).length,
+      created_at: patient.created_at,
+      updated_at: stamp,
+    };
+    db.authorizations.push(row);
+  };
+
+  for (const patient of db.patients) {
+    const family = familyFor(patient);
+    const kinds = careKinds(family);
+
+    switch (family.child) {
+      case 'Noor Al Ketbi':
+        // No authorization on file → "Needs details" / profile incomplete.
+        break;
+      case 'Amina Al Rashidi':
+        // Two payers, each covering different services.
+        add(patient, 'Daman', ['ABA', 'Speech']);
+        add(patient, 'ADNIC', ['OT']);
+        break;
+      case 'Khalifa Al Mansoori':
+        // Renews within 45 days → the red "Attention" banner.
+        add(patient, family.insurance, kinds, { renewInDays: 30 });
+        break;
+      case 'Hind Al Falasi':
+        // Almost out of hours → red progress bar (≤ 5h left).
+        add(patient, family.insurance, kinds, { tightHours: true });
+        break;
+      default:
+        add(patient, family.insurance, kinds);
+    }
+  }
 }
