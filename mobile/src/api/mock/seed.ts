@@ -1,0 +1,535 @@
+/**
+ * Builds the in-memory mock database. People, names, rooms, durations,
+ * diagnoses and programmes come from the Laravel seeders (UserSeeder,
+ * LeadSeeder, PatientSeeder, CalendarSessionSeeder, PatientNoteSeeder…).
+ * Dates are generated relative to "today" in Asia/Dubai so the schedule
+ * always looks current.
+ */
+
+import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
+import { addDays, clinicToIso, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
+
+import { createRandom, type Random } from './random';
+import type {
+  CalendarSessionRow,
+  LeadRow,
+  MockDb,
+  PatientNoteRow,
+  PatientRow,
+  RoleTemplateRow,
+  StaffLeaveRow,
+  UserRow,
+} from './rows';
+
+// ---------------------------------------------------------------------------
+// Serialization helpers (match Laravel's JSON output)
+// ---------------------------------------------------------------------------
+
+/** Laravel serializes Carbon with microseconds: "2026-09-30T05:00:00.000000Z". */
+export function laravelIso(iso: string): string {
+  return iso.replace(/\.(\d{3})Z$/, '.$1000Z');
+}
+
+/** A `date`-cast column: clinic-local midnight, serialized in UTC. */
+export function dateCast(ymd: Ymd): string {
+  return laravelIso(clinicToIso(ymd, '00:00'));
+}
+
+export function isoAt(ymd: Ymd, time: string): string {
+  return laravelIso(clinicToIso(ymd, time));
+}
+
+export function hoursAgoIso(hours: number, now: Date = new Date()): string {
+  return laravelIso(new Date(now.getTime() - hours * 3600_000).toISOString());
+}
+
+export function addMinutes(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = h * 60 + m + minutes;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}:00`;
+}
+
+// ---------------------------------------------------------------------------
+// Staff (database/seeders/UserSeeder.php)
+// ---------------------------------------------------------------------------
+
+type StaffSeed = {
+  first: string;
+  middle?: string;
+  last: string;
+  email: string;
+  password?: string;
+  role: Role;
+  department: Department;
+  job_title?: string;
+  notes?: string;
+  manager?: number;
+  phone: string;
+  is_active?: boolean;
+};
+
+const STAFF: StaffSeed[] = [
+  { first: 'Hong', last: 'Tan', email: 'admin@gmail.com', password: 'admin123', role: 'FULL_ADMIN', department: 'EXECUTIVE', notes: 'CEO', phone: '0501234501' },
+  { first: 'Cherry', middle: 'Ann', last: 'Amoroso', email: 'cherry@engagebehavior.com', role: 'FULL_ADMIN', department: 'EXECUTIVE', notes: 'General Manager', manager: 1, phone: '0501234502' },
+  { first: 'Indira', last: 'Banarjee', email: 'indira@engagebehavior.com', role: 'CLINICAL_SUPERVISOR', department: 'CLINICAL', job_title: 'BCBA Supervisor', manager: 2, phone: '0501234503' },
+  { first: 'HR', last: 'Staff', email: 'hr@engagebehavior.com', role: 'HR_STAFF', department: 'HUMAN_RESOURCES', manager: 1, phone: '0501234504' },
+  { first: 'Coordinator', last: 'Staff', email: 'coordinator@engagebehavior.com', role: 'COORDINATOR', department: 'COORDINATOR', notes: 'Scheduling, client communication, intake coordination', manager: 2, phone: '0501234505' },
+  { first: 'Cindy', middle: 'Marie', last: 'Gealan', email: 'info@engagebehavior.com', role: 'SALES_STAFF', department: 'SALES', manager: 2, phone: '0501234506' },
+  { first: 'Ryan', last: 'Flores', email: 'ryan@engagebehavior.com', role: 'SALES_STAFF', department: 'SALES', manager: 2, phone: '0501234507' },
+  { first: 'Kavitha', last: 'Venkatesan', email: 'kavitha@engagebehavior.com', role: 'FINANCE_STAFF', department: 'FINANCE', manager: 2, phone: '0501234508' },
+  { first: 'Alessandra', last: 'Yukimi', email: 'alessandra@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'RBT', manager: 3, phone: '0501234509' },
+  { first: 'Claudine', last: 'Tadeo', email: 'claudine@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'RBT', manager: 3, phone: '0501234510' },
+  { first: 'Sheryl', last: 'Estrella', email: 'sheryl@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'Speech-Language Pathologist', manager: 3, phone: '0501234511' },
+  { first: 'May', middle: 'Ann', last: 'Momo', email: 'may@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'Occupational Therapist', manager: 3, phone: '0501234512' },
+  { first: 'Fatima', last: 'Vinoythimy', email: 'fatima@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'RBT', manager: 3, phone: '0501234513' },
+  { first: 'Lubna', last: 'Sherina', email: 'lubna@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'Speech-Language Pathologist', manager: 3, phone: '0501234514' },
+  { first: 'Amalu', last: 'Jacob', email: 'amalu@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'Occupational Therapist', manager: 3, phone: '0501234515' },
+  { first: 'Cindy', middle: 'Marie', last: 'Gealan', email: 'cindy.billing@engagebehavior.com', role: 'OTHER_STAFF', department: 'OTHER', notes: 'Invoice and Quotation Only', manager: 2, phone: '0501234516' },
+  { first: 'Ryan', last: 'Flores', email: 'ryan.billing@engagebehavior.com', role: 'OTHER_STAFF', department: 'OTHER', notes: 'Invoice and Quotation Only', manager: 2, phone: '0501234517' },
+  // Mock-only: exercises the suspended-account check the mobile login enforces.
+  { first: 'Suspended', last: 'Demo', email: 'suspended.demo@engagebehavior.com', role: 'THERAPIST', department: 'CLINICAL', job_title: 'RBT', manager: 3, phone: '0501234518', is_active: false },
+];
+
+const SUPERVISOR_ID = 3;
+const COORDINATOR_ID = 5;
+const SALES_IDS = [6, 7];
+
+type TherapistKind = 'ABA' | 'Speech' | 'OT';
+const THERAPIST_KIND: Record<number, TherapistKind> = {
+  9: 'ABA',
+  10: 'ABA',
+  11: 'Speech',
+  12: 'OT',
+  13: 'ABA',
+  14: 'Speech',
+  15: 'OT',
+};
+
+// ---------------------------------------------------------------------------
+// Families (LeadSeeder / PatientSeeder vocabularies)
+// ---------------------------------------------------------------------------
+
+type FamilySeed = {
+  child: string;
+  parent: string;
+  age: number;
+  status: LeadRow['status'];
+  diagnosis?: string;
+  programme?: string;
+  /** therapist id → service delivered */
+  care?: number[];
+  interested_in: string;
+  insurance: string;
+  source: string;
+  planDueInDays?: number;
+};
+
+const FAMILIES: FamilySeed[] = [
+  { child: 'Khalifa Al Mansoori', parent: 'Mohammed Al Mansoori', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 20h/wk + Speech 2h', care: [9, 11], interested_in: 'ABA therapy', insurance: 'Daman Enhanced', source: 'WhatsApp', planDueInDays: 3 },
+  { child: 'Layla Hassan', parent: 'Youssef Hassan', age: 4, status: 'enrolled', diagnosis: 'Speech & Language Delay', programme: 'Speech 3h/wk + OT 2h/wk', care: [14, 12], interested_in: 'Speech therapy', insurance: 'Daman', source: 'Facebook', planDueInDays: 41 },
+  { child: 'Omar Farooq', parent: 'Bilal Farooq', age: 6, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 2)', programme: 'ABA 25h/wk', care: [10], interested_in: 'ABA therapy', insurance: 'Thiqa', source: 'Referral', planDueInDays: 5 },
+  { child: 'Amina Al Rashidi', parent: 'Fatima Al Rashidi', age: 3, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'Combined ABA + Speech + OT', care: [9, 11, 15], interested_in: 'Early intervention', insurance: 'Daman', source: 'Instagram', planDueInDays: 30 },
+  { child: 'Zayed Al Hammadi', parent: 'Hamad Al Hammadi', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 2)', programme: 'ABA 15h/wk + OT 1h', care: [13, 12], interested_in: 'Combined program', insurance: 'ADNIC', source: 'Google', planDueInDays: 55 },
+  { child: 'Noor Al Ketbi', parent: 'Aisha Al Ketbi', age: 4, status: 'enrolled', diagnosis: 'Global Developmental Delay', programme: 'ABA 15h/wk + OT 1h', care: [9, 15], interested_in: 'Early intervention', insurance: 'Self-pay', source: 'Website', planDueInDays: 62 },
+  { child: 'Yousef Rahman', parent: 'Imran Rahman', age: 7, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 20h/wk + Speech 2h', care: [10, 14], interested_in: 'ABA therapy', insurance: 'AXA / GIG', source: 'Walk-in', planDueInDays: -4 },
+  { child: 'Sara Al Dhaheri', parent: 'Mariam Al Dhaheri', age: 3, status: 'enrolled', diagnosis: 'Speech & Language Delay', programme: 'Speech 3h/wk + OT 2h/wk', care: [11, 12], interested_in: 'Speech therapy', insurance: 'Thiqa', source: 'Instagram', planDueInDays: 18 },
+  { child: 'Rashid Al Suwaidi', parent: 'Ali Al Suwaidi', age: 6, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 3)', programme: 'ABA 25h/wk', care: [13], interested_in: 'ABA therapy', insurance: 'Daman Enhanced', source: 'Referral', planDueInDays: 6 },
+  { child: 'Hind Al Falasi', parent: 'Salama Al Falasi', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 2)', programme: 'ABA 20h/wk + Speech 2h', care: [9, 14], interested_in: 'ABA therapy', insurance: 'Daman', source: 'Event', planDueInDays: -2 },
+  { child: 'Adam Qureshi', parent: 'Sana Qureshi', age: 4, status: 'enrolled', diagnosis: 'Global Developmental Delay', programme: 'Combined ABA + Speech + OT', care: [13, 11, 15], interested_in: 'Combined program', insurance: 'Self-pay', source: 'Facebook', planDueInDays: 27 },
+  { child: 'Maryam Al Blooshi', parent: 'Khalid Al Blooshi', age: 5, status: 'enrolled', diagnosis: 'Autism Spectrum Disorder (Level 1)', programme: 'ABA 15h/wk + OT 1h', care: [10, 15], interested_in: 'ABA therapy', insurance: 'ADNIC', source: 'Google', planDueInDays: 74 },
+  { child: 'Mariam Al Shamsi', parent: 'Faisal Al Shamsi', age: 4, status: 'assessment_booked', interested_in: 'Diagnostic assessment', insurance: 'Not sure yet', source: 'Instagram' },
+  { child: 'Fatima Al Zaabi', parent: 'Ahmed Al Zaabi', age: 3, status: 'contacted', interested_in: 'Speech therapy', insurance: 'Daman', source: 'WhatsApp' },
+  { child: 'Hessa Al Nuaimi', parent: 'Marwan Al Nuaimi', age: 6, status: 'new', interested_in: 'Occupational therapy', insurance: 'Thiqa', source: 'Website' },
+  { child: 'Saeed Al Mazrouei', parent: 'Khalfan Al Mazrouei', age: 7, status: 'terminated', interested_in: 'ABA therapy', insurance: 'Self-pay', source: 'Google' },
+];
+
+const AGE_BAND = (age: number) => (age <= 4 ? '3-4' : age <= 6 ? '5-6' : '7-8');
+const STEPS_FOR_STATUS: Record<LeadRow['status'], number> = {
+  new: 0,
+  contacted: 1,
+  assessment_booked: 3,
+  assessment_done: 6,
+  enrolled: 7,
+  terminated: 0,
+};
+
+// ---------------------------------------------------------------------------
+// Session vocabulary (CalendarSessionSeeder / PatientNoteSeeder)
+// ---------------------------------------------------------------------------
+
+const ROOMS = ['Room 1', 'Room 2', 'Room 3'];
+const ABA_STARTS = ['08:00', '10:30', '13:00', '15:00'];
+const SHORT_STARTS = ['08:30', '09:30', '10:30', '11:30', '13:30', '14:30', '15:30'];
+
+const SCHEDULING_NOTES = [
+  'Parent to join the last 15 min',
+  'Bring visual schedule',
+  'Work on transitions between activities',
+  null,
+  null,
+  null,
+];
+
+const THERAPIST_NOTES = [
+  'Good engagement today. Completed 8/10 mand trials independently.',
+  'Tired in the first half; improved after a movement break.',
+  'Worked on turn-taking with a peer game — needed 2 prompts.',
+  'Tolerated the new sensory brush well. Continue next session.',
+  'Great progress on 2-step instructions today.',
+  'Some elopement early on; used first/then board successfully.',
+];
+
+const SUPERVISION_NOTES = [
+  'Observed 45 min. Prompt fading on target; mand training to continue at current level.',
+  'Good pacing and reinforcement. Tighten data collection on the matching program.',
+  'Session well structured. Consider adding a visual timer for transitions.',
+];
+
+const PATIENT_NOTE_BODIES = [
+  'Worked on requesting preferred items using PECS cards; 8/10 independent trials.',
+  'Session focused on joint attention tasks - responded well to name call 7/10 trials.',
+  'Practised 2-step instructions during play; needed gestural prompts on 3 of 10.',
+  'Fine motor: pencil grip improving, completed tracing task with minimal support.',
+  'Parent reports better sleep this week; fewer transitions meltdowns in session.',
+  'Introduced a 5-step visual schedule; completed 3 steps independently.',
+  'Expressive vocabulary: 4 new spontaneous words observed (ball, more, open, car).',
+];
+
+// ---------------------------------------------------------------------------
+// Builder
+// ---------------------------------------------------------------------------
+
+export function buildSeed(now: Date = new Date()): MockDb {
+  const rnd = createRandom(20260930);
+  const today = todayYmd(now);
+  const stamp = laravelIso(now.toISOString());
+
+  // --- role templates + users (RoleTemplateSeeder applies them to users) ---
+  const roleTemplates: RoleTemplateRow[] = Object.entries(SYSTEM_TEMPLATES).map(([key, t], i) => ({
+    id: i + 1,
+    key,
+    name: t.name,
+    description: null,
+    base_role: t.base_role,
+    modules: [...t.modules],
+    module_levels: t.module_levels ? { ...t.module_levels } : null,
+    actions: [...t.actions],
+    is_system: true,
+    sort_order: i + 1,
+  }));
+
+  const users: UserRow[] = STAFF.map((s, i) => {
+    const template = roleTemplates.find((t) => t.base_role === s.role)!;
+    return {
+      id: i + 1,
+      public_id: rnd.uuid(),
+      first_name: s.first,
+      middle_name: s.middle ?? null,
+      last_name: s.last,
+      job_title: s.job_title ?? null,
+      email: s.email,
+      phone_number: s.phone,
+      timezone: 'Asia/Dubai (GST)',
+      message_signature: null,
+      email_verified_at: stamp,
+      department: s.department,
+      manager_id: s.manager ?? null,
+      role: s.role,
+      role_template_id: template.id,
+      modules: template.modules,
+      module_levels: template.module_levels,
+      actions: template.actions,
+      start_date: dateCast(i < 2 ? '2026-07-24' : '2026-07-02'),
+      notes: s.notes ?? null,
+      is_active: s.is_active ?? true,
+      invited_at: null,
+      last_login_at: null,
+      created_at: stamp,
+      updated_at: stamp,
+      password: s.password ?? 'password',
+    };
+  });
+
+  const userName = (id: number) => {
+    const u = users.find((x) => x.id === id);
+    return u ? `${u.first_name} ${u.last_name}` : null;
+  };
+
+  // --- leads + patients ---
+  const leads: LeadRow[] = [];
+  const patients: PatientRow[] = [];
+
+  FAMILIES.forEach((f, i) => {
+    const id = i + 1;
+    const createdYmd = addDays(today, -rnd.int(60, 140));
+    const owner = SALES_IDS[i % 2];
+    const email = `${f.parent.split(' ')[0].toLowerCase()}.${f.parent.split(' ').slice(-1)[0].toLowerCase()}@gmail.com`;
+    leads.push({
+      id,
+      child_name: f.child,
+      child_age: String(f.age),
+      parent_guardian_name: f.parent,
+      phone: `+9715${rnd.int(0, 8)}${String(rnd.int(1000000, 9999999))}`,
+      email,
+      source: f.source,
+      campaign: null,
+      city: 'Abu Dhabi',
+      child_age_band: AGE_BAND(f.age),
+      interested_in: f.interested_in,
+      insurance: f.insurance,
+      estimated_value: `${rnd.int(8, 40) * 1000}.00`,
+      notes: f.status === 'enrolled' ? 'Enrolled and attending regular sessions.' : null,
+      status: f.status,
+      assigned_to: owner,
+      follow_up_due_at: null,
+      created_at: isoAt(createdYmd, '10:15'),
+      updated_at: isoAt(createdYmd, '10:15'),
+      assigned_to_name: userName(owner),
+      intake_steps_complete: STEPS_FOR_STATUS[f.status],
+    });
+
+    if (f.status === 'enrolled' && f.diagnosis) {
+      const enrolledYmd = addDays(createdYmd, rnd.int(7, 21));
+      patients.push({
+        id: patients.length + 1,
+        lead_id: id,
+        diagnosis: f.diagnosis,
+        programme: f.programme ?? null,
+        treatment_plan_review_due_at: f.planDueInDays === undefined ? null : dateCast(addDays(today, f.planDueInDays)),
+        enrolled_at: isoAt(enrolledYmd, '09:00'),
+        created_at: isoAt(enrolledYmd, '09:00'),
+        updated_at: isoAt(enrolledYmd, '09:00'),
+      });
+    }
+  });
+
+  // --- staff leave (StaffLeaveSeeder) ---
+  const staffLeaves: StaffLeaveRow[] = [
+    { id: 1, user_id: 9, leave_date: addDays(today, 7 - weekdayIndex(today) + 1), leave_type: 'Annual leave', reason: 'Approved annual leave.', created_by: SUPERVISOR_ID },
+    { id: 2, user_id: 10, leave_date: nearestWeekday(addDays(today, -9)), leave_type: 'Sick leave', reason: 'Called in sick — cover arranged with the RBT team.', created_by: SUPERVISOR_ID },
+  ];
+
+  // --- calendar sessions ---
+  const sessions = buildSessions({ rnd, today, leads, staffLeaves });
+
+  // --- patient notes ---
+  const patientNotes = buildPatientNotes({ rnd, now, patients, sessions });
+
+  return { roleTemplates, users, leads, patients, sessions, staffLeaves, patientNotes };
+}
+
+function nearestWeekday(ymd: Ymd): Ymd {
+  const w = weekdayIndex(ymd);
+  return w === 5 ? addDays(ymd, -1) : w === 6 ? addDays(ymd, -2) : ymd;
+}
+
+function buildSessions({
+  rnd,
+  today,
+  leads,
+  staffLeaves,
+}: {
+  rnd: Random;
+  today: Ymd;
+  leads: LeadRow[];
+  staffLeaves: StaffLeaveRow[];
+}): CalendarSessionRow[] {
+  const rows: CalendarSessionRow[] = [];
+
+  // Which children each therapist sees (from FAMILIES.care).
+  const caseload = new Map<number, number[]>();
+  FAMILIES.forEach((f, i) => {
+    for (const therapistId of f.care ?? []) {
+      caseload.set(therapistId, [...(caseload.get(therapistId) ?? []), i + 1]);
+    }
+  });
+
+  const recurrence = new Map<string, string>();
+  const groupFor = (therapistId: number, leadId: number) => {
+    const key = `${therapistId}:${leadId}`;
+    if (!recurrence.has(key)) recurrence.set(key, rnd.uuid());
+    return recurrence.get(key)!;
+  };
+
+  const push = (row: Omit<CalendarSessionRow, 'id' | 'created_at' | 'updated_at' | 'end_time'>) => {
+    rows.push({
+      ...row,
+      id: rows.length + 1,
+      end_time: addMinutes(row.start_time, row.duration_minutes),
+      created_at: isoAt(addDays(row.session_date, -21), '09:00'),
+      updated_at: isoAt(addDays(row.session_date, -21), '09:00'),
+    });
+  };
+
+  const base = {
+    cover_for_user_id: null,
+    patient_ids: null,
+    activity_types: null,
+    cancelled_at: null,
+    follow_up_completed_at: null,
+    supervised_by: null,
+    supervised_at: null,
+    supervision_notes: null,
+    therapist_note: null,
+    invoice_id: null,
+    created_by: COORDINATOR_ID,
+  } as const;
+
+  for (let offset = -45; offset <= 28; offset++) {
+    const date = addDays(today, offset);
+    const weekday = weekdayIndex(date);
+    if (weekday >= 5) continue; // Sat/Sun off
+
+    for (const [therapistId, kind] of Object.entries(THERAPIST_KIND).map(([k, v]) => [Number(k), v] as const)) {
+      const children = caseload.get(therapistId) ?? [];
+      if (children.length === 0) continue;
+
+      const isAba = kind === 'ABA';
+      const starts = isAba ? ABA_STARTS.slice(0, rnd.int(2, 3)) : SHORT_STARTS.filter(() => rnd.chance(0.55));
+      const onLeave = staffLeaves.some((l) => l.user_id === therapistId && l.leave_date === date);
+
+      starts.forEach((start, slot) => {
+        const n = children.length;
+        const leadId = children[(((slot + offset + therapistId) % n) + n) % n];
+        const lead = leads.find((l) => l.id === leadId)!;
+        // Assessments run 90 min, so only in slots with a free hour after them.
+        const isAssessment = !isAba && (start === '11:30' || start === '15:30') && rnd.chance(0.15);
+        const isParentTraining = isAba && slot === 0 && weekday === 3 && rnd.chance(0.5);
+        const activityType = isAssessment ? 'Assessment' : isParentTraining ? 'Parent training' : kind;
+        const duration = isAssessment ? 90 : isParentTraining ? 60 : isAba ? 120 : rnd.pick([45, 60]);
+        const startTime = `${start}:00`;
+
+        const past = offset < 0;
+        let status: CalendarSessionRow['status'] = 'scheduled';
+        let cancelReason: CalendarSessionRow['cancel_reason'] = null;
+        let noticeHours: number | null = null;
+
+        if (onLeave) {
+          status = 'cancelled';
+          cancelReason = 'clinic';
+        } else if (past) {
+          const roll = rnd.next();
+          if (roll < 0.08) status = 'no_show';
+          else if (roll < 0.14) {
+            status = 'cancelled';
+            cancelReason = 'family';
+            noticeHours = rnd.pick([2, 6, 12, 30, 48, 72]);
+          } else if (roll < 0.17) {
+            status = 'cancelled';
+            cancelReason = 'clinic';
+          } else status = 'completed';
+        } else if (offset > 0 && rnd.chance(0.03)) {
+          status = 'cancelled';
+          cancelReason = 'family';
+          noticeHours = rnd.pick([12, 48]);
+        }
+
+        const completedRecently = status === 'completed' && offset >= -14;
+        const supervised = status === 'completed' && offset < -1 && rnd.chance(0.12);
+
+        push({
+          ...base,
+          therapist_id: therapistId,
+          patient_id: leadId,
+          patient_name: lead.child_name,
+          activity_label: null,
+          activity_type: activityType,
+          session_date: date,
+          start_time: startTime,
+          duration_minutes: duration,
+          room: kind === 'OT' ? (rnd.chance(0.6) ? 'Sensory gym' : rnd.pick(ROOMS)) : rnd.pick(ROOMS),
+          status,
+          cancel_reason: cancelReason,
+          cancel_notice_hours: noticeHours,
+          cancelled_at: status === 'cancelled' ? isoAt(addDays(date, -1), '18:00') : null,
+          notes: onLeave ? 'Therapist on leave — family informed.' : rnd.pick(SCHEDULING_NOTES),
+          recurrence_group: groupFor(therapistId, leadId),
+          therapist_note: completedRecently && rnd.chance(0.5) ? rnd.pick(THERAPIST_NOTES) : null,
+          supervised_by: supervised ? SUPERVISOR_ID : null,
+          supervised_at: supervised ? isoAt(addDays(date, 1), '17:00') : null,
+          supervision_notes: supervised ? rnd.pick(SUPERVISION_NOTES) : null,
+        });
+      });
+
+      // Weekly non-therapy block for RBTs (CalendarExtrasSeeder "Data collection training").
+      if (isAba && weekday === 3 && !onLeave) {
+        push({
+          ...base,
+          therapist_id: therapistId,
+          patient_id: null,
+          patient_name: 'Data collection training',
+          activity_label: 'Data collection training',
+          activity_type: 'Training',
+          session_date: date,
+          start_time: '17:15:00',
+          duration_minutes: 45,
+          room: 'Room 3',
+          status: offset < 0 ? 'completed' : 'scheduled',
+          cancel_reason: null,
+          cancel_notice_hours: null,
+          notes: null,
+          recurrence_group: groupFor(therapistId, 0),
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+function buildPatientNotes({
+  rnd,
+  now,
+  patients,
+  sessions,
+}: {
+  rnd: Random;
+  now: Date;
+  patients: PatientRow[];
+  sessions: CalendarSessionRow[];
+}): PatientNoteRow[] {
+  const notes: PatientNoteRow[] = [];
+  const push = (row: Omit<PatientNoteRow, 'id' | 'updated_at'>) =>
+    notes.push({ ...row, id: notes.length + 1, updated_at: row.created_at });
+
+  for (const patient of patients) {
+    const therapists = [...new Set(sessions.filter((s) => s.patient_id === patient.lead_id).map((s) => s.therapist_id))];
+    const count = rnd.int(3, 6);
+    for (let i = 0; i < count; i++) {
+      const ageHours = rnd.int(4 * 24, 60 * 24);
+      const createdAt = hoursAgoIso(ageHours, now);
+      const signed = ageHours > 7 * 24 || rnd.chance(0.5);
+      const flagged = rnd.chance(0.08);
+      push({
+        patient_id: patient.id,
+        user_id: rnd.pick(therapists),
+        body: rnd.pick(PATIENT_NOTE_BODIES),
+        flagged,
+        flag_reason: flagged ? 'Increase in self-injurious behaviour observed, flagging for BCBA review.' : null,
+        signed_off_at: signed ? hoursAgoIso(Math.max(1, ageHours - 30), now) : null,
+        signed_off_by: signed ? SUPERVISOR_ID : null,
+        created_at: createdAt,
+      });
+    }
+  }
+
+  // Alessandra (id 9): a known mix of pending/overdue notes for the dashboard.
+  const alessandraPatients = patients.filter((p) =>
+    sessions.some((s) => s.therapist_id === 9 && s.patient_id === p.lead_id),
+  );
+  [6, 30, 3 * 24, 5 * 24].forEach((hours, i) => {
+    const patient = alessandraPatients[i % alessandraPatients.length];
+    push({
+      patient_id: patient.id,
+      user_id: 9,
+      body: PATIENT_NOTE_BODIES[(i + 2) % PATIENT_NOTE_BODIES.length],
+      flagged: false,
+      flag_reason: null,
+      signed_off_at: null,
+      signed_off_by: null,
+      created_at: hoursAgoIso(hours, now),
+    });
+  });
+
+  return notes;
+}

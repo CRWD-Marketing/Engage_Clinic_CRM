@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Engage Clinic",
+    "slug": "engage-clinic",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/engage-icon.png",
+    "scheme": "engageclinic",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFDFA",
+        "foregroundImage": "./assets/images/engage-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/engage-icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFDFA",
+          "image": "./assets/images/engage-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
