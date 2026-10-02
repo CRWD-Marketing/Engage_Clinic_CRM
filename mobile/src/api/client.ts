@@ -9,6 +9,8 @@
 
 import { createMockApi } from './mock';
 import type {
+  SessionUpdateResponse,
+  TherapistsIndex,
   ContactEmailRequest,
   ContactItem,
   ContactsIndex,
@@ -185,6 +187,17 @@ export interface ApiClient {
     supervise(id: number, notes: string): Promise<SuperviseResponse>;
     /** DELETE /calendar/{id}/supervision */
     unsupervise(id: number): Promise<{ message: string }>;
+    /**
+     * PUT /calendar/{id} {status} — Close (discontinue the slot) or Reopen it as
+     * scheduled, from the Therapists page. Managers only (403 otherwise);
+     * reopening into an overlapping session is a 422.
+     */
+    setStatus(id: number, status: 'closed' | 'scheduled'): Promise<SessionUpdateResponse>;
+  };
+  /** Therapists & schedules (TherapistController, `feature:therapists`). */
+  therapists: {
+    /** GET /therapist?therapist_id=&week= — roster with weekly workload plus one therapist's week. */
+    index(params?: { therapist_id?: number; week?: string }): Promise<TherapistsIndex>;
   };
 }
 
