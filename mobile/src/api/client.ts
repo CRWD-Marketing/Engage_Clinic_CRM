@@ -9,6 +9,9 @@
 
 import { createMockApi } from './mock';
 import type {
+  PatientDocumentItem,
+  PatientDocumentRequest,
+  PatientUpdateRequest,
   BookingOptions,
   SessionStoreRequest,
   SessionStoreResponse,
@@ -94,6 +97,12 @@ export interface ApiClient {
     addNote(id: number, body: string): Promise<{ success: true; note: PatientNote }>;
     /** POST /patient/{id}/goals/today — replaces today's session goals. */
     saveTodayGoals(id: number, input: TodayGoalsRequest): Promise<TodayGoalsResponse>;
+    /** PUT /patient/{id} — "Edit details"; also updates the lead and the primary authorization. */
+    update(id: number, input: PatientUpdateRequest): Promise<{ success: true; message: string }>;
+    /** POST /patient/{id}/documents — files a record (name, type, expiry); no upload. */
+    addDocument(id: number, input: PatientDocumentRequest): Promise<{ success: true; document: PatientDocumentItem }>;
+    /** DELETE /patient/{id}/documents/{document} */
+    deleteDocument(id: number, documentId: number): Promise<{ success: true }>;
   };
   /**
    * PROPOSED (no Laravel equivalent yet): reviewing therapists' session notes.

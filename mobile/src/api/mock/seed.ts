@@ -374,6 +374,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
     invoices: [],
     invoiceLineItems: [],
     contacts: [],
+    patientDocuments: [],
   };
   buildLeadActivities(db);
   buildGoals({ rnd, db, stamp });
@@ -381,6 +382,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
   buildInbox({ rnd, db, today, stamp });
   buildInvoices({ rnd, db, today });
   buildContacts({ db, today, now });
+  seedDocuments(db, today, COORDINATOR_ID);
   return db;
 }
 
@@ -461,6 +463,9 @@ function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd
       db.invoices.push({
         id,
         patient_id: patient.id,
+        invoice_number: `INV-2026-${String(id).padStart(4, '0')}`,
+        period: dateCast(month),
+        payment_method: paid > 0 ? (auth && status !== 'paid' ? 'Bank transfer' : rnd.pick(['Bank transfer', 'Card', 'Cash'] as const)) : null,
         payer: auth ? auth.payer_name : 'Self-pay',
         status,
         // This month's invoices can't be dated after today.
@@ -491,6 +496,30 @@ function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd
       });
     }
   }
+}
+
+/** A few document records per patient, some of them close to expiry. */
+function seedDocuments(db: MockDb, today: Ymd, uploaderId: number): void {
+  db.patients.forEach((patient, i) => {
+    const lead = db.leads.find((l) => l.id === patient.lead_id);
+    const first = (lead?.child_name ?? 'Client').split(' ')[0];
+    const created = (daysAgo: number) => laravelIso(new Date(Date.now() - daysAgo * 86400_000).toISOString());
+    const add = (name: string, type: string, expiresInDays: number | null, daysAgo: number) =>
+      db.patientDocuments.push({
+        id: db.patientDocuments.length + 1,
+        patient_id: patient.id,
+        uploaded_by: uploaderId,
+        name,
+        type,
+        expires_at: expiresInDays === null ? null : dateCast(addDays(today, expiresInDays)),
+        file_path: null,
+        created_at: created(daysAgo),
+        updated_at: created(daysAgo),
+      });
+    add(`${first} — initial assessment report.pdf`, 'Assessment report', null, 60 + i);
+    add(`${first} — signed consent form.pdf`, 'Consent', null, 55 + i);
+    if (i % 2 === 0) add(`${first} — authorization letter.pdf`, 'Authorization', i % 4 === 0 ? 30 : 150, 20 + i);
+  });
 }
 
 function nearestWeekday(ymd: Ymd): Ymd {

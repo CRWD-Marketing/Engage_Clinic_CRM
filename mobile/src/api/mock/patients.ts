@@ -18,8 +18,18 @@ import type {
   TodayGoalsResponse,
 } from '../types';
 import { presentNote } from './notes';
+import {
+  addDocument,
+  deleteDocument,
+  documentsFor,
+  editOptions,
+  paymentsFor,
+  profileFor,
+  updatePatient,
+} from './patientExtras';
+import { assertAssignedTherapist, findPatientOr404 } from './patientAccess';
 import { authorizationHoursUsed, autoCompletePastSessions, sessionPayload, sessionsForLead } from './presenters';
-import type { CalendarSessionRow, MockDb, PatientNoteRow, PatientRow, UserRow } from './rows';
+import type { CalendarSessionRow, MockDb, PatientNoteRow, PatientRow } from './rows';
 import { addMinutes, laravelIso } from './seed';
 import { delay, getDb, requireFeature, requireUser } from './server';
 
@@ -93,21 +103,7 @@ function byNewest(a: CalendarSessionRow, b: CalendarSessionRow): number {
   return b.session_date.localeCompare(a.session_date) || b.start_time.localeCompare(a.start_time);
 }
 
-/**
- * PatientController::assertAssignedTherapist(): a therapist may only reach a
- * patient they have a session with (patient_id match, as in Laravel).
- */
-function assertAssignedTherapist(db: MockDb, user: UserRow, patient: PatientRow): void {
-  if (user.role !== 'THERAPIST') return;
-  const assigned = db.sessions.some((s) => s.therapist_id === user.id && s.patient_id === patient.lead_id);
-  if (!assigned) throw new ApiError(403, { message: 'This patient is not assigned to you.' });
-}
 
-function findPatientOr404(db: MockDb, id: number): PatientRow {
-  const patient = db.patients.find((p) => p.id === id);
-  if (!patient) throw new ApiError(404, { message: 'Not found.' });
-  return patient;
-}
 
 /** Laravel's `{success: false, errors}` 422, with the first error as the message. */
 function validationFailed(errors: Record<string, string[]>): ApiError {
@@ -205,6 +201,10 @@ function show(id: number): PatientDetail {
     attendance_rate: attendanceRate(db, patient),
     is_profile_incomplete: isProfileIncomplete(db, patient),
     missing_fields_label: missingFieldsLabel(db, patient),
+    payments: paymentsFor(db, patient),
+    documents: documentsFor(db, user, patient, today),
+    profile: profileFor(db, patient),
+    edit_options: editOptions(),
   };
 }
 
@@ -349,5 +349,8 @@ export function createPatientsApi(): ApiClient['patients'] {
     show: (id) => delay(() => show(id)),
     addNote: (id, body) => delay(() => addNote(id, body)),
     saveTodayGoals: (id, input) => delay(() => saveTodayGoals(id, input)),
+    update: (id, input) => delay(() => updatePatient(id, input)),
+    addDocument: (id, input) => delay(() => addDocument(id, input)),
+    deleteDocument: (id, documentId) => delay(() => deleteDocument(id, documentId)),
   };
 }

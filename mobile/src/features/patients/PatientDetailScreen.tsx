@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
 import type { CalendarSessionPayload, PatientAuthorizationSummary, PatientDetail } from '@/api/types';
@@ -9,6 +9,7 @@ import { canWriteIn } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Avatar } from '@/components/Avatar';
+import { Button } from '@/components/Button';
 import { Card, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
@@ -29,20 +30,29 @@ import {
 
 import { GoalsCard } from './GoalsCard';
 import { NotesCard } from './NotesCard';
+import { DocumentsTab, PaymentsTab, ProfileTab } from './PatientExtraTabs';
 import { ageAndDiagnosis, hoursLeft } from './patientFormat';
 
-type Tab = 'overview' | 'history';
+const TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'history', label: 'Session history' },
+  { key: 'payments', label: 'Payments' },
+  { key: 'documents', label: 'Documents' },
+  { key: 'profile', label: 'Profile & intake' },
+] as const;
+type Tab = (typeof TABS)[number]['key'];
 
 /**
  * Mirrors patient/show.blade.php: header, banners, chips, then the
- * Overview and Session history tabs. (Payments, Documents and
- * Profile & intake are not on mobile yet.)
+ * Overview, Session history, Payments, Documents and Profile & intake tabs.
  */
 export function PatientDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const query = useApiQuery(`patients.show:${id}`, () => api.patients.show(Number(id)));
   useRefetchOnFocus(query.reload);
   const [tab, setTab] = useState<Tab>('overview');
+  const user = useCurrentUser();
+  const canWrite = canWriteIn(user, 'patients');
 
   if (!query.data) {
     return (
@@ -62,22 +72,32 @@ export function PatientDetailScreen() {
       <Banners detail={d} />
       <Chips detail={d} />
 
-      <View style={styles.tabs} accessibilityRole="tablist">
-        {(['overview', 'history'] as const).map((t) => (
+      {canWrite ? (
+        <Button
+          title="Edit details"
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/patients/edit', params: { id: String(d.patient.id) } })}
+        />
+      ) : null}
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} accessibilityRole="tablist">
+        {TABS.map((t) => (
           <Pressable
-            key={t}
-            onPress={() => setTab(t)}
+            key={t.key}
+            onPress={() => setTab(t.key)}
             accessibilityRole="tab"
-            accessibilityState={{ selected: tab === t }}
-            style={[styles.tab, tab === t && styles.tabActive]}>
-            <AppText style={[styles.tabText, tab === t && styles.tabTextActive]}>
-              {t === 'overview' ? 'Overview' : 'Session history'}
-            </AppText>
+            accessibilityState={{ selected: tab === t.key }}
+            style={[styles.tab, tab === t.key && styles.tabActive]}>
+            <AppText style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</AppText>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
 
-      {tab === 'overview' ? <Overview detail={d} /> : <History sessions={d.past_sessions} />}
+      {tab === 'overview' ? <Overview detail={d} /> : null}
+      {tab === 'history' ? <History sessions={d.past_sessions} /> : null}
+      {tab === 'payments' ? <PaymentsTab detail={d} /> : null}
+      {tab === 'documents' ? <DocumentsTab detail={d} canWrite={canWrite} onChanged={query.reload} /> : null}
+      {tab === 'profile' ? <ProfileTab detail={d} /> : null}
     </Screen>
   );
 }
@@ -362,7 +382,7 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 4,
   },
-  tab: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  tab: { minHeight: 40, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   tabActive: { backgroundColor: colors.card },
   tabText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.textMuted },
   tabTextActive: { color: colors.navy },

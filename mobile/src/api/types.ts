@@ -480,6 +480,101 @@ export interface PatientDetail {
   is_profile_incomplete: boolean;
   /** missingFieldsLabel(), e.g. "diagnosis, insurance authorization" */
   missing_fields_label: string;
+  /** Payments tab. */
+  payments: PatientPayments;
+  /** Documents tab, newest first. */
+  documents: PatientDocumentItem[];
+  /** Values the Profile & intake tab computes from the lead's packages and funding rows. */
+  profile: PatientProfile;
+  /** Option lists for Edit details and Add document. */
+  edit_options: PatientEditOptions;
+}
+
+/** One row of the Payments tab's "Payment history". */
+export interface PatientInvoiceRow {
+  id: number;
+  invoice_number: string;
+  issue_date: IsoDateTime;
+  /** `date` cast: first day of the billed month. */
+  period: IsoDateTime;
+  subtotal: string;
+  amount_paid: string;
+  payment_method: string | null;
+  /** Invoice::paymentStatusLabel(): Paid / Partly paid / Unpaid / Voided. */
+  payment_status_label: string;
+}
+
+export interface PatientPayments {
+  /** Sum of invoice subtotals (VAT excl.). */
+  billed_total: number;
+  collected_total: number;
+  outstanding_total: number;
+  invoices: PatientInvoiceRow[];
+}
+
+/** A document record on the patient (name, type, expiry) — not a file upload. */
+export interface PatientDocumentItem {
+  id: number;
+  name: string;
+  type: string | null;
+  /** "You", the uploader's name, or "System". */
+  uploader_label: string;
+  created_at: IsoDateTime;
+  expires_at: IsoDateTime | null;
+  /** PatientDocument::expiryStatus() */
+  expiry_label: string;
+  expiry_variant: 'neutral' | 'warn' | 'ok';
+  /** Legacy rows only: a file that can be downloaded on the web. */
+  has_file: boolean;
+}
+
+export interface PatientProfile {
+  package_names: string[];
+  package_hours_per_week: number;
+  package_rate_per_hour: number | 'Mixed' | null;
+  package_value_excl_vat: number;
+  package_location: string | null;
+  package_setting: string | null;
+  /** "Insurance" / "Self pay" / "Mixed — insurance + self pay" */
+  funding_summary: string | null;
+  funding_hours_needed: number | null;
+  assessment_clinician_name: string | null;
+  lead_owner_name: string | null;
+}
+
+export interface PatientEditOptions {
+  /** Active packages for the Programme picker (value is the package name). */
+  packages: { name: string; label: string }[];
+  /** Active insurers. "Self-pay" is offered separately. */
+  insurances: string[];
+  document_types: string[];
+}
+
+/** PUT /patient/{id} — coordinators' clinical fields (diagnosis, programme, start, note) are ignored. */
+export interface PatientUpdateRequest {
+  child_name?: string | null;
+  child_age?: number | null;
+  diagnosis?: string | null;
+  programme?: string | null;
+  parent_guardian_name?: string | null;
+  phone?: string | null;
+  /** Updates (or creates) the primary authorization together with the next two. */
+  insurance?: string | null;
+  authorized_hours_total?: number | null;
+  /** "YYYY-MM-DD" */
+  renews_at?: string | null;
+  /** "YYYY-MM-DD" */
+  enrolled_at?: string | null;
+  /** Adds a session note. */
+  clinical_note?: string | null;
+}
+
+/** POST /patient/{id}/documents */
+export interface PatientDocumentRequest {
+  name: string;
+  type?: string | null;
+  /** "YYYY-MM-DD" */
+  expires_at?: string | null;
 }
 
 /** POST /patient/{id}/goals/today body. */

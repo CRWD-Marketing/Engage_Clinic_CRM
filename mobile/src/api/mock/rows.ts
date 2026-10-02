@@ -86,7 +86,11 @@ export interface InvoiceRow {
   patient_id: number;
   payer: string;
   status: 'draft' | 'issued' | 'submitted' | 'pending_info' | 'paid' | 'rejected';
+  invoice_number: string;
   issue_date: string;
+  /** `date` cast: first day of the billed month. */
+  period: string;
+  payment_method: string | null;
   subtotal: string;
   vat_amount: string;
   /** subtotal + vat_amount */
@@ -112,6 +116,20 @@ export interface InvoiceLineItemRow {
 
 export type ContactRow = Contact;
 
+/** `patient_documents` table. */
+export interface PatientDocumentRow {
+  id: number;
+  patient_id: number;
+  uploaded_by: number | null;
+  name: string;
+  type: string | null;
+  expires_at: string | null;
+  /** Only on legacy rows that had a file attached. */
+  file_path: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MockDb {
   roleTemplates: RoleTemplateRow[];
   users: UserRow[];
@@ -129,4 +147,5 @@ export interface MockDb {
   invoices: InvoiceRow[];
   invoiceLineItems: InvoiceLineItemRow[];
   contacts: ContactRow[];
+  patientDocuments: PatientDocumentRow[];
 }

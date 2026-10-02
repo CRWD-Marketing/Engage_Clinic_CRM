@@ -150,6 +150,13 @@ export const inboxColors = {
   avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
 } as const;
 
+/** Patient document expiry badges (patient/show.blade.php `.pt-doc-badge-*`). */
+export const documentColors: Record<'neutral' | 'warn' | 'ok', ChipColors> = {
+  neutral: { bg: '#F3EDE3', fg: '#5A6B7E' },
+  warn: { bg: '#F7EEDD', fg: '#B97F24' },
+  ok: { bg: '#E3F1E9', fg: '#2E7D5B' },
+};
+
 /** Reports page (report/index.blade.php): funnel stage bars, top to bottom. */
 export const reportColors = {
   funnel: ['#16436E', '#3A6A96', '#7396B8', '#C8355F'],
