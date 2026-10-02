@@ -119,10 +119,13 @@ export type IntakeStepKey =
 export interface FundingServiceRow {
   service: string;
   payer: 'Insurance' | 'Self pay';
-  hours_per_week: number | null;
-  /** Insurance rows only. */
-  approved_hours: number | null;
-  approval_reference: string | null;
+  hours_per_week?: number | null;
+  /** Insurance rows saved by the intake form. */
+  approved_hours?: number | null;
+  approval_reference?: string | null;
+  /** Older / seeded rows instead carry free text ("96 h approved") and a reference. */
+  cover?: string | null;
+  approval_ref?: string | null;
 }
 
 /** `packages` row with Package::summaryLabel() appended for pickers. */

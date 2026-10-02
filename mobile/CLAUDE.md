@@ -6,10 +6,10 @@ Expo SDK 57 ships breaking changes. Read `AGENTS.md` (in this folder) and check 
 
 ## Hard rules
 
-1. **Never modify the Laravel app (everything in this repo outside `mobile/`) without the user's explicit OK.** Read it for reference only.
+1. **The Laravel app (everything in this repo outside `mobile/`) is the live website.** On 2026-10-02 the user gave the go-ahead to add the mobile API to it (`routes/api*`, `app/Http/Controllers/Api/V1/`, `tests/Feature/Api/`). Keep Laravel changes to what the API needs, reuse the web controllers rather than duplicating their logic, and don't change web behaviour without asking.
 2. **All data access goes through `src/api/`.**
    - Screens and hooks call the `api` client and never `fetch` directly.
-   - Today the client is the mock implementation (`src/api/mock/`). An `http/` implementation will replace it later behind the same interface.
+   - Two implementations sit behind the same interface: the mock (`src/api/mock/`, the default) and the real one (`src/api/http/`, used when `EXPO_PUBLIC_API_URL` is set). A change to an endpoint's shape must be made in `types.ts`, the mock, and the Laravel API controller together.
 3. **Types mirror the Laravel JSON.** Use the same field names (snake_case) and the same serialization: decimals as strings, ISO datetimes, `"HH:mm:ss"` times. Where a Laravel controller already builds a payload (e.g. calendar `sessionPayload`), mirror that payload.
 4. **Permissions follow the real Laravel checks**, not UI text. Port `canAccessFeature` / `levelFor` / `canDo` exactly; see `src/auth/permissions.ts`.
 5. Run type-check and lint before calling a task done.
@@ -25,6 +25,14 @@ npx tsc --noEmit -p tsconfig.check.json   # same, ignoring Expo's generated rout
 npx expo lint               # lint (ESLint, eslint-config-expo)
 npx expo install <pkg>      # add packages (never plain npm install <pkg>)
 ```
+
+Laravel API tests (run in the repo root; needs a MySQL database named `engage_clinic_testing`):
+
+```bash
+DB_CONNECTION=mysql DB_DATABASE=engage_clinic_testing php artisan test tests/Feature/Api
+```
+
+The app runs on mock data unless `EXPO_PUBLIC_API_URL` is set (see `.env.example` and `docs/api.md`).
 
 Route-type note: with typed routes on, a running `expo start` appends every newly added file to
 `.expo/types/router.d.ts`, which makes `tsc` report false errors like `"/inbox" is not assignable…`
@@ -46,7 +54,7 @@ src/app/              Expo Router routes (every file is a screen; keep non-route
 src/api/types.ts      TS types matching the Laravel models and payloads
 src/api/client.ts     ApiClient interface + the active implementation export (`api`)
 src/api/mock/         mock implementation + seed data (from the Laravel seeders)
-src/api/http/         real HTTP implementation (later; needs a Laravel API)
+src/api/http/         real HTTP implementation (the Laravel mobile API, /api/v1)
 src/auth/             session context, secure token storage, permission helpers
 src/components/       shared UI: cards, chips, avatars, stat tiles, screen shell
 src/features/         screen-level logic per module (dashboard, calendar, …)
@@ -91,32 +99,24 @@ Dates are picked with `src/components/DateField.tsx` (a JS month calendar in a m
 
 ## Backend notes
 
-- **There is no API or Sanctum yet.** Laravel has session + CSRF web routes only, and many pages return HTML only. A real backend will need token auth and JSON endpoints, which requires the user's OK because it means touching the Laravel app.
-- **Proposed endpoints (mobile-only features with no Laravel equivalent yet; add with the API):**
-  - `GET /patient-notes/review?filter=unsigned|flagged`, `POST /patient-notes/sign-off {note_ids}`,
-    `POST /patient-notes/{id}/flag {flag_reason}`, `DELETE /patient-notes/{id}/flag`, and a
-    `signed_off_by_name` append on PatientNote. The web only *lists* unsigned/flagged notes; nothing
-    ever sets `signed_off_at` or `flagged`. Allowed for CLINICAL_SUPERVISOR + FULL_ADMIN
-    (`canReviewNotes` in `src/auth/permissions.ts`).
+- **The mobile API exists** (added 2026-10-02): Sanctum token sign-in and JSON endpoints under `/api/v1`, one API controller per module extending the web controller. Endpoint list, how it is built and how to run it: `docs/api.md`.
+- **API-only behaviour (not on the web):** note sign-off and flagging (`patient-notes/*`, Clinical Supervisor + Full Admin, `canReviewNotes`); suspended users can't sign in; `GET calendar/{id}` enforces "own records only".
+- **Funding rows come in two shapes.** The intake form saves `approved_hours` / `approval_reference`; seeded and older rows carry a free-text `cover` ("96 h approved") and `approval_ref`, which is what the web's patient Profile tab reads. Read them through `src/features/leads/fundingRows.ts`.
 - **Web gaps to decide on (display-only on the web, so display-only on mobile for now):**
   - No endpoint or UI ever sets `calendar_sessions.follow_up_completed_at`, so "No-shows needing follow-up" can never be cleared.
   - No "log intake call" action; a lead leaves the intake queue only when its status leaves `new`.
   - `whatsapp_contacts.assigned_user_id` is accepted by `POST /whatsapp/{id}/ai-state` but no UI sends or shows it.
   - Family details (`child_name`, `interested_in`, `insurance` on a contact) have no edit endpoint.
-- **Inbox JSON**: `GET /whatsapp/poll` and `POST /whatsapp/send` return rendered HTML fragments, and ai-state / convert-to-lead redirect. The mobile API needs JSON equivalents (shapes in `src/api/types.ts`: InboxContact, InboxThread, InboxPoll).
-- **Admin dashboard**: `GET /dashboard` is HTML only; the API needs the `AdminDashboard` shape in `src/api/types.ts`. The mock's `invoices` rows hold only the columns the dashboard reads.
-- **Contacts JSON**: `GET /admin/contacts` is HTML, and status / convert / delete redirect. The API needs JSON for all of them (shapes: `ContactsIndex`, `ContactItem`). The app filters by status on the device. The mock "sends" the decision email without sending anything.
-- **Reports JSON**: `GET /reports` is HTML only; the API needs the `ReportsData` shape. Mock invoices and line items hold only the columns the dashboard and reports read; a line item's `activity_type` stands in for the join to its billed session. Laravel's billing never writes `invoice_line_items.setting`, so the web shows "Not specified" there; the mock seeds Clinic / Home so the section has something to show.
 - **Vendors module** (added on the web 2026-10-02, Full Admin only): in `MODULES` so it lists under Module access as web only; no mobile screens.
+- **Mock data notes:** mock invoices and line items hold only the columns the dashboards and reports read; the mock "sends" the contact decision email without sending anything; Laravel's billing never writes `invoice_line_items.setting`, so real data shows "Not specified" where the mock shows Clinic / Home.
 - **Known Laravel issues (for later, don't fix):**
-  - Patient Profile tab "Services & who pays" reads `cover` and `approval_ref` from each funding row, but the intake form saves `approved_hours` and `approval_reference`, so those two columns always show "—" on the web. The app shows the saved values.
   - Patient Payments "Outstanding" is VAT-exclusive billed (`subtotal`) minus VAT-inclusive receipts (`amount_paid`), so it understates what is owed. The mock mirrors it.
   - `Lead::packageHours()` treats a package's `hours_per_week` as its whole hour balance, counted against every non-cancelled session ever booked. A child on a 30 h/wk ABA package is therefore blocked from further ABA bookings after 30 hours in total. The mock mirrors this, so most seeded patients can't be booked for ABA.
   - The booking authorization warning also fires for a "Self-pay" authorization row ("only has 0 hours left on the Self-pay authorization").
   - Admin dashboard "oldest Nd" uses `issue_date->diffInDays(now())`, which is a float in Carbon 3, so the web can print e.g. "oldest 12.43d". The mock returns whole days.
   - Converting a chat to a lead writes `source` as `ucfirst(channel)` ("Whatsapp"), which doesn't match the lead board's "WhatsApp" badge key.
   - `POST /whatsapp/message/{message}/convert-to-lead` exists but nothing in the UI calls it.
-  - Suspended users (`is_active = false`) can still log in; `LoginController` never checks. The mock login does reject them.
+  - Suspended users (`is_active = false`) can still log in on the web; `LoginController` never checks. The API and the mock reject them.
   - `last_login_at` is never written, so every invited user shows as "invited".
   - `GET /calendar/{id}` has no ownership check. `PatientDocumentController` has no role or ownership check.
   - `leads/count` and `leads/kanban` are registered after `leads/{lead}`, so they are shadowed.
@@ -134,6 +134,7 @@ Paths in these docs are relative to the Laravel root (the parent of `mobile/`).
 - [docs/laravel-roles-and-auth.md](docs/laravel-roles-and-auth.md): auth, User, permissions, dashboards per role, navigation, seeded users
 - [docs/laravel-data-models.md](docs/laravel-data-models.md): every model's columns, enums, relations, sample values
 - [docs/laravel-modules.md](docs/laravel-modules.md): calendar, patients, leads endpoints and rules; UI colours
+- [docs/api.md](docs/api.md): the mobile API — where the code is, how it reuses the web controllers, endpoints, sign-in, pointing the app at it, running its tests
 
 ## Milestones
 
@@ -153,4 +154,4 @@ Paths in these docs are relative to the Laravel root (the parent of `mobile/`).
 | 7b | Book / edit a session (`(app)/session-form`): therapist(s), patient or custom block, type, date, time, duration, room, notes; repeat weekly / every 2 weeks with weekdays and a session count (blank = sized from the patient's package hours). Edit also changes status (cancelled by family / clinic, no-show, closed). Rules from `CalendarController::store/update`: booking needs `book_modify_session`, editing is managers only, double-booked slots are skipped, package hours are a hard stop, the insurance authorization is a warning. Opened from Calendar ("+ Book session"), a therapist's week ("+ Add session", "Edit") and the session screen ("Edit session"). Group bookings (several children) and multiple types per session stay on the web | Done 2026-10-02 (tested on a phone) |
 | 8 | Reports & analytics (read-only): VAT return summary, collection rate, revenue summary, revenue by month / service / setting & therapist, lead conversion funnel, lead sources, why leads are lost, therapy hours delivered. Opened from the admin dashboard ("Reports →") and from Profile → Module access, where Contacts, Therapists and Reports now have an "Open →" link. PDF export stays on the web | Done 2026-10-02 (tested on a phone) |
 | 9 | Remaining role dashboards: Sales (my leads pipeline, lead sources, inbox), HR (staff counts, today's schedule, staff by role, recently added staff), Finance (revenue, collected, claims pending and aging, revenue by payer), Other staff (invoice / quotation counts, recent invoices). Links into modules that are still web only (User Management, Billing) are left out | Built 2026-10-02; rules checked by script, walked through in a browser. **Remaining: test on a phone** |
-| — | Laravel mobile API (Sanctum + JSON endpoints under `/api/mobile/v1`) | Waiting for the user's signal; don't touch the Laravel app until then |
+| 10 | Laravel mobile API: Sanctum sign-in and JSON endpoints under `/api/v1` for every module the app has, plus the app's real HTTP client (`src/api/http/`) switched on by `EXPO_PUBLIC_API_URL`. 37 API tests; mock and real responses compared field by field; the app smoke-tested in a browser against the real API | Built 2026-10-02. **Remaining: test on a phone against your own server** (run `php artisan migrate` there first) |

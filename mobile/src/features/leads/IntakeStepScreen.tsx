@@ -18,6 +18,7 @@ import { useApiQuery } from '@/hooks/useApiQuery';
 import { colors, patientColors, radius, spacing } from '@/theme';
 import { isoToYmd } from '@/utils/dates';
 
+import { approvalReference, approvedHours } from './fundingRows';
 import { INTAKE_STEPS, optionsFor, type IntakeField, type IntakeStep } from './intakeSteps';
 
 /** A funding service row while it is being edited (numbers as typed text). */
@@ -77,9 +78,9 @@ function initialValues(step: IntakeStep, detail: LeadDetail): Values {
         const rows = (detail.lead.funding_services_needed ?? []).map<ServiceDraft>((r) => ({
           service: r.service,
           payer: r.payer,
-          hours: r.hours_per_week === null ? '' : String(r.hours_per_week),
-          approved: r.approved_hours === null ? '' : String(r.approved_hours),
-          reference: r.approval_reference ?? '',
+          hours: r.hours_per_week == null ? '' : String(r.hours_per_week),
+          approved: approvedHours(r) === null ? '' : String(approvedHours(r)),
+          reference: approvalReference(r) ?? '',
         }));
         values[field.name] = rows.length > 0 ? rows : [blankService()];
         break;

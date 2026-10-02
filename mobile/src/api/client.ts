@@ -1,12 +1,14 @@
 /**
  * The single data-access surface for the app. Screens import `api` from here
- * and never fetch directly. Swapping the mock for real endpoints means adding
- * an implementation under src/api/http/ and changing the export below.
+ * and never fetch directly. There are two implementations: the mock
+ * (src/api/mock, in-memory demo data) and the real one (src/api/http, the
+ * Laravel mobile API); the export at the bottom picks one.
  *
  * Endpoint notes name the Laravel route each method corresponds to (or would
  * need, where the web app only renders HTML today).
  */
 
+import { createHttpApi } from './http';
 import { createMockApi } from './mock';
 import type {
   FinanceDashboard,
@@ -241,4 +243,10 @@ export interface ApiClient {
   };
 }
 
-export const api: ApiClient = createMockApi();
+/**
+ * Set EXPO_PUBLIC_API_URL (e.g. in `.env.local`: http://192.168.1.20:8000) to
+ * talk to the Laravel mobile API. Without it the app runs on mock data.
+ */
+export const API_URL = process.env.EXPO_PUBLIC_API_URL?.trim() || null;
+
+export const api: ApiClient = API_URL ? createHttpApi(API_URL) : createMockApi();

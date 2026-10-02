@@ -13,6 +13,7 @@ import { OptionPills } from '@/components/OptionPills';
 import { StatTile } from '@/components/StatTile';
 import { Banner } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
+import { approvalReference, approvedLabel } from '@/features/leads/fundingRows';
 import { colors, documentColors, neutralChip, spacing } from '@/theme';
 import { formatDateTimeShort, formatDayMonthYear, formatMonthYear, isoToYmd } from '@/utils/dates';
 import { formatMoney, trimNumber } from '@/utils/format';
@@ -254,12 +255,12 @@ export function ProfileTab({ detail: d }: { detail: PatientDetail }) {
             <View key={`${row.service}-${i}`} style={styles.service}>
               <AppText variant="bodyStrong">{row.service || '—'}</AppText>
               <AppText variant="caption">
-                {row.hours_per_week !== null ? `${row.hours_per_week} h / week` : '—'} · paid by {row.payer || '—'}
+                {row.hours_per_week != null ? `${row.hours_per_week} h / week` : '—'} · paid by {row.payer || '—'}
               </AppText>
-              {row.approved_hours !== null || row.approval_reference ? (
+              {approvedLabel(row) || approvalReference(row) ? (
                 <AppText variant="caption">
-                  {row.approved_hours !== null ? `${row.approved_hours} h approved` : 'No approved hours'}
-                  {row.approval_reference ? ` · ref ${row.approval_reference}` : ''}
+                  {approvedLabel(row) ?? 'No approved hours'}
+                  {approvalReference(row) ? ` · ref ${approvalReference(row)}` : ''}
                 </AppText>
               ) : null}
             </View>
