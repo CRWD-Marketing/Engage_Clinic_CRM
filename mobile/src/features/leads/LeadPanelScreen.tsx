@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
@@ -17,6 +17,7 @@ import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { colors, fonts, leadColors, spacing } from '@/theme';
 import { addDays, diffDays, formatDateTimeShort, isoToYmd, timeAgo, todayYmd } from '@/utils/dates';
 
@@ -24,7 +25,6 @@ import {
   dueTag,
   FOLLOW_UP_PRESETS,
   formatAed,
-  INTAKE_STEPS,
   NEXT_STATUS,
   sourceBadge,
   STATUS_LABEL,
@@ -32,6 +32,7 @@ import {
   TERMINATION_REASONS,
   valueNumber,
 } from './leadFormat';
+import { INTAKE_STEPS } from './intakeSteps';
 
 type Flash = { text: string; tone: 'success' | 'danger' } | null;
 /** Follow-up choice: a preset in days, "none", or a custom YYYY-MM-DD. */
@@ -43,6 +44,8 @@ export function LeadPanelScreen() {
   const leadId = Number(id);
   const detail = useApiQuery(`leads.show:${id}`, () => api.leads.show(leadId));
   const board = useApiQuery('leads.board', () => api.leads.board());
+  // Coming back from an intake step form: show the step as done.
+  useRefetchOnFocus(detail.reload);
   // Kept here (not in Panel) so it survives the panel resetting after a save.
   const [flash, setFlash] = useState<Flash>(null);
 
@@ -296,27 +299,36 @@ function Panel({
       <Card style={styles.section}>
         <View style={styles.row}>
           <AppText variant="heading" style={styles.flex}>
-            Intake checklist
+            Intake checklist before conversion
           </AppText>
           <AppText variant="caption">{stepsDone} of 7 complete</AppText>
         </View>
         {INTAKE_STEPS.map((step) => {
           const done = lead[step.column] !== null;
           return (
-            <View key={step.label} style={styles.step}>
+            <View key={step.key} style={styles.step}>
               <Ionicons
                 name={done ? 'checkmark-circle' : 'ellipse-outline'}
-                size={18}
+                size={20}
                 color={done ? colors.success : colors.textFaint}
               />
-              <AppText variant="body" style={styles.flex}>
-                {step.label}
-              </AppText>
-              <AppText variant="caption">{done ? 'Done' : 'To do'}</AppText>
+              <View style={styles.flex}>
+                <AppText variant="bodyStrong">{step.title}</AppText>
+                <AppText variant="caption">{done ? step.summary(detail) || 'Done' : step.subtitle}</AppText>
+              </View>
+              {canWrite && lead.status !== 'terminated' ? (
+                <Pressable
+                  onPress={() => router.push({ pathname: '/leads/intake', params: { id: String(lead.id), step: step.key } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${done ? 'Edit' : 'Fill in'} ${step.title}`}
+                  hitSlop={8}
+                  style={styles.stepBtn}>
+                  <AppText variant="link">{done ? 'Edit' : 'Fill in'}</AppText>
+                </Pressable>
+              ) : null}
             </View>
           );
         })}
-        <AppText variant="caption">Filling in the intake steps is on the web app for now.</AppText>
       </Card>
 
       <Card style={styles.section}>
@@ -476,7 +488,8 @@ const styles = StyleSheet.create({
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   field: { flexDirection: 'row', gap: spacing.sm },
   fieldLabel: { width: 118, fontFamily: fonts.bodyBold },
-  step: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 28 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44 },
+  stepBtn: { paddingVertical: 6, paddingLeft: spacing.sm },
   activity: { gap: 2, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.divider },
   actions: { flexDirection: 'row', gap: spacing.sm },
 });

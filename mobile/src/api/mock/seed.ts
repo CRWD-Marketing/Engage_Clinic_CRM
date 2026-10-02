@@ -317,6 +317,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
         follow_up_due_at: f.followUpInDays === undefined ? null : isoAt(addDays(today, f.followUpInDays), '00:00'),
         assessment_report_summary: f.summary ?? null,
         diagnosis_suspected: f.diagnosis ?? null,
+        ...intakeValues(f, STEPS_FOR_STATUS[f.status], createdYmd, today, i),
         termination_reason: terminated ? 'Distance / relocated' : null,
         termination_note: terminated ? 'Family moved to Al Ain.' : null,
         terminated_at: terminated ? isoAt(addDays(today, -12), '15:30') : null,
@@ -933,4 +934,67 @@ function buildInbox({ rnd, db, today, stamp }: { rnd: Random; db: MockDb; today:
       updated_at: stamp,
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Intake step values (LeadSeeder fills these in for the steps a lead has done)
+// ---------------------------------------------------------------------------
+
+/** Field values for the first `stepsDone` intake steps of a family's lead. */
+function intakeValues(f: FamilySeed, stepsDone: number, createdYmd: Ymd, today: Ymd, index: number): Partial<LeadRow> {
+  const insured = !['Self-pay', 'Not sure yet'].includes(f.insurance);
+  const steps: Partial<LeadRow>[] = [
+    {
+      parent_relationship: index % 2 === 0 ? 'Father' : 'Mother',
+      preferred_language: index % 3 === 0 ? 'Arabic' : 'English',
+    },
+    {
+      child_date_of_birth: dateCast(addDays(today, -(f.age * 365 + 40 + index * 9))),
+      child_gender: index % 2 === 0 ? 'Male' : 'Female',
+      child_emirates_id: `784-${2026 - f.age}-${1234567 + index * 311}-${(index % 9) + 1}`,
+      diagnosis_suspected: f.diagnosis ?? 'Suspected ASD — awaiting assessment',
+      main_concern: 'Limited expressive language and difficulty with transitions.',
+    },
+    {
+      intake_form_received_on: dateCast(addDays(createdYmd, 3)),
+      intake_form_received_via: ['Email', 'WhatsApp', 'In person'][index % 3],
+      medical_history: 'No significant medical history reported.',
+    },
+    {
+      assessment_date: dateCast(addDays(createdYmd, 5)),
+      assessment_clinician_id: 9 + (index % 7),
+      assessment_tool: ['ADOS-2', 'VB-MAPP', 'PLS-5'][index % 3],
+      assessment_report_reference: `ASM-2026-${String(100 + index).padStart(3, '0')}`,
+      assessment_report_summary: f.summary ?? 'Assessment completed; a therapy programme was recommended.',
+    },
+    {
+      funding_type: insured ? 'Insurance' : 'Self pay',
+      funding_insurer: insured ? f.insurance : null,
+      funding_policy_number: insured ? `PN-${24 + (index % 3)}-${556677 + index}` : null,
+      funding_approval_valid_until: insured ? dateCast(addDays(today, 120)) : null,
+      funding_services_needed: [
+        {
+          service: 'ABA therapy session',
+          payer: insured ? 'Insurance' : 'Self pay',
+          hours_per_week: 20,
+          approved_hours: insured ? 96 : null,
+          approval_reference: insured ? `PA-2026-${77341 + index}` : null,
+        },
+      ],
+    },
+    {
+      package_location_id: 1,
+      package_ids: [1],
+      package_start_date: dateCast(addDays(createdYmd, 10)),
+      package_sessions_per_week: 5,
+      package_agreed_by: f.parent.split(' ')[0],
+    },
+    {
+      consent_signed_date: dateCast(addDays(createdYmd, 11)),
+      consent_signed_by: index % 2 === 0 ? 'Father' : 'Mother',
+      consent_data_photo: 'Yes',
+      consent_signature_method: 'In person',
+    },
+  ];
+  return Object.assign({}, ...steps.slice(0, stepsDone));
 }

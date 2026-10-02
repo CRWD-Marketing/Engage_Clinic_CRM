@@ -55,17 +55,6 @@ export const TERMINATION_REASONS = [
 /** New Lead modal source options. */
 export const LEAD_SOURCES = ['Walk-in', 'Phone call', 'WhatsApp', 'Website', 'Instagram', 'Referral', 'Google', 'Event'];
 
-/** Intake checklist rows, in order (Lead::INTAKE_STEPS). */
-export const INTAKE_STEPS: { label: string; column: keyof Lead }[] = [
-  { label: 'Parent contact', column: 'parent_contact_completed_at' },
-  { label: 'Child details', column: 'child_details_completed_at' },
-  { label: 'Intake form', column: 'intake_form_completed_at' },
-  { label: 'Consultation / assessment', column: 'assessment_completed_at' },
-  { label: 'Funding', column: 'funding_completed_at' },
-  { label: 'Package', column: 'package_completed_at' },
-  { label: 'Consent & terms', column: 'consent_completed_at' },
-];
-
 /** Follow-up presets on the action panel (days from today; null = none). */
 export const FOLLOW_UP_PRESETS: { label: string; days: number | null }[] = [
   { label: 'No follow-up scheduled', days: null },

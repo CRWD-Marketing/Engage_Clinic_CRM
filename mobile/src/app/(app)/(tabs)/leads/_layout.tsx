@@ -19,6 +19,7 @@ export default function LeadsLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="[id]" options={{ title: 'Lead' }} />
       <Stack.Screen name="new" options={{ title: 'New lead' }} />
+      <Stack.Screen name="intake" options={{ title: 'Intake step' }} />
     </Stack>
   );
 }

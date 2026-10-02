@@ -20,7 +20,8 @@ import type {
   LeadStoreRequest,
   LeadUpdateRequest,
 } from '../types';
-import { blankLead, intakeStepsComplete } from './leadDefaults';
+import { INSURANCES, LOCATIONS, PACKAGES, SERVICES } from './catalog';
+import { blankLead, INTAKE_STEP_COLUMNS, intakeStepsComplete } from './leadDefaults';
 import type { LeadActivityRow, MockDb, UserRow } from './rows';
 import { dateCast, laravelIso } from './seed';
 import { delay, getDb, requireFeature, requireUser, staffDisplayName, toApiUser } from './server';
@@ -38,9 +39,6 @@ export const TERMINATION_REASONS = [
   'Duplicate enquiry',
   'Other',
 ];
-
-/** InsuranceSeeder (active insurances, by name). */
-const INSURANCES = ['ADNIC', 'AXA / GIG', 'Daman', 'Daman Basic', 'Daman Enhanced', 'MetLife', 'NAS (Neuron)', 'Thiqa'];
 
 const OWNER_REQUIRED = 'A lead must have an owner before it can move to Contacted.';
 
@@ -150,6 +148,42 @@ function applyFields(lead: Lead, input: LeadUpdateRequest): void {
   }
 }
 
+const INTAKE_TEXT_FIELDS = [
+  'parent_relationship', 'parent_alternate_phone', 'preferred_language',
+  'child_gender', 'child_emirates_id', 'diagnosis_suspected', 'nursery_school', 'main_concern',
+  'intake_form_received_via', 'allergies', 'medical_history',
+  'assessment_tool', 'assessment_report_reference', 'assessment_report_summary',
+  'funding_type', 'funding_insurer', 'funding_policy_number', 'funding_notes',
+  'package_agreed_by', 'package_scheduling_notes',
+  'consent_signed_by', 'consent_data_photo', 'consent_signature_method', 'consent_notes',
+] as const;
+
+const INTAKE_DATE_FIELDS = [
+  'child_date_of_birth', 'child_emirates_id_expiry', 'intake_form_received_on', 'assessment_date',
+  'funding_approval_valid_until', 'package_start_date', 'consent_signed_date',
+] as const;
+
+/** Copies the intake-step fields present in the request onto the lead. */
+function applyIntakeFields(lead: Lead, input: LeadUpdateRequest): void {
+  for (const field of INTAKE_TEXT_FIELDS) {
+    if (field in input) lead[field] = blankToNull(input[field]) ?? null;
+  }
+  for (const field of INTAKE_DATE_FIELDS) {
+    if (field in input) {
+      const value = blankToNull(input[field]);
+      lead[field] = value ? dateCast(value.slice(0, 10)) : null;
+    }
+  }
+  if ('assessment_clinician_id' in input) lead.assessment_clinician_id = input.assessment_clinician_id ?? null;
+  if ('package_location_id' in input) lead.package_location_id = input.package_location_id ?? null;
+  if ('package_sessions_per_week' in input) lead.package_sessions_per_week = input.package_sessions_per_week ?? null;
+  if ('package_ids' in input) lead.package_ids = input.package_ids?.length ? input.package_ids : null;
+  if ('funding_services_needed' in input) {
+    // An empty list is stored as null, as in Laravel.
+    lead.funding_services_needed = input.funding_services_needed?.length ? input.funding_services_needed : null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -167,7 +201,16 @@ function board(): LeadsBoard {
   return {
     leads: [...db.leads].sort((a, b) => b.created_at.localeCompare(a.created_at)).map((l) => present(db, l)),
     assignable_users: assignable,
-    insurance_options: ['Not sure yet', ...INSURANCES, 'Self-pay'],
+    insurance_options: ['Not sure yet', ...Object.keys(INSURANCES), 'Self-pay'],
+    intake_options: {
+      clinicians: db.users
+        .filter((u) => u.is_active && u.role === 'THERAPIST')
+        .map((u) => ({ id: u.id, name: staffDisplayName(u) })),
+      insurers: Object.keys(INSURANCES),
+      services: SERVICES.map((sv) => sv.name),
+      locations: LOCATIONS,
+      packages: PACKAGES,
+    },
   };
 }
 
@@ -185,6 +228,8 @@ function show(id: number): LeadDetail {
     lead: present(db, lead),
     notes_log: log.filter((a) => a.type === 'note'),
     assignment_log: log.filter((a) => a.type === 'assignment'),
+    agreed_packages: PACKAGES.filter((pk) => (lead.package_ids ?? []).includes(pk.id)),
+    assessment_clinician_name: nameOf(db, lead.assessment_clinician_id),
   };
 }
 
@@ -243,6 +288,20 @@ function update(id: number, input: LeadUpdateRequest): LeadMutationResponse {
   if ('termination_reason' in input) lead.termination_reason = blankToNull(input.termination_reason) ?? null;
   if ('termination_note' in input) lead.termination_note = blankToNull(input.termination_note) ?? null;
   if (input.status !== undefined) lead.status = input.status;
+  applyIntakeFields(lead, input);
+
+  // Saving an intake step stamps it complete. Package needs packages picked
+  // and Funding needs a funding type, otherwise the stamp is cleared.
+  if (input.intake_step) {
+    if (input.intake_step === 'package' && !('package_ids' in input)) lead.package_ids = null;
+    const met =
+      input.intake_step === 'package'
+        ? (lead.package_ids ?? []).length > 0
+        : input.intake_step === 'funding'
+          ? !!lead.funding_type
+          : true;
+    lead[INTAKE_STEP_COLUMNS[input.intake_step]] = met ? now() : null;
+  }
 
   if ('assigned_to' in input && (input.assigned_to ?? null) !== previousOwner) {
     lead.assigned_to = input.assigned_to ?? null;
@@ -335,16 +394,34 @@ function convertToPatient(id: number): { success: true; message: string; patient
   const patient = {
     id: Math.max(0, ...db.patients.map((p) => p.id)) + 1,
     lead_id: lead.id,
-    // Laravel: diagnosis from diagnosis_suspected, programme from the first agreed package.
-    // MOCK: intake packages aren't modelled yet, so programme starts empty.
+    // Diagnosis from the Child details step, programme from the first agreed package.
     diagnosis: lead.diagnosis_suspected,
-    programme: null,
+    programme: PACKAGES.find((pk) => (lead.package_ids ?? []).includes(pk.id))?.name ?? null,
     treatment_plan_review_due_at: null,
     enrolled_at: stamp,
     created_at: stamp,
     updated_at: stamp,
   };
   db.patients.push(patient);
+
+  // The Funding step becomes the patient's first authorization — insurance only.
+  if (lead.funding_insurer && (lead.funding_type ?? '').toLowerCase().includes('insurance')) {
+    const rows = (lead.funding_services_needed ?? []).filter((r) => r.payer === 'Insurance');
+    db.authorizations.push({
+      id: Math.max(0, ...db.authorizations.map((a) => a.id)) + 1,
+      patient_id: patient.id,
+      payer_name: lead.funding_insurer,
+      coverage_percent: INSURANCES[lead.funding_insurer] ?? 0,
+      covers_services: [...new Set(rows.map((r) => r.service).filter(Boolean))],
+      policy_number: lead.funding_policy_number,
+      approval_reference: rows.map((r) => r.approval_reference).find(Boolean) ?? null,
+      authorized_hours_total: Math.trunc(rows.reduce((sum, r) => sum + (r.approved_hours ?? 0), 0)),
+      renews_at: lead.funding_approval_valid_until,
+      sort_order: 0,
+      created_at: stamp,
+      updated_at: stamp,
+    });
+  }
   return { success: true, message: 'Converted to patient.', patient_id: patient.id };
 }
 

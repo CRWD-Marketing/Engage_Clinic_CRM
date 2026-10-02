@@ -1,4 +1,4 @@
-import type { Lead } from '../types';
+import type { IntakeStepKey, Lead } from '../types';
 
 /** Lead::INTAKE_STEPS — step key → its completion column, in checklist order. */
 export const INTAKE_STEP_COLUMNS = {
@@ -9,9 +9,7 @@ export const INTAKE_STEP_COLUMNS = {
   funding: 'funding_completed_at',
   package: 'package_completed_at',
   consent: 'consent_completed_at',
-} as const satisfies Record<string, keyof Lead>;
-
-export type IntakeStepKey = keyof typeof INTAKE_STEP_COLUMNS;
+} as const satisfies Record<IntakeStepKey, keyof Lead>;
 
 /** Lead::getIntakeStepsCompleteAttribute() */
 export function intakeStepsComplete(lead: Lead): number {
@@ -46,6 +44,39 @@ export function blankLead(fields: Pick<Lead, 'id' | 'created_at'> & Partial<Lead
     termination_note: null,
     terminated_at: null,
     status_before_termination: null,
+    parent_relationship: null,
+    parent_alternate_phone: null,
+    preferred_language: null,
+    child_date_of_birth: null,
+    child_gender: null,
+    child_emirates_id: null,
+    child_emirates_id_expiry: null,
+    nursery_school: null,
+    intake_form_received_on: null,
+    intake_form_received_via: null,
+    allergies: null,
+    medical_history: null,
+    assessment_date: null,
+    assessment_clinician_id: null,
+    assessment_tool: null,
+    assessment_report_reference: null,
+    funding_type: null,
+    funding_insurer: null,
+    funding_policy_number: null,
+    funding_approval_valid_until: null,
+    funding_services_needed: null,
+    funding_notes: null,
+    package_location_id: null,
+    package_ids: null,
+    package_start_date: null,
+    package_sessions_per_week: null,
+    package_agreed_by: null,
+    package_scheduling_notes: null,
+    consent_signed_date: null,
+    consent_signed_by: null,
+    consent_data_photo: null,
+    consent_signature_method: null,
+    consent_notes: null,
     parent_contact_completed_at: null,
     child_details_completed_at: null,
     intake_form_completed_at: null,

@@ -105,11 +105,48 @@ export type LeadStatus =
   | 'enrolled'
   | 'terminated';
 
-/**
- * `leads` table — core fields. Of the intake-checklist columns (steps 1–7),
- * only those the app shows so far are typed; add the rest when the
- * "Profile & intake" tab is built.
- */
+/** Lead::INTAKE_STEPS keys, in checklist order. */
+export type IntakeStepKey =
+  | 'parent_contact'
+  | 'child_details'
+  | 'intake_form'
+  | 'assessment'
+  | 'funding'
+  | 'package'
+  | 'consent';
+
+/** One row of `funding_services_needed` (the Funding step's "who pays for each service"). */
+export interface FundingServiceRow {
+  service: string;
+  payer: 'Insurance' | 'Self pay';
+  hours_per_week: number | null;
+  /** Insurance rows only. */
+  approved_hours: number | null;
+  approval_reference: string | null;
+}
+
+/** `packages` row with Package::summaryLabel() appended for pickers. */
+export interface PackageOption {
+  id: number;
+  name: string;
+  location_id: number | null;
+  /** "ABA therapy session · Home base · 30 h/wk · AED 337/hr" */
+  summary: string;
+}
+
+/** Option lists the intake forms use (embedded in the web page by LeadController::index). */
+export interface IntakeOptions {
+  /** Active THERAPIST users. */
+  clinicians: { id: number; name: string }[];
+  /** Active insurances. */
+  insurers: string[];
+  /** Service names for the funding rows. */
+  services: string[];
+  locations: { id: number; name: string }[];
+  packages: PackageOption[];
+}
+
+/** `leads` table, including the seven intake-checklist steps. */
 export interface Lead {
   id: number;
   child_name: string | null;
@@ -140,6 +177,46 @@ export interface Lead {
   termination_note: string | null;
   terminated_at: IsoDateTime | null;
   status_before_termination: LeadStatus | null;
+  // --- Intake step 1: parent contact ---
+  parent_relationship: string | null;
+  parent_alternate_phone: string | null;
+  preferred_language: string | null;
+  // --- Step 2: child details (plus child_name, diagnosis_suspected, main_concern above) ---
+  child_date_of_birth: IsoDateTime | null;
+  child_gender: string | null;
+  child_emirates_id: string | null;
+  child_emirates_id_expiry: IsoDateTime | null;
+  nursery_school: string | null;
+  // --- Step 3: intake form ---
+  intake_form_received_on: IsoDateTime | null;
+  intake_form_received_via: string | null;
+  allergies: string | null;
+  medical_history: string | null;
+  // --- Step 4: assessment (plus assessment_report_summary above) ---
+  assessment_date: IsoDateTime | null;
+  assessment_clinician_id: number | null;
+  assessment_tool: string | null;
+  assessment_report_reference: string | null;
+  // --- Step 5: funding ---
+  funding_type: string | null;
+  funding_insurer: string | null;
+  funding_policy_number: string | null;
+  funding_approval_valid_until: IsoDateTime | null;
+  funding_services_needed: FundingServiceRow[] | null;
+  funding_notes: string | null;
+  // --- Step 6: package ---
+  package_location_id: number | null;
+  package_ids: number[] | null;
+  package_start_date: IsoDateTime | null;
+  package_sessions_per_week: number | null;
+  package_agreed_by: string | null;
+  package_scheduling_notes: string | null;
+  // --- Step 7: consent ---
+  consent_signed_date: IsoDateTime | null;
+  consent_signed_by: string | null;
+  consent_data_photo: string | null;
+  consent_signature_method: string | null;
+  consent_notes: string | null;
   /** Intake checklist: one completion stamp per step (Lead::INTAKE_STEPS). */
   parent_contact_completed_at: IsoDateTime | null;
   child_details_completed_at: IsoDateTime | null;
@@ -183,6 +260,7 @@ export interface LeadsBoard {
   assignable_users: { id: number; name: string }[];
   /** "Not sure yet", active insurances, "Self-pay". */
   insurance_options: string[];
+  intake_options: IntakeOptions;
 }
 
 /** GET /admin/leads/{id} (JSON). */
@@ -191,6 +269,10 @@ export interface LeadDetail {
   lead: BoardLead;
   notes_log: LeadActivity[];
   assignment_log: LeadActivity[];
+  /** Lead::packages() — the packages picked in the Package step. */
+  agreed_packages: PackageOption[];
+  /** `assessmentClinician` relation as a display name. */
+  assessment_clinician_name: string | null;
 }
 
 /** PUT /admin/leads/{id} — every field optional; "" clears a value. */
@@ -211,6 +293,48 @@ export interface LeadUpdateRequest {
   follow_up_due_at?: string | null;
   termination_reason?: string | null;
   termination_note?: string | null;
+  /**
+   * Saving an intake step: stamps that step's `*_completed_at` (the Package
+   * step only if packages are picked, Funding only if a funding type is set).
+   * Dates are "YYYY-MM-DD".
+   */
+  intake_step?: IntakeStepKey;
+  parent_relationship?: string | null;
+  parent_alternate_phone?: string | null;
+  preferred_language?: string | null;
+  child_date_of_birth?: string | null;
+  child_gender?: string | null;
+  child_emirates_id?: string | null;
+  child_emirates_id_expiry?: string | null;
+  diagnosis_suspected?: string | null;
+  nursery_school?: string | null;
+  main_concern?: string | null;
+  intake_form_received_on?: string | null;
+  intake_form_received_via?: string | null;
+  allergies?: string | null;
+  medical_history?: string | null;
+  assessment_date?: string | null;
+  assessment_clinician_id?: number | null;
+  assessment_tool?: string | null;
+  assessment_report_reference?: string | null;
+  assessment_report_summary?: string | null;
+  funding_type?: string | null;
+  funding_insurer?: string | null;
+  funding_policy_number?: string | null;
+  funding_approval_valid_until?: string | null;
+  funding_services_needed?: FundingServiceRow[] | null;
+  funding_notes?: string | null;
+  package_location_id?: number | null;
+  package_ids?: number[] | null;
+  package_start_date?: string | null;
+  package_sessions_per_week?: number | null;
+  package_agreed_by?: string | null;
+  package_scheduling_notes?: string | null;
+  consent_signed_date?: string | null;
+  consent_signed_by?: string | null;
+  consent_data_photo?: string | null;
+  consent_signature_method?: string | null;
+  consent_notes?: string | null;
 }
 
 /** POST /admin/leads (New Lead modal). */
