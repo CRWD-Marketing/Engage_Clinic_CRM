@@ -80,7 +80,7 @@ export interface CalendarSessionRow {
   updated_at: string;
 }
 
-/** `invoices` table: only the columns the dashboard reads (billing is a later milestone). */
+/** `invoices` table: only the columns the dashboard and reports read (billing is a later milestone). */
 export interface InvoiceRow {
   id: number;
   patient_id: number;
@@ -88,7 +88,26 @@ export interface InvoiceRow {
   status: 'draft' | 'issued' | 'submitted' | 'pending_info' | 'paid' | 'rejected';
   issue_date: string;
   subtotal: string;
+  vat_amount: string;
+  /** subtotal + vat_amount */
+  total: string;
+  amount_paid: string;
+  /** VAT-inclusive credit note amount. */
+  credit_amount: string;
+  voided_at: string | null;
   insurance_coverage_amount: string;
+}
+
+/** `invoice_line_items` table: only the columns the reports read. */
+export interface InvoiceLineItemRow {
+  id: number;
+  invoice_id: number;
+  amount: string;
+  setting: string | null;
+  therapist_id: number | null;
+  calendar_session_id: number | null;
+  /** MOCK: stands in for the join to the billed session's activity_type. */
+  activity_type: string | null;
 }
 
 export type ContactRow = Contact;
@@ -108,5 +127,6 @@ export interface MockDb {
   whatsappContacts: WhatsappContact[];
   whatsappMessages: WhatsappMessage[];
   invoices: InvoiceRow[];
+  invoiceLineItems: InvoiceLineItemRow[];
   contacts: ContactRow[];
 }

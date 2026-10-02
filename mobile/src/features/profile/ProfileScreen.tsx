@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { Pressable, StyleSheet, View, type TextInput } from 'react-native';
 
@@ -379,9 +380,14 @@ function DetailsForm({ user }: { user: User }) {
 
 /** Whether this module has a real mobile screen for this user yet. */
 function onMobile(user: User, module: ModuleKey): boolean {
-  if (module === 'dashboard') return ['THERAPIST', 'CLINICAL_SUPERVISOR', 'COORDINATOR'].includes(user.role);
-  return ['calendar', 'patients', 'whatsapp', 'leads'].includes(module);
+  if (module === 'dashboard') return ['THERAPIST', 'CLINICAL_SUPERVISOR', 'COORDINATOR', 'FULL_ADMIN'].includes(user.role);
+  // The Therapists page is for people who see the whole roster; a therapist's own schedule is their Calendar tab.
+  if (module === 'therapists') return user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own';
+  return ['calendar', 'patients', 'whatsapp', 'leads', 'contacts', 'reports'].includes(module);
 }
+
+/** Modules without a tab of their own: they open as a screen from here (and from their related tab). */
+const PUSHED_SCREENS = { contacts: '/contacts', therapists: '/therapists', reports: '/reports' } as const;
 
 const LEVEL_LABEL = { full: 'Full', own: 'Own only', view: 'View only', edit: 'Edit' } as const;
 
@@ -395,7 +401,13 @@ function ModuleAccess({ user }: { user: User }) {
       {heldModules(user).map((m) => {
         const level = levelFor(user, m);
         return (
-          <View key={m} style={styles.moduleRow}>
+          <Pressable
+            key={m}
+            style={styles.moduleRow}
+            disabled={!(m in PUSHED_SCREENS) || !onMobile(user, m)}
+            onPress={() => router.push(PUSHED_SCREENS[m as keyof typeof PUSHED_SCREENS])}
+            accessibilityRole={m in PUSHED_SCREENS && onMobile(user, m) ? 'button' : undefined}
+            accessibilityLabel={m in PUSHED_SCREENS && onMobile(user, m) ? `Open ${MODULES[m]}` : undefined}>
             <AppText variant="body" style={styles.flex}>
               {MODULES[m]}
             </AppText>
@@ -405,7 +417,8 @@ function ModuleAccess({ user }: { user: User }) {
                 Web only
               </AppText>
             )}
-          </View>
+            {m in PUSHED_SCREENS && onMobile(user, m) ? <AppText variant="link">Open →</AppText> : null}
+          </Pressable>
         );
       })}
     </Card>

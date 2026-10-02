@@ -9,6 +9,11 @@
 
 import { createMockApi } from './mock';
 import type {
+  BookingOptions,
+  SessionStoreRequest,
+  SessionStoreResponse,
+  SessionUpdateRequest,
+  ReportsData,
   SessionUpdateResponse,
   TherapistsIndex,
   ContactEmailRequest,
@@ -193,6 +198,20 @@ export interface ApiClient {
      * reopening into an overlapping session is a 422.
      */
     setStatus(id: number, status: 'closed' | 'scheduled'): Promise<SessionUpdateResponse>;
+    /** GET /calendar/leads plus the roster and option lists the booking form needs. */
+    bookingOptions(): Promise<BookingOptions>;
+    /**
+     * POST /calendar — needs the `book_modify_session` action. Double-booked
+     * slots are skipped; going past the patient's package hours is a 422.
+     */
+    store(input: SessionStoreRequest): Promise<SessionStoreResponse>;
+    /** PUT /calendar/{id} — managers only (403 otherwise); an overlapping slot is a 422. */
+    update(id: number, input: SessionUpdateRequest): Promise<SessionUpdateResponse>;
+  };
+  /** Reports & analytics (ReportController, `feature:reports`). Read-only; PDF export stays on the web. */
+  reports: {
+    /** GET /reports */
+    index(): Promise<ReportsData>;
   };
   /** Therapists & schedules (TherapistController, `feature:therapists`). */
   therapists: {

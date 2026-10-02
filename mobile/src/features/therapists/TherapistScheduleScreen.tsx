@@ -5,15 +5,17 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
 import type { CalendarSessionPayload } from '@/api/types';
-import { canManageCalendar } from '@/auth/permissions';
+import { canDo, canManageCalendar } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
+import { Button } from '@/components/Button';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { colors, colorsForActivity, fonts, neutralChip, radius, spacing } from '@/theme';
-import { addDays, formatDayShort, weekdayIndex, type Ymd } from '@/utils/dates';
+import { addDays, formatDayShort, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
 import { WeekNav } from './WeekNav';
 
@@ -28,6 +30,8 @@ export function TherapistScheduleScreen() {
   const query = useApiQuery(`therapists.index:${therapistId}:${week ?? 'now'}`, () =>
     api.therapists.index({ therapist_id: therapistId, week }),
   );
+  // Coming back from the booking form: show the new or changed session.
+  useRefetchOnFocus(query.reload);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
 
@@ -71,6 +75,17 @@ export function TherapistScheduleScreen() {
         <AppText variant="caption">
           {therapist.department_label} · {therapist.weekly_hours}h/wk · {therapist.session_count} sessions
         </AppText>
+      ) : null}
+      {d.can_view_all && canDo(user, 'book_modify_session') ? (
+        <Button
+          title="+ Add session"
+          onPress={() =>
+            router.push({
+              pathname: '/session-form',
+              params: { therapist_id: String(therapistId), date: d.is_current_week ? todayYmd() : d.week_start },
+            })
+          }
+        />
       ) : null}
       {flash ? <Banner text={flash.text} tone={flash.tone} /> : null}
 
@@ -151,16 +166,26 @@ function SessionRow({
         {s.room ? <AppText variant="caption">{s.room}</AppText> : null}
       </Pressable>
       {onToggle ? (
-        <Pressable
-          onPress={onToggle}
-          disabled={disabled}
-          accessibilityRole="button"
-          accessibilityLabel={`${closed ? 'Reopen' : 'Close'} ${s.start_time} ${s.patient_name}`}
-          style={({ pressed }) => [styles.action, pressed && styles.pressed, disabled && styles.dim]}>
-          <AppText style={[styles.actionText, closed && styles.reopenText]}>
-            {busy ? '…' : closed ? 'Reopen' : 'Close'}
-          </AppText>
-        </Pressable>
+        <View style={styles.actions}>
+          <Pressable
+            onPress={() => router.push({ pathname: '/session-form', params: { id: String(s.id) } })}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${s.start_time} ${s.patient_name}`}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed, disabled && styles.dim]}>
+            <AppText style={[styles.actionText, styles.editText]}>Edit</AppText>
+          </Pressable>
+          <Pressable
+            onPress={onToggle}
+            disabled={disabled}
+            accessibilityRole="button"
+            accessibilityLabel={`${closed ? 'Reopen' : 'Close'} ${s.start_time} ${s.patient_name}`}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed, disabled && styles.dim]}>
+            <AppText style={[styles.actionText, closed && styles.reopenText]}>
+              {busy ? '…' : closed ? 'Reopen' : 'Close'}
+            </AppText>
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -207,4 +232,6 @@ const styles = StyleSheet.create({
     color: colors.danger,
   },
   reopenText: { color: colors.success },
+  editText: { color: colors.navy },
+  actions: { flexDirection: 'row', gap: spacing.sm },
 });

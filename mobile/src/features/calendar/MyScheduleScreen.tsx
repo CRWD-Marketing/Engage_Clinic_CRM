@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/api/client';
 import type { CalendarFeed, CalendarFeedLeave, MyCalendarDay, MySessionPayload, User } from '@/api/types';
-import { canAccessFeature, canManageCalendar, levelFor } from '@/auth/permissions';
+import { canAccessFeature, canDo, canManageCalendar, levelFor } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
@@ -485,8 +485,10 @@ function TopBar(props: TopBarProps) {
     scope === 'own'
       ? 'Your schedule is set by your supervisor'
       : canManageCalendar(user)
-        ? 'Booking and changes are on the web · open a past session to log supervision'
-        : 'View only · booking and changes are on the web';
+        ? 'Open a session to edit it or log supervision'
+        : canDo(user, 'book_modify_session')
+          ? 'You can book sessions · changes to a booked session are for the supervisor'
+          : 'View only';
 
   return (
     <SafeAreaView edges={['top']} style={styles.headerWrap}>
@@ -546,6 +548,11 @@ function TopBar(props: TopBarProps) {
           {lockLine}
         </AppText>
       </View>
+      {scope === 'clinic' && canDo(user, 'book_modify_session') ? (
+        <Pressable onPress={() => router.push('/session-form')} accessibilityRole="button" hitSlop={6}>
+          <AppText variant="link">+ Book session</AppText>
+        </Pressable>
+      ) : null}
       {canAccessFeature(user, 'therapists') && user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own' ? (
         <Pressable onPress={() => router.push('/therapists')} accessibilityRole="button" hitSlop={6}>
           <AppText variant="link">Therapists &amp; schedules →</AppText>

@@ -44,7 +44,7 @@ type PackageSeed = {
 };
 
 /** PackageSeeder */
-const PACKAGE_SEEDS: PackageSeed[] = [
+export const PACKAGE_SEEDS: PackageSeed[] = [
   { id: 1, name: 'P-20 hrs ABA and 10 hr speech', service_id: 1, location_id: 1, delivery_mode: 'Home base', hours_per_week: 30, rate: 337 },
   { id: 2, name: 'Package — 40 hrs ABA', service_id: 1, location_id: 1, delivery_mode: 'Clinic', hours_per_week: 40, rate: 250 },
   { id: 3, name: 'P-10 hrs speech / OT', service_id: 2, location_id: 1, delivery_mode: 'Home base', hours_per_week: 10, rate: 625 },

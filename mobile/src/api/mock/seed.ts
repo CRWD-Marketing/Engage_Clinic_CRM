@@ -10,7 +10,7 @@ import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
 import { addDays, addMonths, clinicToIso, diffDays, monthStartOf, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
 import { blankLead, INTAKE_STEP_COLUMNS } from './leadDefaults';
-import { authorizationHoursUsed, sessionsForLead } from './presenters';
+import { authorizationHoursUsed, sessionsForLead, THERAPY_TYPES } from './presenters';
 import { createRandom, type Random } from './random';
 import type {
   CalendarSessionRow,
@@ -372,6 +372,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
     whatsappContacts: [],
     whatsappMessages: [],
     invoices: [],
+    invoiceLineItems: [],
     contacts: [],
   };
   buildLeadActivities(db);
@@ -420,29 +421,75 @@ function buildContacts({ db, today, now }: { db: MockDb; today: Ymd; now: Date }
   });
 }
 
-/** One invoice per patient for last month and one for this month (InvoiceSeeder-style). */
+/**
+ * One invoice per patient per month for the last six months (InvoiceSeeder-style),
+ * each split into line items across the therapists and services that child sees.
+ */
 function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd }) {
   const thisMonth = monthStartOf(today);
-  const lastMonth = addMonths(today, -1);
-  const add = (patient: PatientRow, month: Ymd, current: boolean) => {
-    const auth = db.authorizations.find((a) => a.patient_id === patient.id && a.payer_name !== 'Self-pay');
-    const subtotal = rnd.int(60, 180) * 50;
-    // This month's invoices can't be dated after today.
-    const lastDay = current ? diffDays(thisMonth, today) : 27;
-    db.invoices.push({
-      id: db.invoices.length + 1,
-      patient_id: patient.id,
-      payer: auth ? auth.payer_name : 'Self-pay',
-      status: auth ? (current ? rnd.pick(['submitted', 'submitted', 'pending_info'] as const) : rnd.pick(['paid', 'paid', 'submitted'] as const)) : current ? 'issued' : 'paid',
-      issue_date: dateCast(addDays(month, rnd.int(0, Math.max(0, lastDay)))),
-      subtotal: subtotal.toFixed(2),
-      insurance_coverage_amount: (auth ? (subtotal * auth.coverage_percent) / 100 : 0).toFixed(2),
-    });
-  };
   for (const patient of db.patients) {
-    add(patient, lastMonth, false);
-    // Early in the month only some families have been invoiced yet.
-    if (rnd.int(0, 3) > 0) add(patient, thisMonth, true);
+    const auth = db.authorizations.find((a) => a.patient_id === patient.id && a.payer_name !== 'Self-pay');
+    // Who delivers what for this child, from the booked sessions.
+    const pairs = new Map<string, { therapist_id: number; activity_type: string }>();
+    for (const s of db.sessions) {
+      if (s.patient_id === patient.lead_id && THERAPY_TYPES.includes(s.activity_type)) {
+        pairs.set(`${s.therapist_id}:${s.activity_type}`, { therapist_id: s.therapist_id, activity_type: s.activity_type });
+      }
+    }
+    const care = [...pairs.values()];
+    if (care.length === 0) continue;
+
+    for (let monthsAgo = 5; monthsAgo >= 0; monthsAgo--) {
+      const current = monthsAgo === 0;
+      // Early in the month only some families have been invoiced yet.
+      if (current && rnd.int(0, 3) === 0) continue;
+      const month = addMonths(today, -monthsAgo);
+      const subtotal = rnd.int(60, 180) * 50;
+      const vat = subtotal * 0.05;
+      const total = subtotal + vat;
+      const coverage = auth ? (subtotal * auth.coverage_percent) / 100 : 0;
+      const status = auth
+        ? current
+          ? rnd.pick(['submitted', 'submitted', 'pending_info'] as const)
+          : rnd.pick(['paid', 'paid', 'paid', 'submitted'] as const)
+        : current
+          ? ('issued' as const)
+          : ('paid' as const);
+      // Paid in full once settled; an open insurance claim has only the family's share in.
+      const paid = status === 'paid' ? total : status === 'issued' ? 0 : total - coverage;
+      const id = db.invoices.length + 1;
+      db.invoices.push({
+        id,
+        patient_id: patient.id,
+        payer: auth ? auth.payer_name : 'Self-pay',
+        status,
+        // This month's invoices can't be dated after today.
+        issue_date: dateCast(addDays(month, rnd.int(0, current ? Math.max(0, diffDays(thisMonth, today)) : 27))),
+        subtotal: subtotal.toFixed(2),
+        vat_amount: vat.toFixed(2),
+        total: total.toFixed(2),
+        amount_paid: paid.toFixed(2),
+        // A couple of small credit notes, and one voided invoice, so those report lines aren't empty.
+        credit_amount: (id % 9 === 0 ? 210 : 0).toFixed(2),
+        voided_at: id === 4 ? dateCast(addDays(month, 20)) : null,
+        insurance_coverage_amount: coverage.toFixed(2),
+      });
+      const setting = patient.id % 4 === 0 ? 'Home' : 'Clinic';
+      care.forEach((c, i) => {
+        // Even split, with the rounding remainder on the first line.
+        const share = Math.floor((subtotal / care.length) * 100) / 100;
+        const amount = i === 0 ? subtotal - share * (care.length - 1) : share;
+        db.invoiceLineItems.push({
+          id: db.invoiceLineItems.length + 1,
+          invoice_id: id,
+          amount: amount.toFixed(2),
+          setting,
+          therapist_id: c.therapist_id,
+          calendar_session_id: null,
+          activity_type: c.activity_type,
+        });
+      });
+    }
   }
 }
 

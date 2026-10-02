@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -16,6 +16,7 @@ import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { colors, colorsForActivity, fonts, spacing } from '@/theme';
 import { formatDayShort, formatTime } from '@/utils/dates';
 
@@ -28,6 +29,8 @@ export function SessionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const user = useCurrentUser();
   const query = useApiQuery(`calendar.show:${id}`, () => api.calendar.show(Number(id)));
+  // Coming back from the edit form: show the saved changes.
+  useRefetchOnFocus(query.reload);
 
   if (!query.data) {
     return (
@@ -41,6 +44,13 @@ export function SessionDetailScreen() {
   return (
     <Screen edges={['bottom']} refreshing={query.refreshing} onRefresh={query.refresh}>
       <SummaryCard session={s} />
+      {canManageCalendar(user) ? (
+        <Button
+          title="Edit session"
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/session-form', params: { id: String(s.id) } }, { withAnchor: true })}
+        />
+      ) : null}
       {canAddTherapistNote(s, user.id) ? <TherapistNoteCard session={s} /> : null}
       {s.notes ? (
         <Card style={styles.section}>

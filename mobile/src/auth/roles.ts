@@ -41,6 +41,7 @@ export const MODULES = {
   calendar: 'Calendar',
   therapists: 'Therapists',
   careers: 'Job Applications',
+  vendors: 'Vendors',
   users: 'User Management',
   roles_access: 'Roles & access',
   billing: 'Billing',
@@ -86,7 +87,7 @@ export const SYSTEM_TEMPLATES: Record<string, RoleTemplateDef> = {
     base_role: 'FULL_ADMIN',
     modules: [
       'dashboard', 'leads', 'contacts', 'cms_forms', 'whatsapp', 'knowledge_base', 'patients', 'calendar',
-      'therapists', 'careers', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings',
+      'therapists', 'careers', 'vendors', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings',
     ],
     actions: [...ACTIONS],
   },

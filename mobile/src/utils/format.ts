@@ -55,3 +55,15 @@ export function crc32(value: string): number {
 export function avatarColor(id: number | string): string {
   return avatarPalette[crc32(String(id)) % avatarPalette.length];
 }
+
+/** PHP number_format(): "12,345.60" */
+export function formatMoney(amount: number, decimals = 2): string {
+  const [whole, fraction] = Math.abs(amount).toFixed(decimals).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${amount < 0 ? '-' : ''}${grouped}${fraction ? `.${fraction}` : ''}`;
+}
+
+/** One decimal with a trailing ".0" dropped: 12.5 → "12.5", 12 → "12". */
+export function trimNumber(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}

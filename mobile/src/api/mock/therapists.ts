@@ -1,17 +1,15 @@
 /**
- * Mock of TherapistController::index (`feature:therapists`) and the session
- * status change its Close / Reopen buttons send to CalendarController::update.
+ * Mock of TherapistController::index (`feature:therapists`). Its Close /
+ * Reopen and Add / Edit buttons go through the calendar endpoints (booking.ts).
  */
 
-import { canManageCalendar, levelFor } from '@/auth/permissions';
+import { levelFor } from '@/auth/permissions';
 import { addDays, mondayOf, todayYmd } from '@/utils/dates';
 
 import type { ApiClient } from '../client';
-import { ApiError } from '../errors';
-import type { SessionUpdateResponse, TherapistsIndex } from '../types';
-import { autoCompletePastSessions, sessionPayload } from './presenters';
+import type { TherapistsIndex } from '../types';
+import { sessionPayload } from './presenters';
 import type { CalendarSessionRow } from './rows';
-import { laravelIso } from './seed';
 import { delay, getDb, requireFeature, requireUser, toApiUser } from './server';
 
 const isInactive = (s: CalendarSessionRow) => s.status === 'cancelled' || s.status === 'closed';
@@ -76,54 +74,6 @@ function index(params: { therapist_id?: number; week?: string } = {}): Therapist
   };
 }
 
-/** CalendarController::hasConflict(): another active session of the same therapist overlapping the slot. */
-function hasConflict(session: CalendarSessionRow): boolean {
-  return getDb().sessions.some(
-    (s) =>
-      s.id !== session.id &&
-      s.therapist_id === session.therapist_id &&
-      s.session_date === session.session_date &&
-      !isInactive(s) &&
-      s.start_time < session.end_time &&
-      s.end_time > session.start_time,
-  );
-}
-
-/**
- * PUT /calendar/{id} {status} — only the part the Therapists page uses:
- * Close discontinues the slot (it leaves the calendar), Reopen puts it back
- * as scheduled.
- */
-function setStatus(id: number, status: 'closed' | 'scheduled'): SessionUpdateResponse {
-  const user = requireUser();
-  requireFeature(user, 'calendar', true);
-  if (!canManageCalendar(toApiUser(user))) {
-    throw new ApiError(403, { message: 'Only the Clinical Supervisor can change the schedule.' });
-  }
-  if (status !== 'closed' && status !== 'scheduled') {
-    const message = 'The selected status is invalid.';
-    throw new ApiError(422, { message, errors: { status: [message] } });
-  }
-  const db = getDb();
-  const session = db.sessions.find((s) => s.id === id);
-  if (!session) throw new ApiError(404, { message: 'Not found.' });
-
-  if (status === 'scheduled' && hasConflict(session)) {
-    const message = 'This therapist already has a session that overlaps this time slot.';
-    throw new ApiError(422, { message, errors: { start_time: [message] } });
-  }
-
-  session.status = status;
-  // Only a family cancellation keeps notice hours.
-  session.cancel_notice_hours = null;
-  session.updated_at = laravelIso(new Date().toISOString());
-  // A reopened session whose time has already passed counts as attended again.
-  autoCompletePastSessions(db);
-  return { message: 'Session updated.', session: sessionPayload(db, session) };
-}
-
 export function createTherapistsApi(): ApiClient['therapists'] {
   return { index: (params) => delay(() => index(params)) };
 }
-
-export const setSessionStatus = (id: number, status: 'closed' | 'scheduled') => delay(() => setStatus(id, status));

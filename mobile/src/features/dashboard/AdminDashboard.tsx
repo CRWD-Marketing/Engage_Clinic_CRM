@@ -98,7 +98,11 @@ export function AdminDashboard() {
       </StatsGrid>
 
       <ScheduleTodayCard title="Today's schedule" sessions={d.today_sessions} showTherapist />
-      <LeadSourcesCard rows={d.lead_sources} scale={d.lead_sources_scale} />
+      <LeadSourcesCard
+        rows={d.lead_sources}
+        scale={d.lead_sources_scale}
+        onReports={canAccessFeature(user, 'reports') ? () => router.push('/reports') : undefined}
+      />
       {canAccessFeature(user, 'whatsapp') ? <InboxPreviewCard contacts={d.whatsapp_inbox} /> : null}
       <AuthorizationsCard rows={d.authorizations_expiring} onOpen={canOpenPatients ? openPatient : undefined} />
       <WaitlistCard entries={d.waitlist_next_up} />
@@ -106,10 +110,10 @@ export function AdminDashboard() {
   );
 }
 
-function LeadSourcesCard({ rows, scale }: { rows: LeadSourceRow[]; scale: number }) {
+function LeadSourcesCard({ rows, scale, onReports }: { rows: LeadSourceRow[]; scale: number; onReports?: () => void }) {
   return (
     <Card style={styles.gap}>
-      <CardHeader title="Lead sources · last 7 days" />
+      <CardHeader title="Lead sources · last 7 days" actionLabel={onReports ? 'Reports →' : undefined} onAction={onReports} />
       {rows.length === 0 ? (
         <AppText variant="caption">No leads captured in the last 7 days.</AppText>
       ) : (

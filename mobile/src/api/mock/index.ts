@@ -27,9 +27,11 @@ import {
   mySessionPayload,
   sessionPayload,
 } from './presenters';
+import { createBookingApi } from './booking';
 import { createContactsApi } from './contacts';
 import { createDashboardApi } from './dashboard';
-import { createTherapistsApi, setSessionStatus } from './therapists';
+import { createReportsApi } from './reports';
+import { createTherapistsApi } from './therapists';
 import { createInboxApi } from './inbox';
 import { createLeadsApi } from './leads';
 import { createNotesApi } from './notes';
@@ -389,6 +391,7 @@ export function createMockApi(): ApiClient {
     leads: createLeadsApi(),
     contacts: createContactsApi(),
     therapists: createTherapistsApi(),
+    reports: createReportsApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),
@@ -396,7 +399,7 @@ export function createMockApi(): ApiClient {
       saveTherapistNote: (id, note) => delay(() => saveTherapistNote(id, note)),
       supervise: (id, notes) => delay(() => supervise(id, notes)),
       unsupervise: (id) => delay(() => unsupervise(id)),
-      setStatus: setSessionStatus,
+      ...createBookingApi(),
     },
   };
 }

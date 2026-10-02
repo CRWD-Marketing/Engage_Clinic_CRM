@@ -986,10 +986,168 @@ export interface TherapistsIndex {
   sessions: CalendarSessionPayload[];
 }
 
+/** A patient in the booking panel (CalendarController::leadsPayload()). `id` is the lead id. */
+export interface BookingLead {
+  id: number;
+  name: string;
+  /** Scheduled sessions from today on. */
+  upcoming_count: number;
+  next_session: { date: YmdString; time: string } | null;
+  /** The furthest-out scheduled session, when there is more than one. */
+  last_session: { date: YmdString; time: string } | null;
+  /** Primary insurance authorization, when it has an hours total. */
+  auth: { payer: string; total: number; left: number; covers: string[] } | null;
+  /** Packages agreed at intake, each with the activity types it covers and its hour balance. */
+  packages: { id: number; name: string; service: string | null; types: string[]; total: number; used: number; left: number }[];
+}
+
+/** What the booking form needs: roster, patients and option lists. */
+export interface BookingOptions {
+  /** Active therapists (rosterStaff()). */
+  therapists: { id: number; name: string }[];
+  leads: BookingLead[];
+  activity_types: string[];
+  durations: number[];
+}
+
+/** POST /calendar */
+export interface SessionStoreRequest {
+  /** One session is created per therapist per occurrence. */
+  therapist_ids: number[];
+  /** Lead ids. Empty with a custom_patient for a non-patient block. */
+  patient_ids?: number[];
+  custom_patient?: string | null;
+  activity_label?: string | null;
+  activity_types: string[];
+  session_date: YmdString;
+  /** "HH:mm" */
+  start_time: string;
+  duration_minutes: number;
+  room?: string | null;
+  notes?: string | null;
+  repeats?: 'none' | 'weekly' | 'biweekly';
+  /** Weekly only: days of the week, 0 = Sunday. Omitted = the start date's weekday. */
+  weekdays?: number[];
+  /** Repeating only. Null sizes the series to the patient's remaining package hours. */
+  occurrences?: number | null;
+}
+
+/** POST /calendar response (201). When every slot was skipped Laravel answers 422 with the same message. */
+export interface SessionStoreResponse {
+  message: string;
+  created: number;
+  /** Slots where the therapist was already booked. */
+  skipped: { therapist_id: number; date: YmdString }[];
+  authorization_warning: string | null;
+  sessions: CalendarSessionPayload[];
+}
+
+/** PUT /calendar/{id} — partial; anything left out is unchanged. */
+export interface SessionUpdateRequest {
+  therapist_id?: number;
+  patient_ids?: number[];
+  custom_patient?: string | null;
+  activity_label?: string | null;
+  activity_types?: string[];
+  session_date?: YmdString;
+  start_time?: string;
+  duration_minutes?: number;
+  room?: string | null;
+  notes?: string | null;
+  /** "completed" can't be set by hand. */
+  status?: Exclude<SessionStatus, 'completed'> | null;
+  cancel_reason?: CancelReason | null;
+  cancel_notice_hours?: number | null;
+}
+
 /** PUT /calendar/{id} JSON response. */
 export interface SessionUpdateResponse {
   message: string;
   session: CalendarSessionPayload;
+}
+
+// ---------------------------------------------------------------------------
+// Reports & analytics
+// ---------------------------------------------------------------------------
+
+export interface ReportAmountRow {
+  label: string;
+  amount: number;
+}
+
+export interface ReportLeadSource {
+  source: string;
+  count: number;
+  enrolled: number;
+  /** Share of all captured leads, whole percent. */
+  pct: number;
+  conversion_rate: number | null;
+  color: string;
+}
+
+export interface ReportMonthRevenue {
+  /** "Oct" */
+  label: string;
+  amount: number;
+  thousands: number;
+  /** The month still in progress (the web marks it with *). */
+  is_current: boolean;
+}
+
+/**
+ * GET /reports as JSON (ReportController::reportData(), snake_case). Money
+ * sections cover the trailing six months; VAT and therapy hours cover the
+ * current month; the lead funnel covers the last 90 days.
+ */
+export interface ReportsData {
+  period_start_label: string;
+  /** "October 2026" */
+  period_end_label: string;
+  updated_at: IsoDateTime;
+
+  vat_filing_label: string;
+  vat_trn: string;
+  vat_rate: number;
+  vat_standard_rated_supplies: number;
+  vat_output_tax: number;
+  vat_credit_notes_issued: number;
+  vat_net_payable: number;
+
+  collection_invoiced_total: number;
+  collection_collected_total: number;
+  collection_rate_pct: number;
+  collection_billable_hours: number;
+  collection_revenue_per_hour: number | null;
+
+  /** Largest first. */
+  revenue_by_service: (ReportAmountRow & { color: string })[];
+  revenue_by_setting: ReportAmountRow[];
+  revenue_by_therapist: ReportAmountRow[];
+
+  /** Oldest first, six rows. */
+  revenue_by_month: ReportMonthRevenue[];
+  revenue_total_6mo: number;
+  revenue_average_6mo: number;
+  revenue_best_month: ReportMonthRevenue;
+  /** This month vs last month, whole percent; null when last month was zero. */
+  revenue_mom_delta: number | null;
+
+  funnel_stages: { label: string; count: number; pct: number }[];
+  captured_count: number;
+  conversion_rate: number | null;
+  lead_sources: ReportLeadSource[];
+  best_source: ReportLeadSource | null;
+  worst_source: ReportLeadSource | null;
+  median_enroll_days: number | null;
+
+  lost_leads_count: number;
+  lost_leads_value: number;
+  /** Most leads first; the first row is the "biggest driver". */
+  lost_reasons: { reason: string; count: number; value: number }[];
+
+  therapy_month_label: string;
+  therapy_total_hours: number;
+  therapy_hours_by_type: { type: string; hours: number; color: string }[];
 }
 
 // ---------------------------------------------------------------------------

@@ -150,6 +150,11 @@ export const inboxColors = {
   avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
 } as const;
 
+/** Reports page (report/index.blade.php): funnel stage bars, top to bottom. */
+export const reportColors = {
+  funnel: ['#16436E', '#3A6A96', '#7396B8', '#C8355F'],
+} as const;
+
 /** Contact submission status badges (contact/index.blade.php `$statusTokens`). */
 export const contactStatusColors: Record<string, ChipColors> = {
   new: { bg: '#eff6ff', fg: '#1d4ed8' },
