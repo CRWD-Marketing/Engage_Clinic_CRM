@@ -19,6 +19,7 @@ export default function PatientsLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="[id]" options={{ title: 'Patient' }} />
       <Stack.Screen name="edit" options={{ title: 'Client details' }} />
+      <Stack.Screen name="new" options={{ title: 'Add patient' }} />
     </Stack>
   );
 }

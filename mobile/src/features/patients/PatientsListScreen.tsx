@@ -5,10 +5,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
 import type { PatientListItem } from '@/api/types';
-import { levelFor } from '@/auth/permissions';
+import { canWriteIn, levelFor } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Avatar } from '@/components/Avatar';
+import { Button } from '@/components/Button';
 import { Card, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
@@ -29,6 +30,8 @@ import { hoursLeft } from './patientFormat';
 export function PatientsListScreen() {
   const user = useCurrentUser();
   const own = levelFor(user, 'patients') === 'own';
+  // PatientController::store(): coordinators and therapists can't add a patient.
+  const canAddPatient = canWriteIn(user, 'patients') && user.role !== 'COORDINATOR' && user.role !== 'THERAPIST';
   const [search, setSearch] = useState('');
   const term = useDebouncedValue(search.trim());
 
@@ -65,6 +68,8 @@ export function PatientsListScreen() {
         returnKeyType="search"
         clearButtonMode="while-editing"
       />
+
+      {canAddPatient ? <Button title="+ Add patient" variant="secondary" onPress={() => router.push('/patients/new')} /> : null}
 
       {!query.data ? (
         query.error ? (

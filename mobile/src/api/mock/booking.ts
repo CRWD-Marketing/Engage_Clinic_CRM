@@ -139,6 +139,7 @@ function options(): BookingOptions {
     leads: leadsPayload(db, todayYmd()),
     activity_types: DEFAULT_TYPES,
     durations: DURATIONS,
+    leave_types: ['Annual leave', 'Sick leave', 'Public holiday', 'Emergency leave', 'Unpaid leave'],
   };
 }
 

@@ -87,6 +87,35 @@ class PatientController extends WebPatientController
         ]);
     }
 
+    /** GET /patients/create-options — the pickers of the web's "Add patient" form. */
+    public function createOptions(Request $request)
+    {
+        $data = parent::index($request)->getData();
+
+        return response()->json([
+            'packages' => $data['packages']->map(fn ($package) => [
+                'name' => $package->name,
+                'label' => $package->name.' — '.$this->trim($package->hours_per_week).'h/wk @ AED '.number_format($package->rate, 0).'/hr',
+            ])->values(),
+            'insurances' => $data['insurances']->pluck('name')->values(),
+        ]);
+    }
+
+    /** POST /patients — the web action; it answers with a redirect URL, the app needs the new patient's id. */
+    public function store(Request $request)
+    {
+        $response = parent::store($request);
+        if ($response->getStatusCode() !== 201) {
+            return $response;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Patient added.',
+            'patient_id' => Patient::latest('id')->value('id'),
+        ], 201);
+    }
+
     /** PUT /patients/{patient} — the web action, with errors in Laravel's usual `{message, errors}` shape. */
     public function update(Request $request, Patient $patient)
     {

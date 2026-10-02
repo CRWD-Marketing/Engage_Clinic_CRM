@@ -129,6 +129,7 @@ class CalendarController extends WebCalendarController
             'leads' => $this->leadsPayload(),
             'activity_types' => array_values(array_unique(array_merge(CalendarSession::DEFAULT_TYPES, $customTypes->all()))),
             'durations' => self::DURATIONS,
+            'leave_types' => StaffLeave::TYPES,
         ]);
     }
 

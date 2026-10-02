@@ -343,7 +343,7 @@ function saveTodayGoals(id: number, input: TodayGoalsRequest): TodayGoalsRespons
   return { success: true, message: 'Session goals saved.', created_goals: created };
 }
 
-export function createPatientsApi(): ApiClient['patients'] {
+export function createPatientsApi(): Omit<ApiClient['patients'], 'createOptions' | 'store'> {
   return {
     list: (search) => delay(() => list(search)),
     show: (id) => delay(() => show(id)),

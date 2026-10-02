@@ -3,10 +3,12 @@
  * matching block in resources/views/dashboard/*.blade.php.
  */
 
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { api } from '@/api/client';
 import type { CalendarSessionPayload, Patient, PatientNote, WaitlistEntry, WhatsappContact } from '@/api/types';
 import { AppText } from '@/components/AppText';
 import { Avatar } from '@/components/Avatar';
@@ -14,6 +16,8 @@ import { Card, CardHeader, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { StatTile } from '@/components/StatTile';
 import { EmptyRow } from '@/components/StateViews';
+import { useApiQuery } from '@/hooks/useApiQuery';
+import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { colors, colorsForActivity, fonts, inboxColors, noteAgeColors, planCardColors, spacing } from '@/theme';
 import {
   diffDays,
@@ -36,14 +40,39 @@ export function openPatient(patientId: number) {
 
 export function DashboardHeader({ name, location }: { name: string; location: string }) {
   return (
-    <View style={styles.header}>
-      <AppText variant="title">
-        {greeting()}, {name}
-      </AppText>
-      <AppText variant="caption">
-        {formatLongDate(todayYmd())} · {location}
-      </AppText>
+    <View style={styles.headerRow}>
+      <View style={styles.header}>
+        <AppText variant="title">
+          {greeting()}, {name}
+        </AppText>
+        <AppText variant="caption">
+          {formatLongDate(todayYmd())} · {location}
+        </AppText>
+      </View>
+      <Bell />
     </View>
+  );
+}
+
+/** The topbar bell: unread count, opening the notifications screen. */
+function Bell() {
+  const query = useApiQuery('notifications.list', () => api.notifications.list());
+  useRefetchOnFocus(query.reload);
+  const count = query.data?.count ?? 0;
+  return (
+    <Pressable
+      onPress={() => router.push('/notifications')}
+      accessibilityRole="button"
+      accessibilityLabel={count > 0 ? `Notifications, ${count} unread` : 'Notifications'}
+      hitSlop={8}
+      style={({ pressed }) => [styles.bell, pressed && panelStyles.pressed]}>
+      <Ionicons name="notifications-outline" size={20} color={colors.navy} />
+      {count > 0 ? (
+        <View style={styles.bellBadge}>
+          <AppText style={styles.bellBadgeText}>{count > 99 ? '99+' : count}</AppText>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
@@ -319,7 +348,31 @@ export const panelStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  header: { gap: 2, marginBottom: spacing.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.xs },
+  header: { flex: 1, gap: 2 },
+  bell: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.pink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadgeText: { fontFamily: fonts.bodyExtraBold, fontSize: 10, color: colors.white, lineHeight: 13 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   cardHead: panelStyles.cardHead,
   scheduleRow: {

@@ -553,6 +553,11 @@ function TopBar(props: TopBarProps) {
           <AppText variant="link">+ Book session</AppText>
         </Pressable>
       ) : null}
+      {scope === 'clinic' && canManageCalendar(user) ? (
+        <Pressable onPress={() => router.push('/leave')} accessibilityRole="button" hitSlop={6}>
+          <AppText variant="link">Staff leave →</AppText>
+        </Pressable>
+      ) : null}
       {canAccessFeature(user, 'therapists') && user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own' ? (
         <Pressable onPress={() => router.push('/therapists')} accessibilityRole="button" hitSlop={6}>
           <AppText variant="link">Therapists &amp; schedules →</AppText>

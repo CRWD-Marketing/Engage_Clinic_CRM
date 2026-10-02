@@ -21,6 +21,8 @@ export default function AppStackLayout() {
       <Stack.Screen name="notes-review" options={{ title: 'Session notes review' }} />
       <Stack.Screen name="therapists/index" options={{ title: 'Therapists & schedules' }} />
       <Stack.Screen name="therapists/[id]" options={{ title: 'Schedule' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <Stack.Screen name="leave" options={{ title: 'Staff leave' }} />
       <Stack.Screen name="session-form" options={{ title: 'Book session' }} />
       <Stack.Screen name="contacts/index" options={{ title: 'Contacts' }} />
       <Stack.Screen name="reports" options={{ title: 'Reports & analytics' }} />

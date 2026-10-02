@@ -11,6 +11,11 @@
 import { createHttpApi } from './http';
 import { createMockApi } from './mock';
 import type {
+  LeaveRequest,
+  LeaveResponse,
+  NotificationsResponse,
+  PatientCreateOptions,
+  PatientStoreRequest,
   FinanceDashboard,
   HrDashboard,
   OtherStaffDashboard,
@@ -99,7 +104,20 @@ export interface ApiClient {
     /** GET /dashboard for OTHER_STAFF. 403 for other roles. */
     otherStaff(): Promise<OtherStaffDashboard>;
   };
+  /** The bell: new leads, new website submissions, unread conversations and "you were assigned" alerts. */
+  notifications: {
+    /** GET /notifications */
+    list(): Promise<NotificationsResponse>;
+    /** POST /notifications/{id}/read — returns the new unread count. */
+    read(id: string): Promise<{ ok: true; count: number }>;
+    /** POST /notifications/read-all */
+    readAll(): Promise<{ ok: true; count: number }>;
+  };
   patients: {
+    /** GET /patients/create-options — pickers for "Add patient". */
+    createOptions(): Promise<PatientCreateOptions>;
+    /** POST /patients — 403 for coordinators and therapists. */
+    store(input: PatientStoreRequest): Promise<{ success: true; message: string; patient_id: number }>;
     /**
      * GET /patient?search= — therapists only get patients they have a
      * session with (PatientController::index). Newest first.
@@ -230,6 +248,12 @@ export interface ApiClient {
     store(input: SessionStoreRequest): Promise<SessionStoreResponse>;
     /** PUT /calendar/{id} — managers only (403 otherwise); an overlapping slot is a 422. */
     update(id: number, input: SessionUpdateRequest): Promise<SessionUpdateResponse>;
+    /** GET /calendar/leave/impact?user_id=&date= — scheduled sessions a leave day would cancel. */
+    leaveImpact(userId: number, date: string): Promise<{ count: number }>;
+    /** POST /calendar/leave — managers only; cancels that day's scheduled sessions (clinic-side). */
+    markLeave(input: LeaveRequest): Promise<LeaveResponse>;
+    /** DELETE /calendar/leave/{id} — managers only. */
+    removeLeave(id: number): Promise<{ message: string }>;
   };
   /** Reports & analytics (ReportController, `feature:reports`). Read-only; PDF export stays on the web. */
   reports: {

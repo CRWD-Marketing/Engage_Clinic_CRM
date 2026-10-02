@@ -38,8 +38,9 @@ Module routes use the same `feature:<module>` middleware as the web routes, so m
 |---|---|
 | Auth | `POST login`, `POST forgot-password`, `GET me`, `POST logout`, `PUT profile` |
 | Dashboard | `GET dashboard` — returns the signed-in role's dashboard |
-| Calendar | `GET calendar/my-week`, `GET calendar/feed`, `GET calendar/booking-options`, `POST calendar`, `GET/PUT calendar/{id}`, `POST/DELETE calendar/{id}/supervision`, `PATCH calendar/{id}/therapist-note` |
-| Patients | `GET patients`, `GET/PUT patients/{id}`, `POST patients/{id}/notes`, `POST patients/{id}/goals/today`, `POST patients/{id}/documents`, `DELETE patients/{id}/documents/{doc}` |
+| Notifications | `GET notifications`, `POST notifications/{id}/read`, `POST notifications/read-all` |
+| Calendar | `GET calendar/my-week`, `GET calendar/feed`, `GET calendar/booking-options`, `GET calendar/leave/impact`, `POST calendar/leave`, `DELETE calendar/leave/{id}`, `POST calendar`, `GET/PUT calendar/{id}`, `POST/DELETE calendar/{id}/supervision`, `PATCH calendar/{id}/therapist-note` |
+| Patients | `GET/POST patients`, `GET patients/create-options`, `GET/PUT patients/{id}`, `POST patients/{id}/notes`, `POST patients/{id}/goals/today`, `POST patients/{id}/documents`, `DELETE patients/{id}/documents/{doc}` |
 | Note review | `GET patient-notes/review`, `POST patient-notes/sign-off`, `POST/DELETE patient-notes/{id}/flag` |
 | Leads | `GET/POST leads`, `GET/PUT leads/{id}`, `PATCH leads/{id}/status`, `POST leads/{id}/notes`, `POST leads/{id}/restore`, `POST leads/{id}/convert-to-patient` |
 | Inbox | `GET inbox`, `GET inbox/poll`, `POST inbox/send`, `GET inbox/{id}`, `POST inbox/{id}/ai-state`, `POST inbox/{id}/convert-to-lead` |

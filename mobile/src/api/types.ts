@@ -1063,6 +1063,74 @@ export interface OtherStaffDashboard {
 }
 
 // ---------------------------------------------------------------------------
+// Notifications bell, staff leave, add patient
+// ---------------------------------------------------------------------------
+
+/** One row of the bell (App\Support\TopbarNotifications::items()). */
+export interface NotificationItem {
+  /** "lead:12", "contact:7", "whatsapp:3:1790000000", or a database notification's uuid. */
+  id: string;
+  /** Font Awesome name used on the web, e.g. "fa-filter". */
+  icon: string;
+  title: string;
+  subtitle: string | null;
+  /** The web page it opens; the app maps it with notificationTarget(). */
+  url: string;
+  read: boolean;
+  /** How much it adds to the badge (a conversation counts its unread messages). */
+  weight: number;
+  /** "3 hours ago" */
+  created_at: string;
+}
+
+/** GET /notifications */
+export interface NotificationsResponse {
+  /** What this user hasn't read yet. */
+  count: number;
+  /** Newest first, at most 15. */
+  items: NotificationItem[];
+}
+
+/** POST /calendar/leave */
+export interface LeaveRequest {
+  user_id: number;
+  /** "YYYY-MM-DD" */
+  leave_date: string;
+  leave_type: string;
+  reason: string;
+}
+
+export interface LeaveResponse {
+  message: string;
+  leave: StaffLeave;
+  /** Scheduled sessions that day that were cancelled. */
+  cancelled: number;
+}
+
+/** Pickers for the "Add patient" form. */
+export interface PatientCreateOptions {
+  packages: { name: string; label: string }[];
+  insurances: string[];
+}
+
+/** POST /patients — creates an enrolled lead and its patient record together. */
+export interface PatientStoreRequest {
+  child_name: string;
+  child_age?: number | null;
+  diagnosis: string;
+  programme: string;
+  parent_guardian_name?: string | null;
+  phone: string;
+  payer_name?: string | null;
+  authorized_hours_total?: number | null;
+  /** "YYYY-MM-DD" */
+  authorization_renews_at?: string | null;
+  /** "YYYY-MM-DD" */
+  enrolled_at?: string | null;
+  clinical_note?: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Contacts (website contact form + booking widget submissions)
 // ---------------------------------------------------------------------------
 
@@ -1179,6 +1247,8 @@ export interface BookingOptions {
   leads: BookingLead[];
   activity_types: string[];
   durations: number[];
+  /** StaffLeave::TYPES */
+  leave_types: string[];
 }
 
 /** POST /calendar */

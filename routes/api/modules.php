@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TherapistController;
+use App\Http\Controllers\Notification\NotificationController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,10 +23,19 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard', [DashboardController::class, 'index'])->middleware('feature:dashboard');
 
+// The bell: new leads, new website submissions, unread conversations and "you were assigned" alerts.
+// These are the web's own actions (already JSON); each feed is limited to the modules the user has.
+Route::get('notifications', [NotificationController::class, 'index']);
+Route::post('notifications/read-all', [NotificationController::class, 'readAll']);
+Route::post('notifications/{id}/read', [NotificationController::class, 'read']);
+
 Route::middleware('feature:calendar')->prefix('calendar')->group(function () {
     Route::get('my-week', [CalendarController::class, 'myWeek']);
     Route::get('feed', [CalendarController::class, 'feed']);
     Route::get('booking-options', [CalendarController::class, 'bookingOptions']);
+    Route::get('leave/impact', [CalendarController::class, 'leaveImpact']);
+    Route::post('leave', [CalendarController::class, 'markLeave']);
+    Route::delete('leave/{leave}', [CalendarController::class, 'removeLeave']);
     Route::post('/', [CalendarController::class, 'store']);
     Route::get('{calendarSession}', [CalendarController::class, 'show']);
     Route::put('{calendarSession}', [CalendarController::class, 'update']);
@@ -36,6 +46,8 @@ Route::middleware('feature:calendar')->prefix('calendar')->group(function () {
 
 Route::middleware('feature:patients')->group(function () {
     Route::get('patients', [PatientController::class, 'index']);
+    Route::post('patients', [PatientController::class, 'store']);
+    Route::get('patients/create-options', [PatientController::class, 'createOptions']);
     Route::get('patients/{patient}', [PatientController::class, 'show']);
     Route::put('patients/{patient}', [PatientController::class, 'update']);
     Route::post('patients/{patient}/notes', [PatientController::class, 'addNote']);

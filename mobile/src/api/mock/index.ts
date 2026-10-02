@@ -30,6 +30,7 @@ import {
 import { createBookingApi } from './booking';
 import { createContactsApi } from './contacts';
 import { createDashboardApi } from './dashboard';
+import { createLeaveApi, createNotificationsApi, createPatientCreationApi } from './extras';
 import { createReportsApi } from './reports';
 import { createTherapistsApi } from './therapists';
 import { createInboxApi } from './inbox';
@@ -386,7 +387,8 @@ export function createMockApi(): ApiClient {
     },
     dashboard: createDashboardApi(),
     notes: createNotesApi(),
-    patients: createPatientsApi(),
+    notifications: createNotificationsApi(),
+    patients: { ...createPatientsApi(), ...createPatientCreationApi() },
     inbox: createInboxApi(),
     leads: createLeadsApi(),
     contacts: createContactsApi(),
@@ -400,6 +402,7 @@ export function createMockApi(): ApiClient {
       supervise: (id, notes) => delay(() => supervise(id, notes)),
       unsupervise: (id) => delay(() => unsupervise(id)),
       ...createBookingApi(),
+      ...createLeaveApi(),
     },
   };
 }

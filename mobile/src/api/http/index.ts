@@ -35,7 +35,14 @@ export function createHttpApi(baseUrl: string): ApiClient {
       finance: dashboard,
       otherStaff: dashboard,
     },
+    notifications: {
+      list: () => http.get('notifications'),
+      read: (id) => http.post(`notifications/${encodeURIComponent(id)}/read`),
+      readAll: () => http.post('notifications/read-all'),
+    },
     patients: {
+      createOptions: () => http.get('patients/create-options'),
+      store: (input) => http.post('patients', input),
       list: (search) => http.get('patients', { search }),
       show: (id) => http.get(`patients/${id}`),
       addNote: (id, body) => http.post(`patients/${id}/notes`, { body }),
@@ -88,6 +95,9 @@ export function createHttpApi(baseUrl: string): ApiClient {
       bookingOptions: () => http.get('calendar/booking-options'),
       store: (input) => http.post('calendar', input),
       update: (id, input) => http.put(`calendar/${id}`, input),
+      leaveImpact: (userId, date) => http.get('calendar/leave/impact', { user_id: userId, date }),
+      markLeave: (input) => http.post('calendar/leave', input),
+      removeLeave: (id) => http.delete(`calendar/leave/${id}`),
     },
     therapists: {
       index: (params) => http.get('therapists', params),
