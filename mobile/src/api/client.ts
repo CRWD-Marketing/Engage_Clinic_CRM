@@ -13,11 +13,16 @@ import { createMockApi } from './mock';
 import type {
   BillingInvoice,
   BillingOverview,
+  FamilyStatement,
   InvoiceActionResponse,
   InvoiceCreditRequest,
   InvoiceEmailRequest,
   InvoicePaymentRequest,
+  InvoicePreview,
   InvoiceVoidRequest,
+  NewInvoiceRequest,
+  PatientLedger,
+  PrepaidTopUpResponse,
   LeaveRequest,
   LeaveResponse,
   NotificationsResponse,
@@ -279,6 +284,20 @@ export interface ApiClient {
     voidInvoice(id: number, input: InvoiceVoidRequest): Promise<InvoiceActionResponse & { reissued: BillingInvoice | null }>;
     /** POST /billing/invoices/{id}/send — emails the invoice PDF, or a payment reminder. */
     sendEmail(id: number, input: InvoiceEmailRequest): Promise<InvoiceActionResponse>;
+    /** GET /billing/patients/{patient}/ledger — the client's delivered sessions, priced, newest first. */
+    ledger(patientId: number): Promise<PatientLedger>;
+    /** POST /billing/invoices/preview — the invoice for the chosen sessions; nothing is saved. */
+    previewInvoice(input: NewInvoiceRequest): Promise<InvoicePreview>;
+    /**
+     * POST /billing/invoices — issues the invoice and saves attendance corrections to the calendar.
+     * 409 (`settled_count`, `settled_ids`) when a session is already invoiced and not acknowledged;
+     * 422 when nothing chosen is chargeable.
+     */
+    createInvoice(input: NewInvoiceRequest): Promise<InvoiceActionResponse>;
+    /** POST /billing/patients/{patient}/top-up — adds prepaid hours (1–500). */
+    topUpPrepaid(patientId: number, hours: number): Promise<PrepaidTopUpResponse>;
+    /** GET /billing/patients/{patient}/statement */
+    statement(patientId: number): Promise<FamilyStatement>;
   };
   /** Reports & analytics (ReportController, `feature:reports`). Read-only; PDF export stays on the web. */
   reports: {

@@ -410,7 +410,7 @@ class InvoiceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function statementData(Patient $patient): array
+    protected function statementData(Patient $patient): array
     {
         $patient->load(['lead', 'authorizations', 'invoices.payments']);
         $entries = collect();
@@ -460,7 +460,7 @@ class InvoiceController extends Controller
 
     // ------------------------------------------------------------------
 
-    private function assertCanInvoice(): void
+    protected function assertCanInvoice(): void
     {
         abort_unless(auth()->user()->canDo('create_invoice'), 403, 'Invoices are raised by Finance.');
     }
@@ -468,7 +468,7 @@ class InvoiceController extends Controller
     /**
      * @return array{0: ?Patient, 1: \Illuminate\Support\Collection, 2: ?array}
      */
-    private function resolveSelection(Request $request): array
+    protected function resolveSelection(Request $request): array
     {
         $validator = Validator::make($request->all(), [
             'patient_id' => ['required', 'exists:patients,id'],
@@ -515,7 +515,7 @@ class InvoiceController extends Controller
         return [$patient, $sessions, null];
     }
 
-    private function compose(Patient $patient, $sessions): array
+    protected function compose(Patient $patient, $sessions): array
     {
         $profile = $this->ledger->profile($patient);
         $rows = $this->ledger->rows($patient, $sessions, $profile);

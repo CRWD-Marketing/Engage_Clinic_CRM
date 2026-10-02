@@ -158,6 +158,15 @@ export const billingStatusColors: Record<'voided' | 'paid' | 'partly_paid' | 'ou
   voided: { bg: '#EEF0F2', fg: '#6B7A8C' },
 };
 
+/** Aging bucket bars on the billing "Aging & statements" tab (billing/index.blade.php), by bucket key. */
+export const agingBucketColors: Record<string, string> = {
+  current: '#2E7D5B',
+  d1_30: '#B97F24',
+  d31_60: '#C8355F',
+  d61_90: '#C8355F',
+  d90: '#8A2020',
+};
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

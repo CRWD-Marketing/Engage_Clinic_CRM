@@ -28,6 +28,8 @@ export default function AppStackLayout() {
       <Stack.Screen name="reports" options={{ title: 'Reports & analytics' }} />
       <Stack.Screen name="billing/index" options={{ title: 'Billing & insurance' }} />
       <Stack.Screen name="billing/[id]" options={{ title: 'Invoice' }} />
+      <Stack.Screen name="billing/new" options={{ title: 'New invoice' }} />
+      <Stack.Screen name="billing/statement/[id]" options={{ title: 'Statement' }} />
       <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );

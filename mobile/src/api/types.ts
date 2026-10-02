@@ -1115,7 +1115,7 @@ export interface BillingInvoice {
   receipts: { id: number; number: string; amount: number; method: string; date: string; reference: string | null }[];
 }
 
-/** GET /billing — the parts of the billing page the app shows so far. */
+/** GET /billing — the parts of the billing page the app shows so far (claims and pre-authorizations are not read yet). */
 export interface BillingOverview {
   /** Has the `create_invoice` action and is not view-only on Billing. */
   can_invoice: boolean;
@@ -1125,8 +1125,12 @@ export interface BillingOverview {
   /** Newest first, at most 120. */
   invoices: BillingInvoice[];
   revenue_by_payer: { payer: string; amount: number; pct: number }[];
+  aging: BillingAging;
+  /** Every client, by name, for the new-invoice picker. */
+  patients: BillingPatient[];
   /** Payment::METHODS */
   methods: string[];
+  cancel_policy: CancelPolicy;
   clinic_name: string;
 }
 
@@ -1165,6 +1169,194 @@ export interface InvoiceEmailRequest {
 export interface InvoiceActionResponse {
   message: string;
   invoice: BillingInvoice;
+}
+
+/** A session's attendance as billing prices it (App\Services\Billing\SessionLedger::billing()). */
+export type AttendanceState = 'completed' | 'no_show' | 'cancelled_late' | 'cancelled_notice' | 'cancelled_clinic';
+
+/** config/billing.php `cancel_policy`. */
+export interface CancelPolicy {
+  /** At or beyond this many hours' notice a family cancellation is free. */
+  notice_hours: number;
+  /** Charged for a cancellation inside the notice window (% of the session). */
+  late_pct: number;
+  no_show_pct: number;
+}
+
+/** A client as the new-invoice picker knows them (InvoicePresenter::patient()). */
+export interface BillingPatient {
+  id: number;
+  name: string;
+  parent: string | null;
+  email: string | null;
+  phone: string | null;
+  /** The first insurer on file, or "Self-pay". */
+  payer: string;
+  /** AED per hour, VAT excluded. */
+  rate: number;
+  /** 0.05 */
+  vat_rate: number;
+  setting: string;
+  /** Set when the family holds a prepaid block of hours. */
+  prepaid: { authorization_id: number; total: number } | null;
+  package: string;
+  insurers: { payer: string; pct: number; covers: string[] }[];
+}
+
+/** One delivered session, priced (SessionLedger::row()). Amounts are unrounded numbers. */
+export interface LedgerRow {
+  id: number;
+  session_date: YmdString;
+  date_label: string;
+  /** "HH:mm" */
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  /** The session's length in whole hours (90 minutes is 2). */
+  hours: number;
+  /** 0 when the attendance is not charged. */
+  bill_hours: number;
+  attendance: AttendanceState;
+  attendance_label: string;
+  charge_rule: string;
+  /** Share of the hourly price charged: 1, 0.5 or 0. */
+  factor: number;
+  notice_hours: number | null;
+  activity_type: string;
+  service_label: string;
+  therapist_id: number;
+  therapist_name: string;
+  /** "supervised by …" when the session was supervised. */
+  trainee_note: string | null;
+  setting: string;
+  rate: number;
+  net: number;
+  vat: number;
+  gross: number;
+  /** Who this session routes to: an insurer, or "Self-pay". */
+  payer: string;
+  coverage_pct: number;
+  authorization_id: number | null;
+  covered_bill_hours: number;
+  excess_bill_hours: number;
+  /** The matching authorization ran out part-way; the excess bills to the family. */
+  insufficient_authorization: boolean;
+  insufficient_message: string | null;
+  insurer_amount: number;
+  family_amount: number;
+  /** Already on an invoice. */
+  invoiced: boolean;
+  invoice_number: string | null;
+  /** Paid / Invoiced / Prepaid / Pending */
+  billing_status: string;
+  /** Only for prepaid families. */
+  prepaid_left?: number;
+}
+
+/** GET /billing/patients/{patient}/ledger — newest session first. */
+export interface PatientLedger {
+  patient: BillingPatient;
+  rows: LedgerRow[];
+  /** null unless the family is prepaid. */
+  prepaid_left: number | null;
+  prepaid_used: number | null;
+}
+
+/** POST /billing/invoices/preview and POST /billing/invoices */
+export interface NewInvoiceRequest {
+  patient_id: number;
+  session_ids: number[];
+  /** Attendance corrections by session id; saved to the calendar only when the invoice is issued. */
+  attendance?: Record<number, { state: AttendanceState; notice_hours?: number }>;
+  /** Bill sessions that are already on another invoice (otherwise 409). */
+  acknowledge_settled?: boolean;
+}
+
+/** One billable hour on the invoice (InvoiceBuilder::compose() line). */
+export interface InvoicePreviewLine {
+  line_no: number;
+  calendar_session_id: number;
+  description: string;
+  note: string;
+  from_label: string;
+  to_label: string;
+  payer: string;
+  coverage_percent: number;
+  exceeds_authorization: boolean;
+  rate: number;
+  amount: number;
+  vat_amount: number;
+  total: number;
+  insurer_amount: number;
+  family_amount: number;
+}
+
+/** POST /billing/invoices/preview — the invoice as it would be issued; nothing is saved. */
+export interface InvoicePreview {
+  lines: InvoicePreviewLine[];
+  /** Sessions whose authorization ran short. */
+  warnings: string[];
+  session_count: number;
+  bill_hours: number;
+  net: number;
+  vat: number;
+  total: number;
+  insurer_share: number;
+  family_share: number;
+  amount_due: number;
+  splits: { payer: string; pct: number; amount: number }[];
+  payer: string;
+  period_label: string;
+  bill_to: string | null;
+  child: string | null;
+  invoice_number: string;
+  /** "02 Oct 2026" */
+  issue_date: string;
+  due_date: string;
+  /** Selected sessions that are already on an invoice. */
+  settled_count: number;
+}
+
+/** POST /billing/patients/{patient}/top-up */
+export interface PrepaidTopUpResponse {
+  message: string;
+  prepaid_total: number;
+}
+
+/** The "Aging & statements" tab (BillingController::index `aging`). */
+export interface BillingAging {
+  total_outstanding: number;
+  open_count: number;
+  past_due: number;
+  past_due_count: number;
+  oldest_days: number;
+  oldest_ref: string | null;
+  reminders_month: number;
+  /** Open invoices, most overdue first. */
+  rows: BillingInvoice[];
+  buckets: { key: string; label: string; count: number; amount: number }[];
+  by_payer: { payer: string; amount: number }[];
+  /** One row per family that has ever been invoiced, largest balance first. */
+  families: { patient_id: number; patient: string; parent: string | null; payer: string; invoices: number; billed: number; balance: number }[];
+}
+
+/** GET /billing/patients/{patient}/statement — the family's running balance (billing/statement.blade.php). */
+export interface FamilyStatement {
+  patient_id: number;
+  child: string | null;
+  bill_to: string | null;
+  payer: string;
+  as_of: string;
+  charged: number;
+  credited: number;
+  balance: number;
+  oldest_open: { number: string; due_label: string | null; days_past_due: number } | null;
+  /** Invoices, credit notes and payments, oldest first. */
+  rows: { date_label: string | null; ref: string; desc: string; charge: number; credit: number; balance: number }[];
+  /** The sessions behind the charges, oldest first. */
+  sessions: LedgerRow[];
+  session_hours: number;
+  session_charged: number;
 }
 
 // ---------------------------------------------------------------------------

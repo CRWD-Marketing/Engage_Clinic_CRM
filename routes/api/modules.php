@@ -5,12 +5,12 @@ use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\InboxController;
+use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TherapistController;
-use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Notification\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -102,6 +102,12 @@ Route::get('reports', [ReportController::class, 'index'])->middleware('feature:r
 // action (checked in the web controller); a view-only level blocks every write.
 Route::middleware('feature:billing')->prefix('billing')->group(function () {
     Route::get('/', [BillingController::class, 'index']);
+    // New invoice: the client's delivered sessions, a preview of the document, then issue.
+    Route::get('patients/{patient}/ledger', [InvoiceController::class, 'ledger']);
+    Route::post('patients/{patient}/top-up', [InvoiceController::class, 'topUp']);
+    Route::get('patients/{patient}/statement', [InvoiceController::class, 'statementJson']);
+    Route::post('invoices/preview', [InvoiceController::class, 'preview']);
+    Route::post('invoices', [InvoiceController::class, 'store']);
     Route::get('invoices/{invoice}', [InvoiceController::class, 'data']);
     Route::post('invoices/{invoice}/payments', [InvoiceController::class, 'storePayment']);
     Route::post('invoices/{invoice}/credit', [InvoiceController::class, 'storeCredit']);

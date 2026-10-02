@@ -25,11 +25,12 @@ type Flash = { text: string; tone: 'success' | 'danger' } | null;
 
 /** One invoice: the amounts, receipts and the actions of the web's per-invoice "Actions…" menu. */
 export function InvoiceScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // `flash` is the confirmation carried over when the invoice was just raised.
+  const { id, flash: raised } = useLocalSearchParams<{ id: string; flash?: string }>();
   const invoice = useApiQuery(`billing.invoice:${id}`, () => api.billing.invoice(Number(id)));
   const overview = useApiQuery('billing.overview', () => api.billing.overview());
   // Kept here so the message survives the form resetting after a save.
-  const [flash, setFlash] = useState<Flash>(null);
+  const [flash, setFlash] = useState<Flash>(raised ? { text: raised, tone: 'success' } : null);
 
   if (!invoice.data || !overview.data) {
     const error = invoice.error ?? overview.error;

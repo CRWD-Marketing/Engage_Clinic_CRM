@@ -7,7 +7,7 @@
  */
 
 import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
-import { addDays, addMonths, clinicToIso, diffDays, monthStartOf, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
+import { addDays, addMonths, clinicToIso, diffDays, isoToYmd, monthStartOf, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
 import { blankLead, INTAKE_STEP_COLUMNS } from './leadDefaults';
 import { authorizationHoursUsed, sessionsForLead, THERAPY_TYPES } from './presenters';
@@ -382,6 +382,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
   buildAuthorizations({ rnd, db, today, stamp });
   buildInbox({ rnd, db, today, stamp });
   buildInvoices({ rnd, db, today });
+  markBilledSessions(db);
   buildContacts({ db, today, now });
   seedDocuments(db, today, COORDINATOR_ID);
   return db;
@@ -518,6 +519,20 @@ function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd
           activity_type: c.activity_type,
         });
       });
+    }
+  }
+}
+
+/**
+ * Completed sessions up to a family's latest invoice count as billed on it,
+ * so the new-invoice picker opens with only the recent ones still to bill.
+ */
+function markBilledSessions(db: MockDb) {
+  for (const patient of db.patients) {
+    const latest = db.invoices.filter((i) => i.patient_id === patient.id && !i.voided_at).at(-1);
+    if (!latest) continue;
+    for (const s of db.sessions) {
+      if (s.patient_id === patient.lead_id && s.status === 'completed' && s.session_date < isoToYmd(latest.issue_date)) s.invoice_id = latest.id;
     }
   }
 }

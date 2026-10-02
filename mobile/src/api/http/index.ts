@@ -109,6 +109,11 @@ export function createHttpApi(baseUrl: string): ApiClient {
       creditNote: (id, input) => http.post(`billing/invoices/${id}/credit`, input),
       voidInvoice: (id, input) => http.post(`billing/invoices/${id}/void`, input),
       sendEmail: (id, input) => http.post(`billing/invoices/${id}/send`, input),
+      ledger: (patientId) => http.get(`billing/patients/${patientId}/ledger`),
+      previewInvoice: (input) => http.post('billing/invoices/preview', input),
+      createInvoice: (input) => http.post('billing/invoices', input),
+      topUpPrepaid: (patientId, hours) => http.post(`billing/patients/${patientId}/top-up`, { hours }),
+      statement: (patientId) => http.get(`billing/patients/${patientId}/statement`),
     },
     reports: {
       index: () => http.get('reports'),

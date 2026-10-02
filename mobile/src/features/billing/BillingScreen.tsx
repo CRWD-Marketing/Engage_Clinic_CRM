@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
-import type { BillingInvoice } from '@/api/types';
+import type { BillingInvoice, BillingOverview } from '@/api/types';
 import { AppText } from '@/components/AppText';
+import { Button } from '@/components/Button';
 import { Card, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { OptionPills } from '@/components/OptionPills';
@@ -17,16 +18,17 @@ import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { colors, reportColors, spacing } from '@/theme';
 
+import { AgingTab } from './AgingTab';
 import { aed, STATUS_FILTERS, statusColors } from './billingFormat';
 
 type Filter = (typeof STATUS_FILTERS)[number]['value'];
+type Tab = 'invoices' | 'aging';
 
-/** The "Invoices & claims" tab of billing/index.blade.php: tiles, payer mix and the invoice list. */
+/** billing/index.blade.php: the invoices tab (tiles, payer mix, invoice list) and the aging & statements tab. */
 export function BillingScreen() {
   const query = useApiQuery('billing.overview', () => api.billing.overview());
   useRefetchOnFocus(query.reload);
-  const [filter, setFilter] = useState<Filter>('all');
-  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<Tab>('invoices');
 
   if (!query.data) {
     return (
@@ -37,6 +39,30 @@ export function BillingScreen() {
   }
 
   const d = query.data;
+  return (
+    <Screen edges={[]} refreshing={query.refreshing} onRefresh={query.refresh}>
+      <AppText variant="caption">
+        {d.month_label} · {d.payer_summary}
+        {d.can_invoice ? '' : ' · view only: invoices are raised by Finance'}
+      </AppText>
+      {d.can_invoice ? <Button title="New invoice" onPress={() => router.push('/billing/new')} /> : null}
+      <OptionPills<Tab>
+        options={[
+          { value: 'invoices', label: 'Invoices' },
+          { value: 'aging', label: 'Aging & statements' },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+
+      {tab === 'aging' ? <AgingTab aging={d.aging} /> : <InvoicesTab billing={d} />}
+    </Screen>
+  );
+}
+
+function InvoicesTab({ billing: d }: { billing: BillingOverview }) {
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
   const term = search.trim().toLowerCase();
   const shown = d.invoices.filter(
     (i) =>
@@ -46,12 +72,7 @@ export function BillingScreen() {
   const count = (f: Filter) => (f === 'all' ? d.invoices.length : d.invoices.filter((i) => i.status === f).length);
 
   return (
-    <Screen edges={[]} refreshing={query.refreshing} onRefresh={query.refresh}>
-      <AppText variant="caption">
-        {d.month_label} · {d.payer_summary}
-        {d.can_invoice ? '' : ' · view only: invoices are raised by Finance'}
-      </AppText>
-
+    <>
       <StatsGrid>
         <StatTile label="Invoiced · MTD" value={aed(d.tiles.invoiced_mtd, 0)} caption="VAT incl., not voided" />
         <StatTile label="Collected" value={aed(d.tiles.collected_mtd, 0)} caption="receipts this month" captionColor={colors.success} />
@@ -97,7 +118,7 @@ export function BillingScreen() {
           ))
         )}
       </Card>
-    </Screen>
+    </>
   );
 }
 
