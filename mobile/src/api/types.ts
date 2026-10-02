@@ -892,6 +892,71 @@ export interface AdminDashboard {
 }
 
 // ---------------------------------------------------------------------------
+// Contacts (website contact form + booking widget submissions)
+// ---------------------------------------------------------------------------
+
+export type ContactStatus = 'new' | 'approved' | 'rejected' | 'contacted' | 'converted' | 'closed';
+
+/** `contacts` table (App\Models\Contact). */
+export interface Contact {
+  id: number;
+  name: string | null;
+  child_name: string | null;
+  child_age: string | null;
+  email: string | null;
+  phone: string | null;
+  interested_in: string | null;
+  insurance: string | null;
+  message: string | null;
+  /** `date` cast; set with booking_time when the family asked for a consultation slot. */
+  booking_date: IsoDateTime | null;
+  /** One of Contact::CONSULTATION_TIMES, e.g. "10:00 AM". */
+  booking_time: string | null;
+  /** The approve/reject outcome, kept after status moves on to "contacted". */
+  booking_decision: string | null;
+  status_email_sent_at: IsoDateTime | null;
+  status: ContactStatus;
+  converted_lead_id: number | null;
+  converted_at: IsoDateTime | null;
+  created_at: IsoDateTime;
+  updated_at: IsoDateTime;
+}
+
+/** A contact plus the model checks the web dialog relies on. */
+export interface ContactItem extends Contact {
+  /** Contact::isSlotEditable() — until the decision has been emailed. */
+  can_edit_slot: boolean;
+  /** Contact::canSendStatusEmail() — approved or rejected. */
+  can_send_email: boolean;
+  /** Contact::canConvertToLead() — approved or contacted, and not yet converted. */
+  can_convert: boolean;
+}
+
+/** GET /admin/contacts as JSON (ContactController::index view variables). */
+export interface ContactsIndex {
+  /** Every submission, newest first. */
+  contacts: ContactItem[];
+  /** Contact::getStatuses(): status → label. */
+  statuses: Record<ContactStatus, string>;
+  new_count: number;
+  consultation_times: string[];
+}
+
+/** PATCH /admin/contacts/{contact} — both null removes the slot. */
+export interface ContactSlotRequest {
+  /** "YYYY-MM-DD" */
+  booking_date: string | null;
+  booking_time: string | null;
+}
+
+/** POST /admin/contacts/{contact}/send-email */
+export interface ContactEmailRequest {
+  to: string;
+  subject: string;
+  message: string;
+}
+
+// ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 

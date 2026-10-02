@@ -304,14 +304,16 @@ function sourceBucket(source: string | null): string {
 /**
  * leadMetrics() source chart: every new conversation in the last 7 days by
  * channel, plus new leads not already counted through a conversation.
- * NOTE: Laravel also adds website Contact form submissions; the mock has no
- * contacts table until the Contacts milestone, so Website counts leads only.
+ * Website volume is every Contact form submission, converted or not.
  */
 function leadSources(db: MockDb, now: Date): { rows: LeadSourceRow[]; scale: number } {
   const weekStart = new Date(now.getTime() - WEEK_MS).toISOString();
   const chats = db.whatsappContacts.filter((c) => c.created_at >= weekStart);
   const chatCount = (channel: string) => chats.filter((c) => c.channel === channel).length;
-  const alreadyCounted = new Set(chats.map((c) => c.lead_id).filter((id) => id !== null));
+  const submissions = db.contacts.filter((c) => c.created_at >= weekStart);
+  const alreadyCounted = new Set(
+    [...chats.map((c) => c.lead_id), ...submissions.map((c) => c.converted_lead_id)].filter((id) => id !== null),
+  );
 
   const leadCounts = new Map<string, number>();
   for (const lead of db.leads) {
@@ -325,7 +327,7 @@ function leadSources(db: MockDb, now: Date): { rows: LeadSourceRow[]; scale: num
     { source: 'WhatsApp', count: chatCount('whatsapp') + leadCount('whatsapp') },
     { source: 'Instagram', count: chatCount('instagram') + leadCount('instagram') },
     { source: 'Facebook', count: chatCount('facebook') + leadCount('facebook') },
-    { source: 'Website', count: leadCount('website') },
+    { source: 'Website', count: submissions.length + leadCount('website') },
     { source: 'Referral', count: leadCount('referral') },
     { source: 'Google', count: leadCount('google') },
     ...[...leadCounts].filter(([bucket]) => !CHART_BUCKETS.includes(bucket)).map(([source, count]) => ({ source, count })),

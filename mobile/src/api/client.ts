@@ -9,6 +9,11 @@
 
 import { createMockApi } from './mock';
 import type {
+  ContactEmailRequest,
+  ContactItem,
+  ContactsIndex,
+  ContactSlotRequest,
+  ContactStatus,
   AdminDashboard,
   AiState,
   CalendarFeed,
@@ -98,6 +103,27 @@ export interface ApiClient {
     flag(id: number, reason: string): Promise<{ success: true; note: PatientNote }>;
     /** DELETE /patient-notes/{id}/flag */
     unflag(id: number): Promise<{ success: true; note: PatientNote }>;
+  };
+  /**
+   * Website submissions (ContactController, `feature:contacts`). Coordinators
+   * can't convert or delete (403). The web returns HTML / redirects for most
+   * of these; the mobile API needs JSON equivalents.
+   */
+  contacts: {
+    /** GET /admin/contacts — every submission, newest first. */
+    list(): Promise<ContactsIndex>;
+    /** GET /admin/contacts/count — submissions still "new". */
+    newCount(): Promise<{ success: true; count: number }>;
+    /** PATCH /admin/contacts/{id} — set, move or remove the consultation slot. */
+    updateSlot(id: number, input: ContactSlotRequest): Promise<{ success: true; message: string; contact: ContactItem }>;
+    /** PATCH /admin/contacts/{id}/status — approved, rejected, closed (never "converted"). */
+    updateStatus(id: number, status: ContactStatus): Promise<ContactItem>;
+    /** POST /admin/contacts/{id}/send-email — emails the decision and moves the status to "contacted". */
+    sendEmail(id: number, input: ContactEmailRequest): Promise<{ message: string; contact: ContactItem }>;
+    /** POST /admin/contacts/{id}/convert-to-lead */
+    convertToLead(id: number): Promise<ContactItem>;
+    /** DELETE /admin/contacts/{id} */
+    destroy(id: number): Promise<{ message: string }>;
   };
   /** Leads pipeline (LeadController, `feature:leads`). Action checks follow User::canDo(). */
   leads: {

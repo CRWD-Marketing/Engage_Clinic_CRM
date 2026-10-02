@@ -14,6 +14,7 @@ import { authorizationHoursUsed, sessionsForLead } from './presenters';
 import { createRandom, type Random } from './random';
 import type {
   CalendarSessionRow,
+  ContactRow,
   LeadRow,
   MockDb,
   PatientAuthorizationRow,
@@ -371,13 +372,52 @@ export function buildSeed(now: Date = new Date()): MockDb {
     whatsappContacts: [],
     whatsappMessages: [],
     invoices: [],
+    contacts: [],
   };
   buildLeadActivities(db);
   buildGoals({ rnd, db, stamp });
   buildAuthorizations({ rnd, db, today, stamp });
   buildInbox({ rnd, db, today, stamp });
   buildInvoices({ rnd, db, today });
+  buildContacts({ db, today, now });
   return db;
+}
+
+/** ContactSeeder: six website submissions — three still new, one converted, one contacted, one closed. */
+function buildContacts({ db, today, now }: { db: MockDb; today: Ymd; now: Date }) {
+  // [parent, child, age, email, phone, service, message, status, days ago, slot (days from today, time)]
+  const entries: [string, string, number, string, string, string, string, ContactRow['status'], number, [number, string]?][] = [
+    ['Huda Al Kaabi', 'Khalifa Al Mansoori', 5, 'huda.alkaabi@example.com', '+971501112233', 'ABA therapy', 'Looking for an ABA centre near Al Reem Island, does insurance cover it?', 'converted', 16],
+    ['James Whitfield', 'Oliver Whitfield', 4, 'j.whitfield@example.com', '+971521114455', 'Speech therapy', 'My son was recently diagnosed and we are looking for speech therapy options.', 'contacted', 9, [4, '10:00 AM']],
+    ['Mona Al Suwaidi', 'Latifa Al Suwaidi', 6, 'mona.s@example.com', '+971561117788', 'Diagnostic assessment', 'Need a diagnostic assessment appointment as soon as possible.', 'closed', 12, [-2, '2:30 PM']],
+    ['Sara Thompson', 'Ethan Thompson', 3, 'sara.t@example.com', '+971581119900', 'Occupational therapy', 'Interested in OT for sensory processing concerns.', 'new', 1, [6, '11:30 AM']],
+    ['Faisal Al Nuaimi', 'Rashid Al Nuaimi', 7, 'faisal.n@example.com', '+971509998877', 'Early intervention', 'Can you share pricing for early intervention programmes?', 'new', 3],
+    ['Aaliyah Rahim', 'Zayd Rahim', 5, 'aaliyah.r@example.com', '+971523334455', 'Combined program', 'Would like a call back to discuss a combined ABA + Speech programme.', 'new', 5],
+  ];
+  entries.forEach(([name, child, age, email, phone, interest, message, status, daysAgo, slot], i) => {
+    const created = hoursAgoIso(daysAgo * 24 + i, now);
+    const lead = status === 'converted' ? db.leads.find((l) => l.child_name === child) : undefined;
+    db.contacts.push({
+      id: i + 1,
+      name,
+      child_name: child,
+      child_age: String(age),
+      email,
+      phone,
+      interested_in: interest,
+      insurance: null,
+      message,
+      booking_date: slot ? dateCast(addDays(today, slot[0])) : null,
+      booking_time: slot ? slot[1] : null,
+      booking_decision: status === 'closed' ? 'closed' : status === 'contacted' ? 'approved' : null,
+      status_email_sent_at: status === 'contacted' ? hoursAgoIso((daysAgo - 1) * 24, now) : null,
+      status,
+      converted_lead_id: lead?.id ?? null,
+      converted_at: lead ? hoursAgoIso(72, now) : null,
+      created_at: created,
+      updated_at: created,
+    });
+  });
 }
 
 /** One invoice per patient for last month and one for this month (InvoiceSeeder-style). */

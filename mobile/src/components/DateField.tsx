@@ -31,10 +31,12 @@ type Props = {
   required?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  /** Days that can't be picked (shown dimmed), e.g. past dates or closed days. */
+  isDateDisabled?: (date: Ymd) => boolean;
 };
 
 /** A date input: tap to open a month calendar (same on iOS, Android and web). */
-export function DateField({ label, value, onChange, error, hint, required, disabled, placeholder = 'Select a date' }: Props) {
+export function DateField({ label, value, onChange, error, hint, required, disabled, placeholder = 'Select a date', isDateDisabled }: Props) {
   const [open, setOpen] = useState(false);
   const selected = YMD.test(value) ? value : null;
 
@@ -76,6 +78,7 @@ export function DateField({ label, value, onChange, error, hint, required, disab
         <CalendarSheet
           title={label}
           selected={selected}
+          isDateDisabled={isDateDisabled}
           onClose={() => setOpen(false)}
           onPick={(date) => {
             onChange(date);
@@ -90,11 +93,13 @@ export function DateField({ label, value, onChange, error, hint, required, disab
 function CalendarSheet({
   title,
   selected,
+  isDateDisabled,
   onPick,
   onClose,
 }: {
   title: string;
   selected: Ymd | null;
+  isDateDisabled?: (date: Ymd) => boolean;
   onPick: (date: Ymd) => void;
   onClose: () => void;
 }) {
@@ -138,9 +143,10 @@ function CalendarSheet({
                     key={date}
                     accessibilityRole="button"
                     accessibilityLabel={formatDayMonthYear(date)}
-                    accessibilityState={{ selected: date === selected }}
+                    accessibilityState={{ selected: date === selected, disabled: isDateDisabled?.(date) }}
+                    disabled={isDateDisabled?.(date)}
                     onPress={() => onPick(date)}
-                    style={styles.cell}
+                    style={[styles.cell, isDateDisabled?.(date) && styles.cellDisabled]}
                   >
                     <View style={[styles.day, date === today && styles.dayToday, date === selected && styles.daySelected]}>
                       <AppText style={[styles.dayText, date === selected && styles.dayTextSelected]}>{dayOfMonth(date)}</AppText>
@@ -154,11 +160,15 @@ function CalendarSheet({
           ))}
 
           <View style={styles.footer}>
-            <Pressable accessibilityRole="button" onPress={() => onPick(today)} hitSlop={8}>
-              <AppText variant="bodyStrong" color={colors.pink}>
-                Today
-              </AppText>
-            </Pressable>
+            {isDateDisabled?.(today) ? (
+              <View />
+            ) : (
+              <Pressable accessibilityRole="button" onPress={() => onPick(today)} hitSlop={8}>
+                <AppText variant="bodyStrong" color={colors.pink}>
+                  Today
+                </AppText>
+              </Pressable>
+            )}
             <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
               <AppText variant="bodyStrong" color={colors.textSecondary}>
                 Cancel
@@ -213,6 +223,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   weekday: { flex: 1, textAlign: 'center', paddingBottom: spacing.xs },
   cell: { flex: 1, alignItems: 'center', paddingVertical: 2 },
+  cellDisabled: { opacity: 0.3 },
   day: { width: 38, height: 38, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   dayToday: { borderWidth: 1, borderColor: colors.pink },
   daySelected: { backgroundColor: colors.navy, borderColor: colors.navy },

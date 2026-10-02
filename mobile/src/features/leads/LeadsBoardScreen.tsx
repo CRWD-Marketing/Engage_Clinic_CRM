@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { api } from '@/api/client';
 import { errorMessage } from '@/api/errors';
 import type { BoardLead } from '@/api/types';
-import { canDo, canWriteIn } from '@/auth/permissions';
+import { canAccessFeature, canDo, canWriteIn } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
@@ -87,6 +87,7 @@ export function LeadsBoardScreen() {
       </View>
 
       {canWriteIn(user, 'leads') ? <Button title="+ New Lead" onPress={() => router.push('/leads/new')} /> : null}
+      {canAccessFeature(user, 'contacts') ? <ContactsEntry /> : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stages}>
         {COLUMNS.map((c) => {
@@ -142,6 +143,14 @@ export function LeadsBoardScreen() {
       )}
     </Screen>
   );
+}
+
+/** Link to the website submissions (the web sidebar's "Contacts" item, with its new-count badge). */
+function ContactsEntry() {
+  const count = useApiQuery('contacts.count', () => api.contacts.newCount());
+  useRefetchOnFocus(count.reload);
+  const fresh = count.data?.count ?? 0;
+  return <Button title={fresh > 0 ? `Website enquiries · ${fresh} new` : 'Website enquiries'} variant="secondary" onPress={() => router.push('/contacts')} />;
 }
 
 function StagePill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {

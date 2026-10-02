@@ -5,6 +5,7 @@
  */
 
 import type {
+  Contact,
   CancelReason,
   Lead,
   LeadActivity,
@@ -90,6 +91,8 @@ export interface InvoiceRow {
   insurance_coverage_amount: string;
 }
 
+export type ContactRow = Contact;
+
 export interface MockDb {
   roleTemplates: RoleTemplateRow[];
   users: UserRow[];
@@ -105,4 +108,5 @@ export interface MockDb {
   whatsappContacts: WhatsappContact[];
   whatsappMessages: WhatsappMessage[];
   invoices: InvoiceRow[];
+  contacts: ContactRow[];
 }

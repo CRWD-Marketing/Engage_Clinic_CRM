@@ -19,6 +19,8 @@ export default function AppStackLayout() {
       }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="notes-review" options={{ title: 'Session notes review' }} />
+      <Stack.Screen name="contacts/index" options={{ title: 'Contacts' }} />
+      <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );
 }

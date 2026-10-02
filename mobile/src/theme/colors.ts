@@ -150,6 +150,16 @@ export const inboxColors = {
   avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
 } as const;
 
+/** Contact submission status badges (contact/index.blade.php `$statusTokens`). */
+export const contactStatusColors: Record<string, ChipColors> = {
+  new: { bg: '#eff6ff', fg: '#1d4ed8' },
+  approved: { bg: '#f0fdf4', fg: '#15803d' },
+  rejected: { bg: '#fef2f2', fg: '#b91c1c' },
+  contacted: { bg: '#fefce8', fg: '#a16207' },
+  converted: { bg: '#f0fdfa', fg: '#0f766e' },
+  closed: { bg: '#fafafa', fg: '#52525b' },
+};
+
 /** Admin dashboard "Lead sources" bars (dashboard/admin.blade.php `$sourceColors`). */
 export const leadSourceBarColors: Record<string, string> = {
   WhatsApp: '#1FA855',
