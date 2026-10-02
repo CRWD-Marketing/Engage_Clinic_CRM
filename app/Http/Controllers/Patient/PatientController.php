@@ -62,7 +62,7 @@ class PatientController extends Controller
      * Patients list, keyed off when the Patient record itself was created.
      * Null means no filter (all time).
      */
-    private function periodRange(string $period): ?array
+    protected function periodRange(string $period): ?array
     {
         $now = now();
 
@@ -504,7 +504,7 @@ class PatientController extends Controller
      * record by guessing/editing the URL — this closes that gap on the
      * write endpoints.
      */
-    private function assertAssignedTherapist(Patient $patient): void
+    protected function assertAssignedTherapist(Patient $patient): void
     {
         if (auth()->user()->role !== 'THERAPIST') {
             return;

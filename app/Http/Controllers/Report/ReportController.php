@@ -23,7 +23,7 @@ class ReportController extends Controller
      * report.print_pdf (Export PDF) - a section added here shows up in both
      * automatically, which is the whole point of not building them separately.
      */
-    private function reportData(): array
+    protected function reportData(): array
     {
         [$periodStart, $periodEnd] = $this->reportingPeriod();
 
@@ -45,7 +45,7 @@ class ReportController extends Controller
      * the page (VAT return summary aside, which is filed monthly) describes
      * the same "January - July 2026" period shown in the page header.
      */
-    private function reportingPeriod(): array
+    protected function reportingPeriod(): array
     {
         return [now()->subMonthsNoOverflow(5)->startOfMonth(), now()->endOfMonth()];
     }
@@ -79,7 +79,7 @@ class ReportController extends Controller
      * same real per-source percentages are drawn with GD instead, which
      * dompdf renders as reliably as the logo image on invoices.
      */
-    private function leadSourcesPieChart($leadSources, int $totalCount): ?string
+    protected function leadSourcesPieChart($leadSources, int $totalCount): ?string
     {
         $totalPct = $leadSources->sum('pct');
         if ($totalPct <= 0) {
@@ -150,7 +150,7 @@ class ReportController extends Controller
      * the origin shifted back by half its width/height to actually center
      * it at ($cx, $cy).
      */
-    private function drawCenteredTtfText($image, string $font, int $fontSize, int $color, float $cx, float $cy, string $text): void
+    protected function drawCenteredTtfText($image, string $font, int $fontSize, int $color, float $cx, float $cy, string $text): void
     {
         $box = imagettfbbox($fontSize, 0, $font, $text);
         $textWidth = abs($box[4] - $box[0]);
@@ -168,7 +168,7 @@ class ReportController extends Controller
      * month - 'subtotal' to match how revenue is defined everywhere else in
      * the app (DashboardController's billing/finance widgets).
      */
-    private function revenueByMonth(): array
+    protected function revenueByMonth(): array
     {
         $months = collect(range(5, 0))->map(fn ($i) => now()->subMonthsNoOverflow($i)->startOfMonth());
 
@@ -208,7 +208,7 @@ class ReportController extends Controller
      * later one; a terminated lead only counts at the top (captured), since
      * there's no stage-transition history to say how far it actually got.
      */
-    private function leadFunnel(): array
+    protected function leadFunnel(): array
     {
         $since = now()->subDays(90);
         $leads = Lead::with('patient')->where('created_at', '>=', $since)->get();
@@ -285,7 +285,7 @@ class ReportController extends Controller
      * Real clinical hours delivered this month, from completed calendar
      * sessions grouped by activity type.
      */
-    private function therapyHours(): array
+    protected function therapyHours(): array
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
@@ -326,7 +326,7 @@ class ReportController extends Controller
      * and the resulting net VAT payable. Voided invoices are excluded -
      * they were never actually supplied.
      */
-    private function vatReturnSummary(): array
+    protected function vatReturnSummary(): array
     {
         $filingStart = now()->startOfMonth();
         $filingEnd = now()->endOfMonth();
@@ -359,7 +359,7 @@ class ReportController extends Controller
      * and the resulting effective revenue per billable hour - what a clinic
      * actually realizes per hour of therapy delivered, after collections.
      */
-    private function collectionRate(Carbon $periodStart, Carbon $periodEnd): array
+    protected function collectionRate(Carbon $periodStart, Carbon $periodEnd): array
     {
         $invoices = Invoice::whereBetween('issue_date', [$periodStart, $periodEnd])
             ->whereNull('voided_at')
@@ -394,7 +394,7 @@ class ReportController extends Controller
      * same activity-type grouping therapyHours() uses, so a service reads
      * the same way whether it's counted in hours or in revenue.
      */
-    private function revenueByService(Carbon $periodStart, Carbon $periodEnd): array
+    protected function revenueByService(Carbon $periodStart, Carbon $periodEnd): array
     {
         $lineItems = InvoiceLineItem::whereHas('invoice', fn ($q) => $q
             ->whereBetween('issue_date', [$periodStart, $periodEnd])
@@ -429,7 +429,7 @@ class ReportController extends Controller
      * the reporting period, from invoice line items - two independent
      * breakdowns of the same line items, shown on one shared bar scale.
      */
-    private function revenueBySettingAndTherapist(Carbon $periodStart, Carbon $periodEnd): array
+    protected function revenueBySettingAndTherapist(Carbon $periodStart, Carbon $periodEnd): array
     {
         $lineItems = InvoiceLineItem::whereHas('invoice', fn ($q) => $q
             ->whereBetween('issue_date', [$periodStart, $periodEnd])
@@ -469,7 +469,7 @@ class ReportController extends Controller
      * (terminated_at is null) still count toward the totals, just bucketed
      * as "No reason given" rather than dropped from the report.
      */
-    private function whyLeadsAreLost(Carbon $periodStart, Carbon $periodEnd): array
+    protected function whyLeadsAreLost(Carbon $periodStart, Carbon $periodEnd): array
     {
         $terminatedLeads = Lead::where('status', Lead::STATUS_TERMINATED)
             ->where(function ($q) use ($periodStart, $periodEnd) {

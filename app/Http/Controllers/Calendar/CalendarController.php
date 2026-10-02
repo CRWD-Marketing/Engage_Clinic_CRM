@@ -23,16 +23,16 @@ class CalendarController extends Controller
      * Roles allowed to change a session once it's on the calendar (reschedule,
      * cancel, reassign, supervise) and to mark staff leave.
      */
-    private const MANAGE_ROLES = ['CLINICAL_SUPERVISOR', 'FULL_ADMIN'];
+    protected const MANAGE_ROLES = ['CLINICAL_SUPERVISOR', 'FULL_ADMIN'];
 
     /**
      * Staff who appear as rows/columns on the roster - Clinical Standard Access
      * (THERAPIST) only. Clinical Admin Access (CLINICAL_SUPERVISOR) oversees the
      * schedule via MANAGE_ROLES but doesn't get a bookable column of their own.
      */
-    private const ROSTER_ROLES = ['THERAPIST'];
+    protected const ROSTER_ROLES = ['THERAPIST'];
 
-    private const DURATIONS = [30, 45, 60, 90, 120, 150, 180];
+    protected const DURATIONS = [30, 45, 60, 90, 120, 150, 180];
 
     public function index(Request $request)
     {
@@ -86,7 +86,7 @@ class CalendarController extends Controller
     /**
      * "My calendar": a therapist's own week, read-only, one column per day.
      */
-    private function myCalendar(Request $request, User $user)
+    protected function myCalendar(Request $request, User $user)
     {
         // Same catch-up feed() does, so a session that ended since the page
         // was last loaded already shows as completed, not still "upcoming".
@@ -770,7 +770,7 @@ class CalendarController extends Controller
      * was fetched (see leads(), which lets the panel re-pull this on demand
      * instead of only once at page load).
      */
-    private function leadsPayload()
+    protected function leadsPayload()
     {
         return Lead::with('patient.authorizations')->whereHas('patient')->orderBy('child_name')->get()
             ->map(function (Lead $l) {
@@ -834,7 +834,7 @@ class CalendarController extends Controller
             })->values();
     }
 
-    private function rosterStaff()
+    protected function rosterStaff()
     {
         $user = auth()->user();
 
@@ -849,12 +849,12 @@ class CalendarController extends Controller
             ->get();
     }
 
-    private function staffName(User $u): string
+    protected function staffName(User $u): string
     {
         return trim("{$u->first_name} {$u->last_name}");
     }
 
-    private function designation(User $u): string
+    protected function designation(User $u): string
     {
         return $u->job_title ?: match ($u->role) {
             'CLINICAL_SUPERVISOR' => 'BCBA Supervisor',
@@ -863,7 +863,7 @@ class CalendarController extends Controller
         };
     }
 
-    private function canManage(): bool
+    protected function canManage(): bool
     {
         $user = auth()->user();
 
@@ -874,7 +874,7 @@ class CalendarController extends Controller
      * The strip under the search bar: what this user's access level can and
      * can't do, read from the actions they hold (Roles & access).
      */
-    private function capabilitiesForUser(User $user): array
+    protected function capabilitiesForUser(User $user): array
     {
         $labels = \App\Models\RoleTemplate::ACTIONS;
         $held = $user->effectiveActions();
@@ -899,7 +899,7 @@ class CalendarController extends Controller
      * session is on the calendar, only the Clinical Supervisor (or an Admin)
      * reschedules, cancels, reassigns or supervises it, and marks leave.
      */
-    private function assertCanManageSchedule(): void
+    protected function assertCanManageSchedule(): void
     {
         abort_unless($this->canManage(), 403, 'Only the Clinical Supervisor can change the schedule.');
     }
@@ -908,7 +908,7 @@ class CalendarController extends Controller
      * What the signed-in role can and can't do - rendered as the strip under
      * the search bar so staff know why a control is missing.
      */
-    private function capabilitiesFor(string $role): array
+    protected function capabilitiesFor(string $role): array
     {
         return match ($role) {
             'FULL_ADMIN' => [
@@ -943,7 +943,7 @@ class CalendarController extends Controller
      * Older callers (the Therapists page) still post the single-value shape -
      * fold it into the multi-select shape the new form uses.
      */
-    private function normaliseLegacyInput(array $input): array
+    protected function normaliseLegacyInput(array $input): array
     {
         if (! isset($input['therapist_ids']) && isset($input['therapist_id'])) {
             $input['therapist_ids'] = [$input['therapist_id']];
@@ -963,7 +963,7 @@ class CalendarController extends Controller
         return $input;
     }
 
-    private function sessionAttributes(array $data): array
+    protected function sessionAttributes(array $data): array
     {
         $status = $data['status'] ?? 'scheduled';
 
@@ -989,7 +989,7 @@ class CalendarController extends Controller
      * a typed-in custom patient/group -> no patient_id, the ids in patient_ids
      * and a label in patient_name.
      */
-    private function patientAttributes(array $patientIds, ?string $custom, ?string $activityLabel): array
+    protected function patientAttributes(array $patientIds, ?string $custom, ?string $activityLabel): array
     {
         $ids = array_values(array_unique(array_map('intval', $patientIds)));
         $custom = trim((string) $custom) ?: null;
@@ -1019,7 +1019,7 @@ class CalendarController extends Controller
         ];
     }
 
-    private function typeAttributes(array $types): array
+    protected function typeAttributes(array $types): array
     {
         $types = array_values(array_unique(array_filter(array_map('trim', $types))));
 
@@ -1038,7 +1038,7 @@ class CalendarController extends Controller
      * separate from, and checked in addition to, packageOverbookError()'s
      * hard block on the package-hours balance itself.
      */
-    private function authorizationWarning(array $data, array $dates, int $therapistCount): ?string
+    protected function authorizationWarning(array $data, array $dates, int $therapistCount): ?string
     {
         $ids = $data['patient_ids'] ?? [];
         if (count($ids) !== 1 || ! $dates) {
@@ -1094,7 +1094,7 @@ class CalendarController extends Controller
      * type) - the caller then requires an explicit count instead, so a
      * series never gets created without a defined stop either way.
      */
-    private function packageSessionBudget(array $data, int $therapistCount): ?int
+    protected function packageSessionBudget(array $data, int $therapistCount): ?int
     {
         $ids = $data['patient_ids'] ?? [];
         if (count($ids) !== 1) {
@@ -1120,7 +1120,7 @@ class CalendarController extends Controller
      * booking, or nothing assigned covers this activity type) - in that
      * case scheduling proceeds uncapped, same as before this feature existed.
      */
-    private function packageOverbookError(array $data, array $dates, int $therapistCount): ?string
+    protected function packageOverbookError(array $data, array $dates, int $therapistCount): ?string
     {
         $ids = $data['patient_ids'] ?? [];
         if (count($ids) !== 1 || ! $dates) {
@@ -1162,7 +1162,7 @@ class CalendarController extends Controller
      * Lead::packageHours() and the panel's own preview both use, so what's
      * shown here can never drift from what the next booking attempt sees.
      */
-    private function packageRemainingNote(array $data): ?string
+    protected function packageRemainingNote(array $data): ?string
     {
         $ids = $data['patient_ids'] ?? [];
         if (count($ids) !== 1) {
@@ -1182,14 +1182,14 @@ class CalendarController extends Controller
      * "1 hour" / "10.5 hours" - spelled out rather than the "h"/"hr"
      * abbreviation, for every package/authorization hours message above.
      */
-    private function fmtHours(float $hours): string
+    protected function fmtHours(float $hours): string
     {
         $n = rtrim(rtrim(number_format($hours, 1), '0'), '.');
 
         return $n.' '.($n === '1' ? 'hour' : 'hours');
     }
 
-    private function sessionPayload(CalendarSession $s): array
+    protected function sessionPayload(CalendarSession $s): array
     {
         return [
             'id' => $s->id,
@@ -1227,7 +1227,7 @@ class CalendarController extends Controller
         ];
     }
 
-    private function validationFailed(Request $request, $validator)
+    protected function validationFailed(Request $request, $validator)
     {
         if ($request->wantsJson()) {
             return response()->json([

@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\RoleMiddleware;
 use App\Http\Middleware\FeatureMiddleware;
+use App\Http\Middleware\ForceJsonResponse;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,10 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
             __DIR__.'/../routes/packages.php',
             __DIR__.'/../routes/user.php',
         ],
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+
+        // /api/v1 always answers JSON, even to a request that didn't ask for it.
+        $middleware->prepend(ForceJsonResponse::class);
 
         $middleware->alias([
             'role' => RoleMiddleware::class,

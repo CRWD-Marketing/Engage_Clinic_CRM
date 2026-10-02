@@ -83,7 +83,7 @@ class DashboardController extends Controller
      * Lead-pipeline widgets: new-leads counter and this-week source breakdown.
      * Only for roles with the 'leads' feature (FULL_ADMIN, SALES_STAFF, COORDINATOR).
      */
-    private function leadMetrics(): array
+    protected function leadMetrics(): array
     {
         // A rolling seven days, not the calendar week: on a Monday morning
         // startOfWeek() is a few hours old, so every card here would read
@@ -170,7 +170,7 @@ class DashboardController extends Controller
      * "Google Ads"), so matching is loose and case-insensitive. Anything
      * unrecognised keeps its own label and gets its own row.
      */
-    private function sourceBucket(?string $source): string
+    protected function sourceBucket(?string $source): string
     {
         $key = strtolower(str_replace([' ', '-', '_'], '', (string) $source));
 
@@ -191,7 +191,7 @@ class DashboardController extends Controller
      * 'calendar' feature. Pass a therapist id to scope to just their own
      * sessions (used for THERAPIST, whose access is assigned-only).
      */
-    private function scheduleMetrics(?int $therapistId = null): array
+    protected function scheduleMetrics(?int $therapistId = null): array
     {
         // Same catch-up the calendar and the scheduled command do: a session
         // counts as attended the moment its end time passes, not at the end
@@ -237,7 +237,7 @@ class DashboardController extends Controller
     /**
      * Revenue/claims widgets. Only for roles with 'billing' and/or 'reports'.
      */
-    private function billingMetrics(): array
+    protected function billingMetrics(): array
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
@@ -273,7 +273,7 @@ class DashboardController extends Controller
      * enquired and are waiting to be picked up. That is the only place a
      * waiting family is recorded, so it's the only place this counts from.
      */
-    private function patientMetrics(): array
+    protected function patientMetrics(): array
     {
         $waitingEntries = Lead::where('status', Lead::STATUS_NEW)->orderBy('created_at')->get();
         $waitlistCount = $waitingEntries->count();
@@ -295,7 +295,7 @@ class DashboardController extends Controller
     /**
      * WhatsApp inbox preview. Only for roles with the 'whatsapp' feature.
      */
-    private function whatsappMetrics(): array
+    protected function whatsappMetrics(): array
     {
         $whatsappInbox = WhatsappContact::orderByDesc('last_message_at')->take(3)->get();
 
@@ -307,7 +307,7 @@ class DashboardController extends Controller
      * HR has no leads/billing/patients access, so nothing clinical or
      * financial belongs here - only 'users' and 'calendar' scoped data.
      */
-    private function staffMetrics(): array
+    protected function staffMetrics(): array
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
@@ -334,7 +334,7 @@ class DashboardController extends Controller
      * SALES_STAFF-only widgets: leads assigned to this rep and the clinic-wide
      * intake queue. Sales has no calendar/billing/patients access.
      */
-    private function salesMetrics(User $user): array
+    protected function salesMetrics(User $user): array
     {
         $myActiveLeadsCount = Lead::where('assigned_to', $user->id)->active()->count();
         $awaitingContactCount = Lead::where('status', Lead::STATUS_NEW)->count();
@@ -352,7 +352,7 @@ class DashboardController extends Controller
      * claim aging) matching their 'billing' + 'reports' access. No patient
      * names surface here - payer/amount only, never child identity.
      */
-    private function financeMetrics(): array
+    protected function financeMetrics(): array
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
@@ -423,7 +423,7 @@ class DashboardController extends Controller
      * their "Invoice and Quotation Only" access - no revenue analytics,
      * payer mix, or claim aging (that's FINANCE_STAFF/reports territory).
      */
-    private function otherStaffMetrics(): array
+    protected function otherStaffMetrics(): array
     {
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
@@ -451,7 +451,7 @@ class DashboardController extends Controller
      * assigned patients and sessions - never clinic-wide data. Mirrors the
      * "assigned only" restriction documented in config/role_permissions.php.
      */
-    private function therapistMetrics(User $user): array
+    protected function therapistMetrics(User $user): array
     {
         $schedule = $this->scheduleMetrics($user->id);
 
@@ -489,7 +489,7 @@ class DashboardController extends Controller
      * Clinical Supervisor-only widgets: note sign-off queue, flagged notes,
      * treatment plan review cycle, and average therapist caseload.
      */
-    private function clinicalSupervisorMetrics(): array
+    protected function clinicalSupervisorMetrics(): array
     {
         $unsignedNotes = PatientNote::unsigned()->with(['patient.lead', 'user'])->oldest()->get();
         $pendingNotesCount = $unsignedNotes->count();
@@ -525,7 +525,7 @@ class DashboardController extends Controller
      * Coordinator-only widgets: intake call queue, no-show follow-ups, and
      * an estimated weekly opening count (see openingsThisWeek note below).
      */
-    private function coordinatorMetrics(): array
+    protected function coordinatorMetrics(): array
     {
         $pendingIntakeCalls = Lead::where('status', Lead::STATUS_NEW)->orderBy('created_at')->get();
         $pendingIntakeCallsCount = $pendingIntakeCalls->count();

@@ -357,7 +357,10 @@ class Lead extends Model
             }
         }
         
-        $this->attributes['estimated_value'] = $cleaned;
+        // A blank value is "not set". Storing '' instead makes the decimal
+        // cast throw whenever the lead is read back, which takes the whole
+        // pipeline page down with it.
+        $this->attributes['estimated_value'] = $cleaned === '' ? null : $cleaned;
     }
 
     /**

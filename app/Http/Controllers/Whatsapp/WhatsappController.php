@@ -156,7 +156,7 @@ class WhatsappController extends Controller
      * filled in before "Convert to Lead" - it needs to catch what it reasonably
      * can, not just the one rigid phrasing.
      */
-    private function extractLeadHints($messages): array
+    protected function extractLeadHints($messages): array
     {
         $text = $messages->where('direction', 'inbound')->pluck('body')->filter()->implode(' . ');
 
