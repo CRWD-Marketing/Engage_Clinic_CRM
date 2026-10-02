@@ -13,6 +13,11 @@ import { createMockApi } from './mock';
 import type {
   BillingInvoice,
   BillingOverview,
+  BulkRunGroup,
+  BulkRunQuery,
+  BulkRunResponse,
+  ClaimUpdateRequest,
+  ClaimUpdateResponse,
   FamilyStatement,
   InvoiceActionResponse,
   InvoiceCreditRequest,
@@ -22,7 +27,10 @@ import type {
   InvoiceVoidRequest,
   NewInvoiceRequest,
   PatientLedger,
+  PreAuthorization,
+  PreAuthRequest,
   PrepaidTopUpResponse,
+  RemoteFile,
   LeaveRequest,
   LeaveResponse,
   NotificationsResponse,
@@ -298,6 +306,18 @@ export interface ApiClient {
     topUpPrepaid(patientId: number, hours: number): Promise<PrepaidTopUpResponse>;
     /** GET /billing/patients/{patient}/statement */
     statement(patientId: number): Promise<FamilyStatement>;
+    /** PATCH /billing/claims/{claim} — settling records the insurer's remittance as a receipt; moving off settled removes it. */
+    updateClaim(id: number, input: ClaimUpdateRequest): Promise<ClaimUpdateResponse>;
+    /** POST /billing/pre-authorizations — a new request, or a resubmission of a denied one. */
+    requestPreAuth(input: PreAuthRequest): Promise<{ message: string; preauth: PreAuthorization }>;
+    /** GET /billing/bulk-run — families with unbilled, chargeable sessions in the period, largest invoice first. */
+    bulkPreview(query: BulkRunQuery): Promise<{ groups: BulkRunGroup[] }>;
+    /** POST /billing/bulk-run — one invoice per chosen family. 422 when nothing is left to bill. */
+    bulkIssue(input: BulkRunQuery & { patient_ids: number[] }): Promise<BulkRunResponse>;
+    /** GET /billing/invoices/{id}/pdf — where to download the invoice PDF (see utils/openPdf). The mock has none (503). */
+    invoicePdf(id: number): Promise<RemoteFile>;
+    /** GET /billing/patients/{patient}/statement/pdf */
+    statementPdf(patientId: number): Promise<RemoteFile>;
   };
   /** Reports & analytics (ReportController, `feature:reports`). Read-only; PDF export stays on the web. */
   reports: {

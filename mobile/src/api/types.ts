@@ -1115,7 +1115,7 @@ export interface BillingInvoice {
   receipts: { id: number; number: string; amount: number; method: string; date: string; reference: string | null }[];
 }
 
-/** GET /billing — the parts of the billing page the app shows so far (claims and pre-authorizations are not read yet). */
+/** GET /billing — everything billing/index.blade.php is rendered with. */
 export interface BillingOverview {
   /** Has the `create_invoice` action and is not view-only on Billing. */
   can_invoice: boolean;
@@ -1125,12 +1125,28 @@ export interface BillingOverview {
   /** Newest first, at most 120. */
   invoices: BillingInvoice[];
   revenue_by_payer: { payer: string; amount: number; pct: number }[];
+  /** Open claims first, then newest; at most 40. */
+  claims: InsuranceClaim[];
+  /** Open claims by days since submission. */
+  claim_aging: { label: string; min: number; max: number | null; count: number; amount: number }[];
+  /** InsuranceClaim::LABELS */
+  claim_statuses: Record<ClaimStatus, string>;
+  /** The latest rejected claim, if any. */
+  rejected_alert: { patient: string | null; insurer: string; reference: string; notes: string | null } | null;
+  /** Newest first, at most 30. */
+  pre_auths: PreAuthorization[];
   aging: BillingAging;
   /** Every client, by name, for the new-invoice picker. */
   patients: BillingPatient[];
+  /** Insurers by name, then "Self-pay". */
+  payers: string[];
+  /** Active service names. */
+  services: string[];
   /** Payment::METHODS */
   methods: string[];
   cancel_policy: CancelPolicy;
+  /** The bulk run's opening period: the last three weeks. */
+  bulk_defaults: { from: YmdString; to: YmdString };
   clinic_name: string;
 }
 
@@ -1357,6 +1373,121 @@ export interface FamilyStatement {
   sessions: LedgerRow[];
   session_hours: number;
   session_charged: number;
+}
+
+/** InsuranceClaim::STATUSES */
+export type ClaimStatus = 'draft' | 'submitted' | 'pending_info' | 'rejected' | 'settled';
+
+/** One insurance claim (BillingController::claimRow()). A claim is raised per insurer when an invoice is issued. */
+export interface InsuranceClaim {
+  id: number;
+  reference: string;
+  patient: string;
+  insurer: string;
+  amount: number;
+  /** "Sep 2026" */
+  period: string | null;
+  status: ClaimStatus;
+  status_label: string;
+  /** Days since it was submitted (until it settled, once settled). */
+  age: number;
+  /** Anything but settled. */
+  open: boolean;
+  notes: string | null;
+  /** Invoice number. */
+  invoice: string | null;
+}
+
+/** PATCH /billing/claims/{claim} */
+export interface ClaimUpdateRequest {
+  status: ClaimStatus;
+  notes?: string | null;
+}
+
+/** Settling records an "Insurance remittance" receipt on the invoice; moving off settled removes it. */
+export interface ClaimUpdateResponse {
+  message: string;
+  claim: InsuranceClaim;
+  invoice: BillingInvoice | null;
+}
+
+/** One pre-authorization request (BillingController::preAuthRow()). */
+export interface PreAuthorization {
+  id: number;
+  reference: string;
+  patient_id: number;
+  patient: string;
+  payer: string;
+  service: string;
+  hours: number;
+  /** "01 Oct 2026" */
+  from: string;
+  to: string;
+  from_iso: YmdString;
+  to_iso: YmdString;
+  submitted: string;
+  status: 'requested' | 'approved' | 'denied';
+  status_label: string;
+  payer_reference: string | null;
+  denial_reason: string | null;
+  justification: string | null;
+  /** The denied request this one resubmits. */
+  resubmitted_from: number | null;
+}
+
+/** POST /billing/pre-authorizations */
+export interface PreAuthRequest {
+  patient_id: number;
+  payer: string;
+  service: string;
+  /** 1–2000 */
+  hours: number;
+  valid_from: YmdString;
+  /** After `valid_from`. */
+  valid_to: YmdString;
+  justification?: string | null;
+  resubmitted_from_id?: number | null;
+}
+
+/** GET /billing/bulk-run — the period and payer of a month-end run. */
+export interface BulkRunQuery {
+  from: YmdString;
+  to: YmdString;
+  /** A payer name, or "all". */
+  payer?: string | null;
+}
+
+/** One family's unbilled, chargeable sessions in the period (BulkRunController::groups()). */
+export interface BulkRunGroup {
+  patient_id: number;
+  patient: string | null;
+  parent: string | null;
+  payer: string;
+  sessions: number;
+  hours: number;
+  net: number;
+  vat: number;
+  total: number;
+  insurer_share: number;
+  family_share: number;
+  /** Sessions priced by the cancellation policy rather than attended. */
+  adjusted: number;
+  rows: LedgerRow[];
+}
+
+/** POST /billing/bulk-run — one invoice per chosen family. */
+export interface BulkRunResponse {
+  message: string;
+  /** "RUN-2026-01" */
+  run: string;
+  invoices: BillingInvoice[];
+}
+
+/** A file the server produces on request (a PDF): where to fetch it and the headers that authorise it. */
+export interface RemoteFile {
+  url: string;
+  headers: Record<string, string>;
+  filename: string;
 }
 
 // ---------------------------------------------------------------------------

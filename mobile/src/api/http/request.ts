@@ -6,6 +6,7 @@
 
 import { ApiError } from '../errors';
 import { getAuthToken } from '../token';
+import type { RemoteFile } from '../types';
 
 type Query = Record<string, string | number | null | undefined>;
 
@@ -15,6 +16,8 @@ export type Http = {
   put<T>(path: string, body?: unknown): Promise<T>;
   patch<T>(path: string, body?: unknown): Promise<T>;
   delete<T>(path: string): Promise<T>;
+  /** A GET the caller downloads itself (a PDF): the full URL and the headers that authorise it. */
+  file(path: string, filename: string): RemoteFile;
 };
 
 /** Laravel's `{message, errors}`; some web actions send only `{success: false, errors}`. */
@@ -74,5 +77,13 @@ export function createHttp(baseUrl: string): Http {
     put: (path, body) => send('PUT', path, body ?? {}),
     patch: (path, body) => send('PATCH', path, body ?? {}),
     delete: (path) => send('DELETE', path),
+    file: (path, filename) => {
+      const token = getAuthToken();
+      return {
+        url: `${root}/${path.replace(/^\/+/, '')}`,
+        headers: { 'ngrok-skip-browser-warning': '1', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        filename,
+      };
+    },
   };
 }

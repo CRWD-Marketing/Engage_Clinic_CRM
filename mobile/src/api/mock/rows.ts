@@ -5,6 +5,7 @@
  */
 
 import type {
+  ClaimStatus,
   Contact,
   CancelReason,
   Lead,
@@ -110,6 +111,41 @@ export interface InvoiceRow {
   reminder_sent_at: string | null;
   reminders_count: number;
   claim_reference: string | null;
+  /** The bulk run that raised it ("RUN-2026-01"). */
+  batch_reference?: string | null;
+}
+
+/** `insurance_claims` table (dates as "YYYY-MM-DD"). */
+export interface ClaimRow {
+  id: number;
+  reference: string;
+  invoice_id: number | null;
+  patient_id: number;
+  insurer: string;
+  amount: string;
+  period_label: string | null;
+  status: ClaimStatus;
+  submitted_on: string;
+  settled_on: string | null;
+  notes: string | null;
+}
+
+/** `pre_authorizations` table (dates as "YYYY-MM-DD"). */
+export interface PreAuthRow {
+  id: number;
+  reference: string;
+  patient_id: number;
+  payer: string;
+  service: string;
+  hours: number;
+  valid_from: string;
+  valid_to: string;
+  status: 'requested' | 'approved' | 'denied';
+  payer_reference: string | null;
+  justification: string | null;
+  denial_reason: string | null;
+  submitted_on: string;
+  resubmitted_from_id: number | null;
 }
 
 /** `payments` table: receipts against an invoice. */
@@ -168,6 +204,8 @@ export interface MockDb {
   invoices: InvoiceRow[];
   invoiceLineItems: InvoiceLineItemRow[];
   payments: PaymentRow[];
+  claims: ClaimRow[];
+  preAuths: PreAuthRow[];
   contacts: ContactRow[];
   patientDocuments: PatientDocumentRow[];
 }

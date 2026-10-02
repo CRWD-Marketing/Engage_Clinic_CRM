@@ -47,9 +47,11 @@ Module routes use the same `feature:<module>` middleware as the web routes, so m
 | Contacts | `GET contacts`, `GET contacts/count`, `PATCH contacts/{id}`, `PATCH contacts/{id}/status`, `POST contacts/{id}/send-email`, `POST contacts/{id}/convert-to-lead`, `DELETE contacts/{id}` |
 | Therapists | `GET therapists` |
 | Reports | `GET reports` |
-| Billing | `GET billing`, `GET billing/invoices/{id}`, `POST billing/invoices/{id}/payments`, `POST billing/invoices/{id}/credit`, `POST billing/invoices/{id}/void`, `POST billing/invoices/{id}/send`, `GET billing/patients/{id}/ledger`, `POST billing/invoices/preview`, `POST billing/invoices`, `POST billing/patients/{id}/top-up`, `GET billing/patients/{id}/statement` |
+| Billing | `GET billing`, `GET billing/invoices/{id}`, `POST billing/invoices/{id}/payments`, `POST billing/invoices/{id}/credit`, `POST billing/invoices/{id}/void`, `POST billing/invoices/{id}/send`, `GET billing/patients/{id}/ledger`, `POST billing/invoices/preview`, `POST billing/invoices`, `POST billing/patients/{id}/top-up`, `GET billing/patients/{id}/statement`, `PATCH billing/claims/{id}`, `POST billing/pre-authorizations`, `PATCH billing/pre-authorizations/{id}`, `GET/POST billing/bulk-run`, `GET billing/invoices/{id}/pdf`, `GET billing/patients/{id}/statement/pdf` |
 
 Response shapes are the TypeScript types in `src/api/types.ts`. Errors are `{message, errors}` with the usual status codes (401, 403, 404, 422, 429).
+
+The two `…/pdf` routes answer with the PDF file itself (`application/pdf`), not JSON; the app downloads them with the bearer token.
 
 **New behaviour that the web does not have:** note sign-off and flagging (`patient-notes/*`), open to the Clinical Supervisor and Full Admin. And `GET calendar/{id}` refuses a session that isn't the caller's own when their calendar access is "own records only" (the web route has no such check).
 

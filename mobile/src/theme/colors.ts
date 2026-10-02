@@ -167,6 +167,25 @@ export const agingBucketColors: Record<string, string> = {
   d90: '#8A2020',
 };
 
+/** Claim status chips on the billing claims tab (CLAIM_COLORS in billing/index.blade.php). */
+export const claimStatusColors: Record<'draft' | 'submitted' | 'pending_info' | 'rejected' | 'settled', ChipColors> = {
+  draft: { bg: '#F1EDE5', fg: '#8A7D6C' },
+  submitted: { bg: '#E7EFF7', fg: '#24619C' },
+  pending_info: { bg: '#F7EEDD', fg: '#B97F24' },
+  rejected: { bg: '#F9E4E2', fg: '#B3261E' },
+  settled: { bg: '#E3F1E9', fg: '#1E7A46' },
+};
+
+/** Pre-authorization status chips (PA_COLORS in billing/index.blade.php). */
+export const preAuthStatusColors: Record<'requested' | 'approved' | 'denied', ChipColors> = {
+  requested: { bg: '#E7EFF7', fg: '#24619C' },
+  approved: { bg: '#E3F1E9', fg: '#1E7A46' },
+  denied: { bg: '#F9E4E2', fg: '#B3261E' },
+};
+
+/** Claims aging bars, youngest bucket first. */
+export const claimAgingColors = ['#2E7D5B', '#B97F24', '#C8355F', '#8A2020'];
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

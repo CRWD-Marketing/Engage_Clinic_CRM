@@ -11,6 +11,9 @@ use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TherapistController;
+use App\Http\Controllers\Billing\BulkRunController;
+use App\Http\Controllers\Billing\ClaimController;
+use App\Http\Controllers\Billing\PreAuthController;
 use App\Http\Controllers\Notification\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -106,11 +109,20 @@ Route::middleware('feature:billing')->prefix('billing')->group(function () {
     Route::get('patients/{patient}/ledger', [InvoiceController::class, 'ledger']);
     Route::post('patients/{patient}/top-up', [InvoiceController::class, 'topUp']);
     Route::get('patients/{patient}/statement', [InvoiceController::class, 'statementJson']);
+    Route::get('patients/{patient}/statement/pdf', [InvoiceController::class, 'statementPdf']);
     Route::post('invoices/preview', [InvoiceController::class, 'preview']);
     Route::post('invoices', [InvoiceController::class, 'store']);
     Route::get('invoices/{invoice}', [InvoiceController::class, 'data']);
+    Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf']);
     Route::post('invoices/{invoice}/payments', [InvoiceController::class, 'storePayment']);
     Route::post('invoices/{invoice}/credit', [InvoiceController::class, 'storeCredit']);
     Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void']);
     Route::post('invoices/{invoice}/send', [InvoiceController::class, 'send']);
+    // Insurance claims and pre-authorizations.
+    Route::patch('claims/{claim}', [ClaimController::class, 'update']);
+    Route::post('pre-authorizations', [PreAuthController::class, 'store']);
+    Route::patch('pre-authorizations/{preAuthorization}', [PreAuthController::class, 'update']);
+    // Month-end run: one invoice per family for every unbilled delivered session in a period.
+    Route::get('bulk-run', [BulkRunController::class, 'preview']);
+    Route::post('bulk-run', [BulkRunController::class, 'issue']);
 });

@@ -17,6 +17,7 @@ import { TextField } from '@/components/TextField';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { colors, spacing } from '@/theme';
 import { todayYmd } from '@/utils/dates';
+import { openPdf } from '@/utils/openPdf';
 
 import { aed, invoiceEmail, statusColors } from './billingFormat';
 
@@ -74,6 +75,7 @@ function Detail({
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const canAct = billing.can_invoice;
   const open = i.balance > 0.01 && !i.voided;
 
@@ -94,6 +96,18 @@ function Detail({
   }
 
   const toggle = (next: Exclude<Panel, null>) => setPanel(panel === next ? null : next);
+
+  async function download() {
+    setDownloading(true);
+    setFlash(null);
+    try {
+      await openPdf(await api.billing.invoicePdf(i.id), `${i.number}.pdf`);
+    } catch (e) {
+      setFlash({ text: errorMessage(e), tone: 'danger' });
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <Screen edges={[]} refreshing={refreshing} onRefresh={onRefresh}>
@@ -138,6 +152,8 @@ function Detail({
         {i.credit_reason ? <AppText variant="caption">Credit: {i.credit_reason.replace(/\n/g, ' · ')}</AppText> : null}
         {i.claim_reference ? <AppText variant="caption">Claim {i.claim_reference}</AppText> : null}
       </Card>
+
+      <Button title="Download PDF" variant="secondary" loading={downloading} onPress={download} />
 
       {canAct ? (
         <Card style={styles.gap}>

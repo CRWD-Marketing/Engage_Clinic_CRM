@@ -1,16 +1,20 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
+import { errorMessage } from '@/api/errors';
 import { AppText } from '@/components/AppText';
+import { Button } from '@/components/Button';
 import { Card, Divider } from '@/components/Card';
 import { Screen } from '@/components/Screen';
 import { StatTile } from '@/components/StatTile';
-import { EmptyRow, ErrorState, LoadingState } from '@/components/StateViews';
+import { Banner, EmptyRow, ErrorState, LoadingState } from '@/components/StateViews';
 import { StatsGrid } from '@/features/dashboard/panels';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { colors, spacing } from '@/theme';
+import { openPdf } from '@/utils/openPdf';
 
 import { aed } from './billingFormat';
 
@@ -19,6 +23,8 @@ export function StatementScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const query = useApiQuery(`billing.statement:${id}`, () => api.billing.statement(Number(id)));
   useRefetchOnFocus(query.reload);
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!query.data) {
     return (
@@ -29,6 +35,19 @@ export function StatementScreen() {
   }
 
   const s = query.data;
+
+  async function download() {
+    setDownloading(true);
+    setError(null);
+    try {
+      await openPdf(await api.billing.statementPdf(s.patient_id), `statement-${(s.child ?? 'patient').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.pdf`);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <Screen edges={[]} refreshing={query.refreshing} onRefresh={query.refresh}>
       <Stack.Screen options={{ title: `Statement · ${s.child ?? ''}` }} />
@@ -40,6 +59,9 @@ export function StatementScreen() {
           Patient: {s.child} · Payer: {s.payer} · as of {s.as_of}
         </AppText>
       </Card>
+
+      <Button title="Download PDF" variant="secondary" loading={downloading} onPress={download} />
+      {error ? <Banner text={error} /> : null}
 
       <StatsGrid>
         <StatTile label="Charged" value={aed(s.charged, 0)} caption="invoices" />

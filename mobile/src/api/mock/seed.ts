@@ -7,7 +7,7 @@
  */
 
 import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
-import { addDays, addMonths, clinicToIso, diffDays, isoToYmd, monthStartOf, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
+import { addDays, addMonths, clinicToIso, diffDays, formatMonthYear, isoToYmd, monthStartOf, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
 import { blankLead, INTAKE_STEP_COLUMNS } from './leadDefaults';
 import { authorizationHoursUsed, sessionsForLead, THERAPY_TYPES } from './presenters';
@@ -374,6 +374,8 @@ export function buildSeed(now: Date = new Date()): MockDb {
     invoices: [],
     invoiceLineItems: [],
     payments: [],
+    claims: [],
+    preAuths: [],
     contacts: [],
     patientDocuments: [],
   };
@@ -383,6 +385,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
   buildInbox({ rnd, db, today, stamp });
   buildInvoices({ rnd, db, today });
   markBilledSessions(db);
+  buildClaims(db, today);
   buildContacts({ db, today, now });
   seedDocuments(db, today, COORDINATOR_ID);
   return db;
@@ -535,6 +538,53 @@ function markBilledSessions(db: MockDb) {
       if (s.patient_id === patient.lead_id && s.status === 'completed' && s.session_date < isoToYmd(latest.issue_date)) s.invoice_id = latest.id;
     }
   }
+}
+
+/**
+ * A claim for the insurer's share of every insured invoice (settled once the
+ * invoice is paid), and a few pre-authorization requests in each state.
+ */
+function buildClaims(db: MockDb, today: Ymd) {
+  for (const inv of db.invoices) {
+    if (inv.voided_at || !inv.claim_reference || Number(inv.insurance_coverage_amount) <= 0) continue;
+    const issued = isoToYmd(inv.issue_date);
+    const settled = inv.status === 'paid';
+    db.claims.push({
+      id: db.claims.length + 1,
+      reference: inv.claim_reference,
+      invoice_id: inv.id,
+      patient_id: inv.patient_id,
+      insurer: inv.payer,
+      amount: inv.insurance_coverage_amount,
+      period_label: formatMonthYear(isoToYmd(inv.period)),
+      status: settled ? 'settled' : inv.status === 'pending_info' ? 'pending_info' : 'submitted',
+      submitted_on: issued,
+      settled_on: settled ? addDays(issued, 6) : null,
+      notes: null,
+    });
+  }
+
+  const insured = db.patients.filter((p) => db.authorizations.some((a) => a.patient_id === p.id && a.payer_name !== 'Self-pay')).slice(0, 3);
+  insured.forEach((patient, i) => {
+    const auth = db.authorizations.find((a) => a.patient_id === patient.id && a.payer_name !== 'Self-pay')!;
+    const status = (['requested', 'approved', 'denied'] as const)[i];
+    db.preAuths.push({
+      id: i + 1,
+      reference: `PA-${today.slice(0, 4)}-${82500 + i}`,
+      patient_id: patient.id,
+      payer: auth.payer_name,
+      service: 'ABA therapy session',
+      hours: [60, 40, 30][i],
+      valid_from: monthStartOf(today),
+      valid_to: addDays(addMonths(monthStartOf(today), 7), -1),
+      status,
+      payer_reference: status === 'approved' ? 'DA-892585' : null,
+      justification: 'Continuation of ABA programme per updated treatment plan.',
+      denial_reason: status === 'denied' ? 'Treatment plan older than six months; updated plan required.' : null,
+      submitted_on: addDays(today, -(4 + i)),
+      resubmitted_from_id: null,
+    });
+  });
 }
 
 /** A few document records per patient, some of them close to expiry. */

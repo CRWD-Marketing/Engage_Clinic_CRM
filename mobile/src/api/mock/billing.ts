@@ -34,18 +34,26 @@ import type {
   BillingInvoice,
   BillingOverview,
   BillingPatient,
+  BulkRunGroup,
+  BulkRunQuery,
+  ClaimStatus,
+  ClaimUpdateRequest,
   FamilyStatement,
+  InsuranceClaim,
   InvoicePreview,
   InvoicePreviewLine,
   LedgerRow,
   NewInvoiceRequest,
   PatientLedger,
+  PreAuthorization,
+  PreAuthRequest,
   InvoiceCreditRequest,
   InvoiceEmailRequest,
   InvoicePaymentRequest,
   InvoiceVoidRequest,
 } from '../types';
-import type { CalendarSessionRow, InvoiceRow, MockDb, PatientRow, UserRow } from './rows';
+import { INSURANCES, SERVICES } from './catalog';
+import type { CalendarSessionRow, ClaimRow, InvoiceRow, MockDb, PatientRow, PreAuthRow, UserRow } from './rows';
 import { NON_THERAPY_TYPES } from './presenters';
 import { dateCast, laravelIso } from './seed';
 import { delay, EMAIL_PATTERN, getDb, requireFeature, requireUser, toApiUser } from './server';
@@ -145,7 +153,7 @@ function overview(): BillingOverview {
   const monthStart = monthStartOf(today);
   const live = db.invoices.filter((i) => !i.voided_at);
   const mtd = live.filter((i) => isoToYmd(i.issue_date) >= monthStart);
-  const openClaims = live.filter((i) => i.payer !== 'Self-pay' && (i.status === 'submitted' || i.status === 'pending_info'));
+  const { outstanding_claims, avg_claim_cycle, ...claims } = claimsOverview(db);
 
   // Revenue by payer this month: the insurer's share, and the family's share as Self-pay.
   const byPayer = new Map<string, number>();
@@ -164,9 +172,8 @@ function overview(): BillingOverview {
     tiles: {
       invoiced_mtd: mtd.reduce((sum, i) => sum + Number(i.total), 0),
       collected_mtd: db.payments.filter((p) => isoToYmd(p.received_on) >= monthStart).reduce((sum, p) => sum + Number(p.amount), 0),
-      outstanding_claims: openClaims.reduce((sum, i) => sum + Number(i.insurance_coverage_amount), 0),
-      avg_claim_cycle:
-        openClaims.length > 0 ? Math.round(openClaims.reduce((sum, i) => sum + diffDays(isoToYmd(i.issue_date), today), 0) / openClaims.length) : 0,
+      outstanding_claims,
+      avg_claim_cycle,
     },
     invoices: [...db.invoices]
       .sort((a, b) => b.issue_date.localeCompare(a.issue_date) || b.id - a.id)
@@ -175,6 +182,7 @@ function overview(): BillingOverview {
     revenue_by_payer: [...byPayer]
       .map(([payer, amount]) => ({ payer, amount: round2(amount), pct: Math.round((amount / payerTotal) * 100) }))
       .sort((a, b) => b.amount - a.amount),
+    ...claims,
     aging: aging(db),
     patients: db.patients.map((p) => billingPatient(db, p)).sort((a, b) => a.name.localeCompare(b.name)),
     methods: PAYMENT_METHODS,
@@ -188,6 +196,12 @@ function nextInvoiceNumber(db: MockDb): string {
   const year = todayYmd().slice(0, 4);
   const max = Math.max(0, ...db.invoices.filter((i) => i.invoice_number.startsWith(`INV-${year}-`)).map((i) => Number(i.invoice_number.split('-')[2])));
   return `INV-${year}-${String(max + 1).padStart(4, '0')}`;
+}
+
+/** DocumentNumbers::nextReceipt() */
+function nextReceiptNumber(db: MockDb): string {
+  const max = Math.max(0, ...db.payments.map((p) => Number(p.receipt_number.split('-')[1])));
+  return `RCT-${String(max + 1).padStart(3, '0')}`;
 }
 
 function findInvoice(db: MockDb, id: number): InvoiceRow {
@@ -222,7 +236,7 @@ function storePayment(id: number, input: InvoicePaymentRequest) {
   if ((input.reference ?? '').length > 100) throw fail('reference', 'The reference field must not be greater than 100 characters.');
 
   const amount = round2(Number(input.amount));
-  const receipt = `RCT-${String(db.payments.length + 1).padStart(3, '0')}`;
+  const receipt = nextReceiptNumber(db);
   db.payments.push({
     id: Math.max(0, ...db.payments.map((p) => p.id)) + 1,
     invoice_id: invoice.id,
@@ -705,6 +719,15 @@ function store(input: NewInvoiceRequest) {
     throw new ApiError(422, { message: 'Nothing billable in the selection — every chosen session is unchargeable under the cancellation policy.' });
   }
 
+  const invoice = issueInvoice(db, patient, composed, sessions);
+  return {
+    message: `${invoice.invoice_number} raised — ${composed.session_count} session(s), ${composed.bill_hours} billable hour(s).`,
+    invoice: invoiceRow(db, invoice),
+  };
+}
+
+/** InvoiceBuilder::issue(): the invoice, its lines, the sessions marked as billed and a claim per insurer. */
+function issueInvoice(db: MockDb, patient: PatientRow, composed: ReturnType<typeof compose>, sessions: CalendarSessionRow[], run: string | null = null): InvoiceRow {
   const today = todayYmd();
   const id = Math.max(0, ...db.invoices.map((i) => i.id)) + 1;
   const invoice: InvoiceRow = {
@@ -733,6 +756,7 @@ function store(input: NewInvoiceRequest) {
     reminder_sent_at: null,
     reminders_count: 0,
     claim_reference: null,
+    batch_reference: run,
   };
   db.invoices.push(invoice);
   for (const l of composed.lines) {
@@ -749,10 +773,27 @@ function store(input: NewInvoiceRequest) {
   const billedIds = new Set(composed.lines.map((l) => l.calendar_session_id));
   for (const s of sessions) if (billedIds.has(s.id)) s.invoice_id = id;
 
-  return {
-    message: `${invoice.invoice_number} raised — ${composed.session_count} session(s), ${composed.bill_hours} billable hour(s).`,
-    invoice: invoiceRow(db, invoice),
-  };
+
+  for (const split of composed.splits) {
+    // DocumentNumbers::nextClaim()
+    const max = Math.max(0, ...db.claims.map((claim) => Number(claim.reference.split('-')[1])));
+    const reference = `CLM-${Math.max(max + 1, 2001)}`;
+    db.claims.push({
+      id: Math.max(0, ...db.claims.map((claim) => claim.id)) + 1,
+      reference,
+      invoice_id: id,
+      patient_id: patient.id,
+      insurer: split.payer,
+      amount: split.amount.toFixed(2),
+      period_label: composed.period_label,
+      status: 'submitted',
+      submitted_on: today,
+      settled_on: null,
+      notes: null,
+    });
+    invoice.claim_reference ??= reference;
+  }
+  return invoice;
 }
 
 /** POST /billing/patients/{patient}/top-up — adds hours to the family's Self-pay authorization, creating it if needed. */
@@ -922,6 +963,282 @@ function aging(db: MockDb): BillingAging {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Insurance claims, pre-authorizations, bulk run
+// ---------------------------------------------------------------------------
+
+/** InsuranceClaim::LABELS */
+const CLAIM_LABELS: Record<ClaimStatus, string> = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  pending_info: 'Pending info',
+  rejected: 'Rejected',
+  settled: 'Settled',
+};
+const CLAIM_AGING = [
+  { label: '0–14 days', min: 0, max: 14 as number | null },
+  { label: '15–30 days', min: 15, max: 30 as number | null },
+  { label: '31–60 days', min: 31, max: 60 as number | null },
+  { label: '60+ days', min: 61, max: null as number | null },
+];
+
+/** InsuranceClaim::ageDays(): days since submission, frozen once settled. */
+function claimAge(c: ClaimRow): number {
+  return Math.max(0, diffDays(c.submitted_on, c.status === 'settled' && c.settled_on ? c.settled_on : todayYmd()));
+}
+
+/** BillingController::claimRow() */
+function claimRow(db: MockDb, c: ClaimRow): InsuranceClaim {
+  const patient = db.patients.find((p) => p.id === c.patient_id);
+  return {
+    id: c.id,
+    reference: c.reference,
+    patient: db.leads.find((l) => l.id === patient?.lead_id)?.child_name ?? '—',
+    insurer: c.insurer,
+    amount: Number(c.amount),
+    period: c.period_label,
+    status: c.status,
+    status_label: CLAIM_LABELS[c.status],
+    age: claimAge(c),
+    open: c.status !== 'settled',
+    notes: c.notes,
+    invoice: db.invoices.find((i) => i.id === c.invoice_id)?.invoice_number ?? null,
+  };
+}
+
+/** BillingController::preAuthRow() */
+function preAuthRow(db: MockDb, p: PreAuthRow): PreAuthorization {
+  const patient = db.patients.find((x) => x.id === p.patient_id);
+  return {
+    id: p.id,
+    reference: p.reference,
+    patient_id: p.patient_id,
+    patient: db.leads.find((l) => l.id === patient?.lead_id)?.child_name ?? '—',
+    payer: p.payer,
+    service: p.service,
+    hours: p.hours,
+    from: formatDayMonthYear(p.valid_from),
+    to: formatDayMonthYear(p.valid_to),
+    from_iso: p.valid_from,
+    to_iso: p.valid_to,
+    submitted: formatDayMonthYear(p.submitted_on),
+    status: p.status,
+    status_label: p.status.charAt(0).toUpperCase() + p.status.slice(1),
+    payer_reference: p.payer_reference,
+    denial_reason: p.denial_reason,
+    justification: p.justification,
+    resubmitted_from: p.resubmitted_from_id,
+  };
+}
+
+/** The claims, pre-authorizations and pickers of BillingController::index(). */
+function claimsOverview(db: MockDb) {
+  // Open claims first, then newest; at most 40.
+  const claims = [...db.claims]
+    .sort((a, b) => Number(a.status === 'settled') - Number(b.status === 'settled') || b.submitted_on.localeCompare(a.submitted_on))
+    .slice(0, 40);
+  const open = claims.filter((c) => c.status !== 'settled');
+  const settled = db.claims.filter((c) => c.status === 'settled' && c.settled_on);
+  const average = (list: number[]) => Math.round(list.reduce((sum, n) => sum + n, 0) / list.length);
+  const rejected = [...db.claims].filter((c) => c.status === 'rejected').sort((a, b) => b.submitted_on.localeCompare(a.submitted_on))[0];
+  const existing = db.authorizations.map((a) => a.payer_name).filter((n) => !isSelfPay(n));
+  const today = todayYmd();
+
+  return {
+    claims: claims.map((c) => claimRow(db, c)),
+    claim_aging: CLAIM_AGING.map((b) => {
+      const inBucket = open.filter((c) => claimAge(c) >= b.min && (b.max === null || claimAge(c) <= b.max));
+      return { ...b, count: inBucket.length, amount: round2(inBucket.reduce((sum, c) => sum + Number(c.amount), 0)) };
+    }),
+    claim_statuses: CLAIM_LABELS,
+    rejected_alert: rejected
+      ? { patient: claimRow(db, rejected).patient, insurer: rejected.insurer, reference: rejected.reference, notes: rejected.notes }
+      : null,
+    pre_auths: [...db.preAuths]
+      .sort((a, b) => b.submitted_on.localeCompare(a.submitted_on) || b.id - a.id)
+      .slice(0, 30)
+      .map((p) => preAuthRow(db, p)),
+    payers: [...[...new Set([...Object.keys(INSURANCES), ...existing])].sort(), 'Self-pay'],
+    services: SERVICES.map((s) => s.name).sort(),
+    bulk_defaults: { from: addDays(today, -21), to: today },
+    outstanding_claims: round2(open.reduce((sum, c) => sum + Number(c.amount), 0)),
+    avg_claim_cycle:
+      settled.length > 0
+        ? average(settled.map((c) => diffDays(c.submitted_on, c.settled_on!)))
+        : open.length > 0
+          ? average(open.map(claimAge))
+          : 0,
+  };
+}
+
+/** PATCH /billing/claims/{claim} — ClaimController::update(). */
+function updateClaim(id: number, input: ClaimUpdateRequest) {
+  const user = requireUser();
+  requireFeature(user, 'billing', true);
+  if (!canDo(toApiUser(user), 'create_invoice')) throw new ApiError(403, { message: 'Claims are managed by Finance.' });
+  const db = getDb();
+  const claim = db.claims.find((c) => c.id === id);
+  if (!claim) throw new ApiError(404, { message: 'Not found.' });
+  if (!input.status) throw new ApiError(422, { message: 'The status field is required.' });
+  if (!(input.status in CLAIM_LABELS)) throw new ApiError(422, { message: 'The selected status is invalid.' });
+  if ((input.notes ?? '').length > 500) throw new ApiError(422, { message: 'The notes field must not be greater than 500 characters.' });
+
+  const wasSettled = claim.status === 'settled';
+  const willBeSettled = input.status === 'settled';
+  claim.status = input.status;
+  if (input.notes) claim.notes = input.notes;
+  claim.settled_on = willBeSettled ? (claim.settled_on ?? todayYmd()) : null;
+
+  const invoice = db.invoices.find((i) => i.id === claim.invoice_id);
+  if (invoice && !invoice.voided_at) {
+    // Settling is the insurer's money landing: it is recorded as a receipt, and a correction reverses it.
+    const isRemittance = (p: MockDb['payments'][number]) =>
+      p.invoice_id === invoice.id && p.reference === claim.reference && p.method === 'Insurance remittance';
+    if (willBeSettled && !wasSettled && !db.payments.some(isRemittance)) {
+      db.payments.push({
+        id: Math.max(0, ...db.payments.map((p) => p.id)) + 1,
+        invoice_id: invoice.id,
+        receipt_number: nextReceiptNumber(db),
+        amount: Number(claim.amount).toFixed(2),
+        method: 'Insurance remittance',
+        received_on: dateCast(claim.settled_on!),
+        reference: claim.reference,
+      });
+    } else if (!willBeSettled && wasSettled) {
+      db.payments = db.payments.filter((p) => !isRemittance(p));
+    }
+    if (!willBeSettled) invoice.status = input.status as InvoiceRow['status'];
+    syncPaymentColumns(db, invoice);
+  }
+
+  return {
+    message: `${claim.reference} marked ${CLAIM_LABELS[claim.status]}.`,
+    claim: claimRow(db, claim),
+    invoice: invoice ? invoiceRow(db, invoice) : null,
+  };
+}
+
+/** POST /billing/pre-authorizations — PreAuthController::store(). */
+function requestPreAuth(input: PreAuthRequest) {
+  const user = requireUser();
+  requireFeature(user, 'billing', true);
+  if (!canDo(toApiUser(user), 'create_invoice')) throw new ApiError(403, { message: 'Pre-authorizations are requested by Finance.' });
+  const db = getDb();
+  const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!input.patient_id) throw fail('patient_id', 'The patient id field is required.');
+  if (!db.patients.some((p) => p.id === Number(input.patient_id))) throw fail('patient_id', 'The selected patient id is invalid.');
+  if (!input.payer?.trim()) throw fail('payer', 'The payer field is required.');
+  if (!input.service?.trim()) throw fail('service', 'The service field is required.');
+  if (input.hours === undefined || input.hours === null || String(input.hours) === '') throw fail('hours', 'The hours field is required.');
+  if (!Number.isInteger(Number(input.hours))) throw fail('hours', 'The hours field must be an integer.');
+  if (Number(input.hours) < 1) throw fail('hours', 'The hours field must be at least 1.');
+  if (Number(input.hours) > 2000) throw fail('hours', 'The hours field must not be greater than 2000.');
+  if (!isDate(input.valid_from)) throw fail('valid_from', 'The valid from field is required.');
+  if (!isDate(input.valid_to)) throw fail('valid_to', 'The valid to field is required.');
+  if (input.valid_to <= input.valid_from) throw fail('valid_to', 'The valid to field must be a date after valid from.');
+  if ((input.justification ?? '').length > 1000) throw fail('justification', 'The justification field must not be greater than 1000 characters.');
+  if (input.resubmitted_from_id && !db.preAuths.some((p) => p.id === input.resubmitted_from_id)) {
+    throw fail('resubmitted_from_id', 'The selected resubmitted from id is invalid.');
+  }
+
+  // DocumentNumbers::nextPreAuth()
+  const year = todayYmd().slice(0, 4);
+  const max = Math.max(0, ...db.preAuths.filter((p) => p.reference.startsWith(`PA-${year}-`)).map((p) => Number(p.reference.split('-')[2])));
+  const row: PreAuthRow = {
+    id: Math.max(0, ...db.preAuths.map((p) => p.id)) + 1,
+    reference: `PA-${year}-${Math.max(max + 1, 82500)}`,
+    patient_id: Number(input.patient_id),
+    payer: input.payer.trim(),
+    service: input.service.trim(),
+    hours: Number(input.hours),
+    valid_from: input.valid_from,
+    valid_to: input.valid_to,
+    status: 'requested',
+    payer_reference: null,
+    justification: input.justification?.trim() || null,
+    denial_reason: null,
+    submitted_on: todayYmd(),
+    resubmitted_from_id: input.resubmitted_from_id ?? null,
+  };
+  db.preAuths.push(row);
+  return { message: `Pre-authorization ${row.reference} requested.`, preauth: preAuthRow(db, row) };
+}
+
+/** BulkRunController::groups(): one reviewable row per family with unbilled, chargeable sessions in the period. */
+function bulkGroups(db: MockDb, query: Partial<BulkRunQuery>) {
+  const today = todayYmd();
+  const from = query.from || monthStartOf(today);
+  const to = query.to || today;
+  const payer = query.payer && query.payer !== 'all' ? query.payer.toLowerCase() : null;
+
+  return db.patients
+    .map((patient) => {
+      const profile = profileOf(db, patient);
+      const inPeriod = deliveredSessions(db, patient).filter((s) => s.session_date >= from && s.session_date <= to);
+      const rows = ledgerRows(db, inPeriod, profile).filter((r) => !r.invoiced && r.bill_hours > 0 && (!payer || r.payer.toLowerCase() === payer));
+      if (rows.length === 0) return null;
+      const sessions = inPeriod.filter((s) => rows.some((r) => r.id === s.id));
+      const c = compose(db, patient, sessions);
+      return {
+        group: {
+          patient_id: patient.id,
+          patient: c.child,
+          parent: c.bill_to,
+          payer: c.payer,
+          sessions: c.session_count,
+          hours: c.bill_hours,
+          net: c.net,
+          vat: c.vat,
+          total: c.total,
+          insurer_share: c.insurer_share,
+          family_share: c.family_share,
+          adjusted: rows.filter((r) => r.attendance !== 'completed').length,
+          rows,
+        } satisfies BulkRunGroup,
+        patient,
+        sessions,
+        composed: c,
+      };
+    })
+    .filter((g) => g !== null)
+    .sort((a, b) => b.group.total - a.group.total);
+}
+
+/** GET /billing/bulk-run */
+function bulkPreview(query: BulkRunQuery) {
+  const user = requireUser();
+  requireFeature(user, 'billing');
+  return { groups: bulkGroups(getDb(), query).map((g) => g.group) };
+}
+
+/** POST /billing/bulk-run — BulkRunController::issue(). */
+function bulkIssue(input: BulkRunQuery & { patient_ids: number[] }) {
+  requireInvoicer();
+  const db = getDb();
+  const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  if (!isDate(input.from)) throw fail('from', 'The from field is required.');
+  if (!isDate(input.to)) throw fail('to', 'The to field is required.');
+  if (input.to < input.from) throw fail('to', 'The to field must be a date after or equal to from.');
+  if (!Array.isArray(input.patient_ids) || input.patient_ids.length === 0) throw fail('patient_ids', 'The patient ids field is required.');
+
+  const groups = bulkGroups(db, input).filter((g) => input.patient_ids.map(Number).includes(g.patient.id));
+  if (groups.length === 0) {
+    throw new ApiError(422, { message: 'Nothing to invoice — every session in this period has already been billed.' });
+  }
+
+  // DocumentNumbers::nextRun()
+  const year = todayYmd().slice(0, 4);
+  const max = Math.max(0, ...db.invoices.filter((i) => i.batch_reference?.startsWith(`RUN-${year}-`)).map((i) => Number(i.batch_reference!.split('-')[2])));
+  const run = `RUN-${year}-${String(max + 1).padStart(2, '0')}`;
+  const invoices = groups.map((g) => invoiceRow(db, issueInvoice(db, g.patient, g.composed, g.sessions, run)));
+  return { message: `${run}: ${invoices.length} invoice${invoices.length === 1 ? '' : 's'} raised.`, run, invoices };
+}
+
+/** PDFs are rendered by the server (dompdf); the mock has nothing to hand over. */
+function noPdf(): Promise<never> {
+  return Promise.reject(new ApiError(503, { message: 'PDFs are produced by the server. Connect the app to the API to download one.' }));
+}
+
 export function createBillingApi(): ApiClient['billing'] {
   return {
     overview: () => delay(overview),
@@ -935,5 +1252,11 @@ export function createBillingApi(): ApiClient['billing'] {
     createInvoice: (input) => delay(() => store(input)),
     topUpPrepaid: (patientId, hours) => delay(() => topUp(patientId, hours)),
     statement: (patientId) => delay(() => statement(patientId)),
+    updateClaim: (id, input) => delay(() => updateClaim(id, input)),
+    requestPreAuth: (input) => delay(() => requestPreAuth(input)),
+    bulkPreview: (query) => delay(() => bulkPreview(query)),
+    bulkIssue: (input) => delay(() => bulkIssue(input)),
+    invoicePdf: noPdf,
+    statementPdf: noPdf,
   };
 }

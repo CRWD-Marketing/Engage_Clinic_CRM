@@ -20,11 +20,13 @@ import { colors, reportColors, spacing } from '@/theme';
 
 import { AgingTab } from './AgingTab';
 import { aed, STATUS_FILTERS, statusColors } from './billingFormat';
+import { BulkRunTab } from './BulkRunTab';
+import { ClaimsTab } from './ClaimsTab';
 
 type Filter = (typeof STATUS_FILTERS)[number]['value'];
-type Tab = 'invoices' | 'aging';
+type Tab = 'invoices' | 'claims' | 'aging' | 'bulk';
 
-/** billing/index.blade.php: the invoices tab (tiles, payer mix, invoice list) and the aging & statements tab. */
+/** billing/index.blade.php: invoices (tiles, payer mix, invoice list), claims and pre-authorizations, aging & statements, and the bulk run. */
 export function BillingScreen() {
   const query = useApiQuery('billing.overview', () => api.billing.overview());
   useRefetchOnFocus(query.reload);
@@ -49,13 +51,18 @@ export function BillingScreen() {
       <OptionPills<Tab>
         options={[
           { value: 'invoices', label: 'Invoices' },
+          { value: 'claims', label: 'Claims' },
           { value: 'aging', label: 'Aging & statements' },
+          { value: 'bulk', label: 'Bulk run' },
         ]}
         value={tab}
         onChange={setTab}
       />
 
-      {tab === 'aging' ? <AgingTab aging={d.aging} /> : <InvoicesTab billing={d} />}
+      {tab === 'invoices' ? <InvoicesTab billing={d} /> : null}
+      {tab === 'claims' ? <ClaimsTab billing={d} onChanged={query.reload} /> : null}
+      {tab === 'aging' ? <AgingTab aging={d.aging} /> : null}
+      {tab === 'bulk' ? <BulkRunTab billing={d} onChanged={query.reload} /> : null}
     </Screen>
   );
 }

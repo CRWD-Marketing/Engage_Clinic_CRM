@@ -114,6 +114,12 @@ export function createHttpApi(baseUrl: string): ApiClient {
       createInvoice: (input) => http.post('billing/invoices', input),
       topUpPrepaid: (patientId, hours) => http.post(`billing/patients/${patientId}/top-up`, { hours }),
       statement: (patientId) => http.get(`billing/patients/${patientId}/statement`),
+      updateClaim: (id, input) => http.patch(`billing/claims/${id}`, input),
+      requestPreAuth: (input) => http.post('billing/pre-authorizations', input),
+      bulkPreview: (query) => http.get('billing/bulk-run', { ...query }),
+      bulkIssue: (input) => http.post('billing/bulk-run', input),
+      invoicePdf: async (id) => http.file(`billing/invoices/${id}/pdf`, `invoice-${id}.pdf`),
+      statementPdf: async (patientId) => http.file(`billing/patients/${patientId}/statement/pdf`, `statement-${patientId}.pdf`),
     },
     reports: {
       index: () => http.get('reports'),

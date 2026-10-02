@@ -3,16 +3,31 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Billing\InvoiceController as WebInvoiceController;
+use App\Models\Invoice;
 use App\Models\Patient;
+use App\Services\Billing\InvoicePresenter;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
  * Invoices for the mobile app. Everything here is the web controller's own
  * action (ledger, preview, issue, payments, credit, void, email, top-up all
  * answer JSON already); the family statement is the one the web renders as
- * a page, so it is returned as data here.
+ * a page, so it is returned as data here. The web prints an invoice from
+ * its HTML page; a phone needs a file, so the PDF the web attaches to the
+ * invoice email is also offered as a download.
  */
 class InvoiceController extends WebInvoiceController
 {
+    /** GET /billing/invoices/{invoice}/pdf — the same document send() attaches to the email. */
+    public function pdf(Invoice $invoice)
+    {
+        $invoice->load(['patient.lead', 'lineItems.therapist', 'payments', 'claims', 'replaces', 'replacedBy']);
+
+        return Pdf::loadView('billing.print_pdf', ['invoice' => $invoice, 'clinic' => config('clinic'), 'row' => InvoicePresenter::row($invoice)])
+            ->setPaper('a4')
+            ->download($invoice->invoice_number.'.pdf');
+    }
+
     /** GET /billing/patients/{patient}/statement — billing/statement.blade.php's data. */
     public function statementJson(Patient $patient)
     {
