@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\BillingController;
 use App\Http\Controllers\Api\V1\CalendarController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DashboardController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TherapistController;
+use App\Http\Controllers\Billing\InvoiceController;
 use App\Http\Controllers\Notification\NotificationController;
 use Illuminate\Support\Facades\Route;
 
@@ -95,3 +97,14 @@ Route::middleware('feature:contacts')->prefix('contacts')->group(function () {
 Route::get('therapists', [TherapistController::class, 'index'])->middleware('feature:therapists');
 
 Route::get('reports', [ReportController::class, 'index'])->middleware('feature:reports');
+
+// Billing & insurance. Raising and changing money documents needs the `create_invoice`
+// action (checked in the web controller); a view-only level blocks every write.
+Route::middleware('feature:billing')->prefix('billing')->group(function () {
+    Route::get('/', [BillingController::class, 'index']);
+    Route::get('invoices/{invoice}', [InvoiceController::class, 'data']);
+    Route::post('invoices/{invoice}/payments', [InvoiceController::class, 'storePayment']);
+    Route::post('invoices/{invoice}/credit', [InvoiceController::class, 'storeCredit']);
+    Route::post('invoices/{invoice}/void', [InvoiceController::class, 'void']);
+    Route::post('invoices/{invoice}/send', [InvoiceController::class, 'send']);
+});

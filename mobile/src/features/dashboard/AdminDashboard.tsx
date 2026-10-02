@@ -97,6 +97,9 @@ export function AdminDashboard() {
         />
       </StatsGrid>
 
+      {canAccessFeature(user, 'billing') ? (
+        <Button title="Open billing" variant="secondary" onPress={() => router.push('/billing')} />
+      ) : null}
       <ScheduleTodayCard title="Today's schedule" sessions={d.today_sessions} showTherapist />
       <LeadSourcesCard
         rows={d.lead_sources}

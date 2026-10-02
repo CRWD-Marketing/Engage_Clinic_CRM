@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { api } from '@/api/client';
 import { canAccessFeature } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
+import { Button } from '@/components/Button';
 import { Screen } from '@/components/Screen';
 import { StatTile } from '@/components/StatTile';
 import { ErrorState, LoadingState } from '@/components/StateViews';
@@ -37,6 +38,7 @@ export function FinanceDashboard() {
   return (
     <Screen refreshing={query.refreshing} onRefresh={query.refresh}>
       <DashboardHeader name={d.user_full_name} location={d.location_label} />
+      {canAccessFeature(user, 'billing') ? <Button title="Open billing" onPress={() => router.push('/billing')} /> : null}
 
       <StatsGrid>
         <StatTile

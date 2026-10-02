@@ -373,6 +373,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
     whatsappMessages: [],
     invoices: [],
     invoiceLineItems: [],
+    payments: [],
     contacts: [],
     patientDocuments: [],
   };
@@ -460,16 +461,18 @@ function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd
       // Paid in full once settled; an open insurance claim has only the family's share in.
       const paid = status === 'paid' ? total : status === 'issued' ? 0 : total - coverage;
       const id = db.invoices.length + 1;
+      const method = paid > 0 ? (auth && status !== 'paid' ? 'Bank transfer' : rnd.pick(['Bank transfer', 'Card', 'Cash'] as const)) : null;
+      // This month's invoices can't be dated after today.
+      const issued = addDays(month, rnd.int(0, current ? Math.max(0, diffDays(thisMonth, today)) : 27));
       db.invoices.push({
         id,
         patient_id: patient.id,
         invoice_number: `INV-2026-${String(id).padStart(4, '0')}`,
         period: dateCast(month),
-        payment_method: paid > 0 ? (auth && status !== 'paid' ? 'Bank transfer' : rnd.pick(['Bank transfer', 'Card', 'Cash'] as const)) : null,
+        payment_method: method,
         payer: auth ? auth.payer_name : 'Self-pay',
         status,
-        // This month's invoices can't be dated after today.
-        issue_date: dateCast(addDays(month, rnd.int(0, current ? Math.max(0, diffDays(thisMonth, today)) : 27))),
+        issue_date: dateCast(issued),
         subtotal: subtotal.toFixed(2),
         vat_amount: vat.toFixed(2),
         total: total.toFixed(2),
@@ -478,7 +481,28 @@ function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd
         credit_amount: (id % 9 === 0 ? 210 : 0).toFixed(2),
         voided_at: id === 4 ? dateCast(addDays(month, 20)) : null,
         insurance_coverage_amount: coverage.toFixed(2),
+        due_date: dateCast(addDays(issued, 30)),
+        credit_reason: id % 9 === 0 ? 'Goodwill credit for a shortened session' : null,
+        void_reason: id === 4 ? 'Raised against the wrong period' : null,
+        replaces_invoice_id: null,
+        replaced_by_invoice_id: null,
+        sent_to: null,
+        sent_at: null,
+        reminder_sent_at: null,
+        reminders_count: 0,
+        claim_reference: auth ? `CLM-${2000 + id}` : null,
       });
+      if (paid > 0) {
+        db.payments.push({
+          id: db.payments.length + 1,
+          invoice_id: id,
+          receipt_number: `RCT-${String(db.payments.length + 1).padStart(3, '0')}`,
+          amount: paid.toFixed(2),
+          method: method!,
+          received_on: dateCast(addDays(issued, 6)),
+          reference: null,
+        });
+      }
       const setting = patient.id % 4 === 0 ? 'Home' : 'Clinic';
       care.forEach((c, i) => {
         // Even split, with the rounding remainder on the first line.

@@ -26,6 +26,8 @@ export default function AppStackLayout() {
       <Stack.Screen name="session-form" options={{ title: 'Book session' }} />
       <Stack.Screen name="contacts/index" options={{ title: 'Contacts' }} />
       <Stack.Screen name="reports" options={{ title: 'Reports & analytics' }} />
+      <Stack.Screen name="billing/index" options={{ title: 'Billing & insurance' }} />
+      <Stack.Screen name="billing/[id]" options={{ title: 'Invoice' }} />
       <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );

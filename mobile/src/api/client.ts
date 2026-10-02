@@ -11,6 +11,13 @@
 import { createHttpApi } from './http';
 import { createMockApi } from './mock';
 import type {
+  BillingInvoice,
+  BillingOverview,
+  InvoiceActionResponse,
+  InvoiceCreditRequest,
+  InvoiceEmailRequest,
+  InvoicePaymentRequest,
+  InvoiceVoidRequest,
   LeaveRequest,
   LeaveResponse,
   NotificationsResponse,
@@ -254,6 +261,24 @@ export interface ApiClient {
     markLeave(input: LeaveRequest): Promise<LeaveResponse>;
     /** DELETE /calendar/leave/{id} — managers only. */
     removeLeave(id: number): Promise<{ message: string }>;
+  };
+  /**
+   * Billing & insurance (BillingController / InvoiceController, `feature:billing`).
+   * Every change needs the `create_invoice` action; a view-only level blocks all of them.
+   */
+  billing: {
+    /** GET /billing */
+    overview(): Promise<BillingOverview>;
+    /** GET /billing/invoices/{id} */
+    invoice(id: number): Promise<BillingInvoice>;
+    /** POST /billing/invoices/{id}/payments — 422 on a voided invoice. */
+    recordPayment(id: number, input: InvoicePaymentRequest): Promise<InvoiceActionResponse>;
+    /** POST /billing/invoices/{id}/credit — at most the invoice total less credits already issued. */
+    creditNote(id: number, input: InvoiceCreditRequest): Promise<InvoiceActionResponse>;
+    /** POST /billing/invoices/{id}/void — credits the open balance; `reissued` is the corrected invoice, if raised. */
+    voidInvoice(id: number, input: InvoiceVoidRequest): Promise<InvoiceActionResponse & { reissued: BillingInvoice | null }>;
+    /** POST /billing/invoices/{id}/send — emails the invoice PDF, or a payment reminder. */
+    sendEmail(id: number, input: InvoiceEmailRequest): Promise<InvoiceActionResponse>;
   };
   /** Reports & analytics (ReportController, `feature:reports`). Read-only; PDF export stays on the web. */
   reports: {

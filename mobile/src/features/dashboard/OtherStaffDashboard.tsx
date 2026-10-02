@@ -1,7 +1,9 @@
-import { StyleSheet, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
 import { AppText } from '@/components/AppText';
+import { Button } from '@/components/Button';
 import { Card, CardHeader, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
@@ -32,6 +34,7 @@ export function OtherStaffDashboard() {
   return (
     <Screen refreshing={query.refreshing} onRefresh={query.refresh}>
       <DashboardHeader name={d.user_full_name} location={d.location_label} />
+      <Button title="Open billing" onPress={() => router.push('/billing')} />
 
       <StatsGrid>
         <StatTile label="Draft quotations" value={String(d.draft_quotations_count)} caption="not yet submitted" />
@@ -54,7 +57,11 @@ export function OtherStaffDashboard() {
             return (
               <View key={i.id}>
                 <Divider />
-                <View style={styles.row}>
+                <Pressable
+                  style={styles.row}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${i.invoice_number}`}
+                  onPress={() => router.push({ pathname: '/billing/[id]', params: { id: String(i.id) } })}>
                   <View style={panelStyles.rowMain}>
                     <AppText variant="bodyStrong">
                       {i.invoice_number} · {i.name}
@@ -67,7 +74,7 @@ export function OtherStaffDashboard() {
                     <AppText variant="bodyStrong">AED {formatMoney(Number(i.subtotal), 0)}</AppText>
                     <Chip label={status?.label ?? roleLabel(i.status)} colors={status ?? neutralChip} />
                   </View>
-                </View>
+                </Pressable>
               </View>
             );
           })

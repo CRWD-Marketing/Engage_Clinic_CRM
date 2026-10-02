@@ -150,6 +150,14 @@ export const inboxColors = {
   avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
 } as const;
 
+/** Invoice money-status chips on the billing screens (billing/index.blade.php). */
+export const billingStatusColors: Record<'voided' | 'paid' | 'partly_paid' | 'outstanding', ChipColors> = {
+  paid: { bg: '#E3F1E9', fg: '#2E7D5B' },
+  partly_paid: { bg: '#F7EEDD', fg: '#B97F24' },
+  outstanding: { bg: '#F9E4E2', fg: '#B3261E' },
+  voided: { bg: '#EEF0F2', fg: '#6B7A8C' },
+};
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

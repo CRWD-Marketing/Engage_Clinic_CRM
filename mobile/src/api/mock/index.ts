@@ -27,6 +27,7 @@ import {
   mySessionPayload,
   sessionPayload,
 } from './presenters';
+import { createBillingApi } from './billing';
 import { createBookingApi } from './booking';
 import { createContactsApi } from './contacts';
 import { createDashboardApi } from './dashboard';
@@ -394,6 +395,7 @@ export function createMockApi(): ApiClient {
     contacts: createContactsApi(),
     therapists: createTherapistsApi(),
     reports: createReportsApi(),
+    billing: createBillingApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),

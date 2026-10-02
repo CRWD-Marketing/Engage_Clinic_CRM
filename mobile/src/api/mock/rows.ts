@@ -100,6 +100,27 @@ export interface InvoiceRow {
   credit_amount: string;
   voided_at: string | null;
   insurance_coverage_amount: string;
+  due_date: string;
+  credit_reason: string | null;
+  void_reason: string | null;
+  replaces_invoice_id: number | null;
+  replaced_by_invoice_id: number | null;
+  sent_to: string | null;
+  sent_at: string | null;
+  reminder_sent_at: string | null;
+  reminders_count: number;
+  claim_reference: string | null;
+}
+
+/** `payments` table: receipts against an invoice. */
+export interface PaymentRow {
+  id: number;
+  invoice_id: number;
+  receipt_number: string;
+  amount: string;
+  method: string;
+  received_on: string;
+  reference: string | null;
 }
 
 /** `invoice_line_items` table: only the columns the reports read. */
@@ -146,6 +167,7 @@ export interface MockDb {
   whatsappMessages: WhatsappMessage[];
   invoices: InvoiceRow[];
   invoiceLineItems: InvoiceLineItemRow[];
+  payments: PaymentRow[];
   contacts: ContactRow[];
   patientDocuments: PatientDocumentRow[];
 }

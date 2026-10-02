@@ -1063,6 +1063,111 @@ export interface OtherStaffDashboard {
 }
 
 // ---------------------------------------------------------------------------
+// Billing & insurance
+// ---------------------------------------------------------------------------
+
+/** An invoice as the billing page lists it (App\Services\Billing\InvoicePresenter::row()). Amounts are numbers. */
+export interface BillingInvoice {
+  id: number;
+  number: string;
+  patient_id: number;
+  patient: string;
+  /** Who the invoice is billed to. */
+  parent: string;
+  parent_email: string | null;
+  payer: string;
+  /** "Oct 2026" */
+  period: string;
+  issued: YmdString;
+  issued_label: string;
+  due: YmdString;
+  due_label: string;
+  net: number;
+  vat: number;
+  total: number;
+  insurer_share: number;
+  family_share: number;
+  paid: number;
+  /** Credit notes issued against it (VAT inclusive). */
+  credit: number;
+  credit_reason: string | null;
+  /** total − credit − paid, never below 0. */
+  balance: number;
+  /** Money status, derived from receipts and credit. */
+  status: 'voided' | 'paid' | 'partly_paid' | 'outstanding';
+  status_label: string;
+  /** The claim-side status stored on the invoice (draft, issued, submitted, pending_info, paid, rejected). */
+  claim_status: string;
+  claim_reference: string | null;
+  voided: boolean;
+  voided_on: string | null;
+  void_reason: string | null;
+  /** Invoice number this one replaced / was replaced by. */
+  replaces: string | null;
+  replaced_by: string | null;
+  sent_to: string | null;
+  sent_at: string | null;
+  reminder_sent_at: string | null;
+  reminders_count: number;
+  /** Positive when overdue. */
+  days_past_due: number;
+  age_label: string;
+  receipts: { id: number; number: string; amount: number; method: string; date: string; reference: string | null }[];
+}
+
+/** GET /billing — the parts of the billing page the app shows so far. */
+export interface BillingOverview {
+  /** Has the `create_invoice` action and is not view-only on Billing. */
+  can_invoice: boolean;
+  month_label: string;
+  payer_summary: string;
+  tiles: { invoiced_mtd: number; collected_mtd: number; outstanding_claims: number; avg_claim_cycle: number };
+  /** Newest first, at most 120. */
+  invoices: BillingInvoice[];
+  revenue_by_payer: { payer: string; amount: number; pct: number }[];
+  /** Payment::METHODS */
+  methods: string[];
+  clinic_name: string;
+}
+
+/** POST /billing/invoices/{id}/payments */
+export interface InvoicePaymentRequest {
+  amount: number;
+  method: string;
+  /** "YYYY-MM-DD" */
+  received_on: string;
+  reference?: string | null;
+}
+
+/** POST /billing/invoices/{id}/credit */
+export interface InvoiceCreditRequest {
+  amount: number;
+  reason: string;
+}
+
+/** POST /billing/invoices/{id}/void */
+export interface InvoiceVoidRequest {
+  reason: string;
+  /** Raise a corrected invoice under a new number (default true). */
+  reissue?: boolean;
+}
+
+/** POST /billing/invoices/{id}/send */
+export interface InvoiceEmailRequest {
+  to: string;
+  cc?: string | null;
+  subject: string;
+  message: string;
+  kind?: 'invoice' | 'reminder';
+}
+
+/** What the invoice actions answer with. */
+export interface InvoiceActionResponse {
+  message: string;
+  invoice: BillingInvoice;
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 
