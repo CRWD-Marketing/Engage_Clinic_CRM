@@ -380,7 +380,7 @@ function DetailsForm({ user }: { user: User }) {
 
 /** Whether this module has a real mobile screen for this user yet. */
 function onMobile(user: User, module: ModuleKey): boolean {
-  if (module === 'dashboard') return ['THERAPIST', 'CLINICAL_SUPERVISOR', 'COORDINATOR', 'FULL_ADMIN'].includes(user.role);
+  if (module === 'dashboard') return true;
   // The Therapists page is for people who see the whole roster; a therapist's own schedule is their Calendar tab.
   if (module === 'therapists') return user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own';
   return ['calendar', 'patients', 'whatsapp', 'leads', 'contacts', 'reports'].includes(module);

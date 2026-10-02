@@ -268,6 +268,50 @@ export function WaitlistCard({ entries }: { entries: WaitlistEntry[] }) {
   );
 }
 
+export type BarListRow = { label: string; value: number; text: string; color: string };
+
+/** A card of labelled horizontal bars on one fixed scale (lead sources, staff by role, payer mix, claims aging). */
+export function BarListCard({
+  title,
+  rows,
+  scale,
+  empty,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  rows: BarListRow[];
+  /** Axis maximum; defaults to the largest value. */
+  scale?: number;
+  empty: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const max = scale ?? Math.max(1, ...rows.map((r) => r.value));
+  // A non-empty bar never drops below 4% so it stays visible.
+  const width = (value: number) => (value > 0 ? Math.max(4, Math.min(100, Math.round((value / max) * 100))) : 0);
+  return (
+    <Card style={styles.barCard}>
+      <CardHeader title={title} actionLabel={actionLabel} onAction={onAction} />
+      {rows.length === 0 ? (
+        <AppText variant="caption">{empty}</AppText>
+      ) : (
+        rows.map((row) => (
+          <View key={row.label} style={styles.barRow} accessible accessibilityLabel={`${row.label}: ${row.text}`}>
+            <AppText style={styles.barLabel} numberOfLines={1}>
+              {row.label}
+            </AppText>
+            <View style={styles.barTrack}>
+              <View style={[styles.barFill, { width: `${width(row.value)}%`, backgroundColor: row.color }]} />
+            </View>
+            <AppText style={styles.barValue}>{row.text}</AppText>
+          </View>
+        ))
+      )}
+    </Card>
+  );
+}
+
 export const panelStyles = StyleSheet.create({
   pressed: { backgroundColor: colors.pageAlt },
   rowMain: { flex: 1, minWidth: 0 },
@@ -311,4 +355,10 @@ const styles = StyleSheet.create({
   waitlist: { gap: spacing.sm },
   waitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   waitIndex: { width: 20, fontFamily: fonts.heading, fontSize: 14, color: colors.pink },
+  barCard: { gap: spacing.sm },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  barLabel: { width: 96, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.text },
+  barTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.divider, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 5 },
+  barValue: { minWidth: 24, textAlign: 'right', fontFamily: fonts.bodyExtraBold, fontSize: 13, color: colors.navy },
 });

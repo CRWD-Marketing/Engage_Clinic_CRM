@@ -986,6 +986,79 @@ export interface AdminDashboard {
   whatsapp_inbox: WhatsappContact[];
 }
 
+/** DashboardController sales view (leadMetrics + whatsappMetrics + salesMetrics) as JSON. */
+export interface SalesDashboard {
+  user_full_name: string;
+  location_label: string;
+  new_leads_count: number;
+  new_leads_delta: number;
+  /** Leads assigned to this rep that are neither enrolled nor terminated. */
+  my_active_leads_count: number;
+  /** Clinic-wide leads still "new". */
+  awaiting_contact_count: number;
+  /** This rep's active leads, newest first, first 4. */
+  my_leads_pipeline: Lead[];
+  lead_sources: LeadSourceRow[];
+  lead_sources_scale: number;
+  whatsapp_inbox: WhatsappContact[];
+}
+
+/** DashboardController HR view (scheduleMetrics + staffMetrics) as JSON. */
+export interface HrDashboard {
+  user_full_name: string;
+  location_label: string;
+  active_staff_count: number;
+  new_hires_this_month: number;
+  sessions_today_count: number;
+  rooms_in_use_count: number;
+  active_therapists_count: number;
+  attendance_rate: number | null;
+  attendance_delta: number | null;
+  today_sessions: CalendarSessionPayload[];
+  /** Most staff first. */
+  staff_by_role: { role: string; count: number }[];
+  /** Latest start date first, first 4. */
+  recent_staff: { id: number; full_name: string; job_title: string | null; role: string; start_date: IsoDateTime | null }[];
+}
+
+/** DashboardController finance view (financeMetrics) as JSON. Payer and amounts only, never child names. */
+export interface FinanceDashboard {
+  user_full_name: string;
+  location_label: string;
+  revenue_mtd: number;
+  revenue_delta: number | null;
+  last_month_name: string;
+  /** This month's invoices already marked paid (subtotal). */
+  collected_mtd: number;
+  claims_pending_amount: number;
+  claims_pending_count: number;
+  oldest_claim_days: number | null;
+  /** Open claims by age: 0-14, 15-30, 31-60, 60+ days. */
+  aging_buckets: { label: string; amount: number; count: number }[];
+  /** This month, largest first. */
+  revenue_by_payer: { payer: string; total: number; percent: number; color: string }[];
+}
+
+/** DashboardController other-staff view (otherStaffMetrics) as JSON: invoices and quotations only. */
+export interface OtherStaffDashboard {
+  user_full_name: string;
+  location_label: string;
+  draft_quotations_count: number;
+  awaiting_payment_count: number;
+  paid_this_month_count: number;
+  /** Latest issue date first, first 6. */
+  recent_invoices: {
+    id: number;
+    invoice_number: string;
+    /** Child's name, or "Unknown". */
+    name: string;
+    payer: string;
+    issue_date: IsoDateTime;
+    subtotal: string;
+    status: string;
+  }[];
+}
+
 // ---------------------------------------------------------------------------
 // Contacts (website contact form + booking widget submissions)
 // ---------------------------------------------------------------------------

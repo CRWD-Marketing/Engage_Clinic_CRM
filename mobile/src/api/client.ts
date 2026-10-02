@@ -9,6 +9,10 @@
 
 import { createMockApi } from './mock';
 import type {
+  FinanceDashboard,
+  HrDashboard,
+  OtherStaffDashboard,
+  SalesDashboard,
   PatientDocumentItem,
   PatientDocumentRequest,
   PatientUpdateRequest,
@@ -84,6 +88,14 @@ export interface ApiClient {
     coordinator(): Promise<CoordinatorDashboard>;
     /** GET /dashboard for FULL_ADMIN (lead, schedule, billing, patient and inbox metrics). 403 for other roles. */
     admin(): Promise<AdminDashboard>;
+    /** GET /dashboard for SALES_STAFF. 403 for other roles. */
+    sales(): Promise<SalesDashboard>;
+    /** GET /dashboard for HR_STAFF. 403 for other roles. */
+    hr(): Promise<HrDashboard>;
+    /** GET /dashboard for FINANCE_STAFF. 403 for other roles. */
+    finance(): Promise<FinanceDashboard>;
+    /** GET /dashboard for OTHER_STAFF. 403 for other roles. */
+    otherStaff(): Promise<OtherStaffDashboard>;
   };
   patients: {
     /**

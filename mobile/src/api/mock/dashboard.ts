@@ -10,6 +10,10 @@ import type { ApiClient } from '../client';
 import { ApiError } from '../errors';
 import type {
   AdminDashboard,
+  FinanceDashboard,
+  HrDashboard,
+  OtherStaffDashboard,
+  SalesDashboard,
   CoordinatorDashboard,
   ExpiringAuthorization,
   LeadSourceRow,
@@ -422,11 +426,153 @@ function adminDashboard(): AdminDashboard {
   };
 }
 
+// ---------------------------------------------------------------------------
+// SALES_STAFF, HR_STAFF, FINANCE_STAFF, OTHER_STAFF
+// ---------------------------------------------------------------------------
+
+function requireRole(role: string, who: string) {
+  const user = requireUser();
+  requireFeature(user, 'dashboard');
+  if (user.role !== role) throw new ApiError(403, { message: `This dashboard is for ${who}.` });
+  return user;
+}
+
+const latestInbox = (db: MockDb) =>
+  [...db.whatsappContacts].sort((a, b) => (b.last_message_at ?? '').localeCompare(a.last_message_at ?? '')).slice(0, 3);
+
+function salesDashboard(): SalesDashboard {
+  const user = requireRole('SALES_STAFF', 'sales staff');
+  const db = getDb();
+  const now = new Date();
+  const leads = newLeads(db, now);
+  const sources = leadSources(db, now);
+  // Lead::scopeActive(): not enrolled, not terminated.
+  const mine = db.leads.filter((l) => l.assigned_to === user.id && l.status !== 'enrolled' && l.status !== 'terminated');
+  return {
+    user_full_name: fullName(user),
+    location_label: LOCATION_LABEL,
+    new_leads_count: leads.count,
+    new_leads_delta: leads.delta,
+    my_active_leads_count: mine.length,
+    awaiting_contact_count: db.leads.filter((l) => l.status === 'new').length,
+    my_leads_pipeline: [...mine].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 4),
+    lead_sources: sources.rows,
+    lead_sources_scale: sources.scale,
+    whatsapp_inbox: latestInbox(db),
+  };
+}
+
+function hrDashboard(): HrDashboard {
+  const user = requireRole('HR_STAFF', 'HR staff');
+  const db = getDb();
+  const now = new Date();
+  const today = todayYmd(now);
+  const schedule = scheduleMetrics(db, now);
+  const startDay = (u: { start_date: string | null }) => (u.start_date ? isoToYmd(u.start_date) : '');
+
+  const byRole = new Map<string, number>();
+  for (const u of db.users) byRole.set(u.role, (byRole.get(u.role) ?? 0) + 1);
+
+  return {
+    user_full_name: fullName(user),
+    location_label: LOCATION_LABEL,
+    active_staff_count: db.users.filter((u) => u.is_active).length,
+    new_hires_this_month: db.users.filter((u) => startDay(u) >= monthStartOf(today) && startDay(u) <= monthEndOf(today)).length,
+    sessions_today_count: schedule.todayList.length,
+    rooms_in_use_count: schedule.roomsInUse,
+    active_therapists_count: schedule.activeTherapists,
+    attendance_rate: schedule.attendanceRate,
+    attendance_delta: schedule.attendanceDelta,
+    today_sessions: schedule.todayList.map((s) => sessionPayload(db, s, now)),
+    staff_by_role: [...byRole].map(([role, count]) => ({ role, count })).sort((a, b) => b.count - a.count),
+    recent_staff: [...db.users]
+      .sort((a, b) => startDay(b).localeCompare(startDay(a)))
+      .slice(0, 4)
+      .map((u) => ({ id: u.id, full_name: fullName(u), job_title: u.job_title, role: u.role, start_date: u.start_date })),
+  };
+}
+
+const PAYER_COLORS = ['#C8355F', '#16436E', '#B97F24', '#6E4FA8', '#2E7D5B', '#24619C'];
+const AGING: [string, number, number | null][] = [
+  ['0-14 days', 0, 14],
+  ['15-30 days', 15, 30],
+  ['31-60 days', 31, 60],
+  ['60+ days', 61, null],
+];
+
+function financeDashboard(): FinanceDashboard {
+  const user = requireRole('FINANCE_STAFF', 'finance staff');
+  const db = getDb();
+  const now = new Date();
+  const today = todayYmd(now);
+  const thisMonth = db.invoices.filter((i) => isoToYmd(i.issue_date) >= monthStartOf(today) && isoToYmd(i.issue_date) <= monthEndOf(today));
+  const openClaims = db.invoices.filter((i) => i.payer !== 'Self-pay' && (i.status === 'submitted' || i.status === 'pending_info'));
+
+  const byPayer = new Map<string, number>();
+  for (const i of thisMonth) byPayer.set(i.payer, (byPayer.get(i.payer) ?? 0) + Number(i.subtotal));
+  const total = Math.max(0.01, [...byPayer.values()].reduce((a, b) => a + b, 0));
+
+  return {
+    user_full_name: fullName(user),
+    location_label: LOCATION_LABEL,
+    ...billingMetrics(db, now),
+    collected_mtd: thisMonth.filter((i) => i.status === 'paid').reduce((sum, i) => sum + Number(i.subtotal), 0),
+    aging_buckets: AGING.map(([label, min, max]) => {
+      const claims = openClaims.filter((c) => {
+        const age = diffDays(isoToYmd(c.issue_date), today);
+        return age >= min && (max === null || age <= max);
+      });
+      return { label, amount: claims.reduce((sum, c) => sum + Number(c.insurance_coverage_amount), 0), count: claims.length };
+    }),
+    revenue_by_payer: [...byPayer]
+      .sort((a, b) => b[1] - a[1])
+      .map(([payer, amount], i) => ({
+        payer,
+        total: amount,
+        percent: Math.round((amount / total) * 100),
+        color: PAYER_COLORS[i % PAYER_COLORS.length],
+      })),
+  };
+}
+
+function otherStaffDashboard(): OtherStaffDashboard {
+  const user = requireRole('OTHER_STAFF', 'invoice and quotation staff');
+  const db = getDb();
+  const today = todayYmd();
+  const inMonth = (iso: string) => isoToYmd(iso) >= monthStartOf(today) && isoToYmd(iso) <= monthEndOf(today);
+  return {
+    user_full_name: fullName(user),
+    location_label: LOCATION_LABEL,
+    draft_quotations_count: db.invoices.filter((i) => i.status === 'draft').length,
+    awaiting_payment_count: db.invoices.filter((i) => i.status === 'submitted' || i.status === 'pending_info').length,
+    paid_this_month_count: db.invoices.filter((i) => inMonth(i.issue_date) && i.status === 'paid').length,
+    recent_invoices: [...db.invoices]
+      .sort((a, b) => b.issue_date.localeCompare(a.issue_date) || b.id - a.id)
+      .slice(0, 6)
+      .map((i) => {
+        const patient = db.patients.find((p) => p.id === i.patient_id);
+        return {
+          id: i.id,
+          invoice_number: i.invoice_number,
+          name: db.leads.find((l) => l.id === patient?.lead_id)?.child_name ?? 'Unknown',
+          payer: i.payer,
+          issue_date: i.issue_date,
+          subtotal: i.subtotal,
+          status: i.status,
+        };
+      }),
+  };
+}
+
 export function createDashboardApi(): ApiClient['dashboard'] {
   return {
     therapist: () => delay(therapistDashboard),
     supervisor: () => delay(supervisorDashboard),
     coordinator: () => delay(coordinatorDashboard),
     admin: () => delay(adminDashboard),
+    sales: () => delay(salesDashboard),
+    hr: () => delay(hrDashboard),
+    finance: () => delay(financeDashboard),
+    otherStaff: () => delay(otherStaffDashboard),
   };
 }

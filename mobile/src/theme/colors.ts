@@ -150,6 +150,15 @@ export const inboxColors = {
   avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
 } as const;
 
+/** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
+export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
+  draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },
+  submitted: { bg: '#F7EEDD', fg: '#B97F24', label: 'Submitted' },
+  pending_info: { bg: '#F7EEDD', fg: '#B97F24', label: 'Pending info' },
+  paid: { bg: '#E3F1E9', fg: '#2E7D5B', label: 'Paid' },
+  rejected: { bg: '#F9E4E2', fg: '#B3261E', label: 'Rejected' },
+};
+
 /** Patient document expiry badges (patient/show.blade.php `.pt-doc-badge-*`). */
 export const documentColors: Record<'neutral' | 'warn' | 'ok', ChipColors> = {
   neutral: { bg: '#F3EDE3', fg: '#5A6B7E' },
