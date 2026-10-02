@@ -8,6 +8,7 @@ import type { LeadStoreRequest } from '@/api/types';
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DateField } from '@/components/DateField';
 import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
@@ -52,7 +53,6 @@ export function NewLeadScreen() {
     const required: Errors = {};
     if (!childName.trim()) required.child_name = "Enter the child's name.";
     if (!parent.trim()) required.parent_guardian_name = 'Enter the parent or guardian.';
-    if (followUp && !/^\d{4}-\d{2}-\d{2}$/.test(followUp)) required.follow_up_due_at = 'Use the format YYYY-MM-DD.';
     setErrors(required);
     setFormError(null);
     if (Object.keys(required).length > 0) return;
@@ -114,11 +114,10 @@ export function NewLeadScreen() {
           value={owner}
           onChange={setOwner}
         />
-        <TextField
-          label="Follow-up date (YYYY-MM-DD)"
+        <DateField
+          label="Follow-up date"
           value={followUp}
-          onChangeText={setFollowUp}
-          keyboardType="numbers-and-punctuation"
+          onChange={setFollowUp}
           error={errors.follow_up_due_at}
         />
         <TextField label="Notes" value={notes} onChangeText={setNotes} multiline error={errors.notes} />

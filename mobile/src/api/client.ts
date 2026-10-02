@@ -9,6 +9,7 @@
 
 import { createMockApi } from './mock';
 import type {
+  AdminDashboard,
   AiState,
   CalendarFeed,
   InboxContact,
@@ -66,6 +67,8 @@ export interface ApiClient {
     supervisor(): Promise<SupervisorDashboard>;
     /** GET /dashboard for COORDINATOR (coordinatorMetrics etc.). 403 for other roles. */
     coordinator(): Promise<CoordinatorDashboard>;
+    /** GET /dashboard for FULL_ADMIN (lead, schedule, billing, patient and inbox metrics). 403 for other roles. */
+    admin(): Promise<AdminDashboard>;
   };
   patients: {
     /**

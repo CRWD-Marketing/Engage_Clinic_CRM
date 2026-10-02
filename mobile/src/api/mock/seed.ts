@@ -7,7 +7,7 @@
  */
 
 import { SYSTEM_TEMPLATES, type Department, type Role } from '@/auth/roles';
-import { addDays, clinicToIso, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
+import { addDays, addMonths, clinicToIso, diffDays, monthStartOf, todayYmd, weekdayIndex, type Ymd } from '@/utils/dates';
 
 import { blankLead, INTAKE_STEP_COLUMNS } from './leadDefaults';
 import { authorizationHoursUsed, sessionsForLead } from './presenters';
@@ -370,12 +370,40 @@ export function buildSeed(now: Date = new Date()): MockDb {
     authorizations: [],
     whatsappContacts: [],
     whatsappMessages: [],
+    invoices: [],
   };
   buildLeadActivities(db);
   buildGoals({ rnd, db, stamp });
   buildAuthorizations({ rnd, db, today, stamp });
   buildInbox({ rnd, db, today, stamp });
+  buildInvoices({ rnd, db, today });
   return db;
+}
+
+/** One invoice per patient for last month and one for this month (InvoiceSeeder-style). */
+function buildInvoices({ rnd, db, today }: { rnd: Random; db: MockDb; today: Ymd }) {
+  const thisMonth = monthStartOf(today);
+  const lastMonth = addMonths(today, -1);
+  const add = (patient: PatientRow, month: Ymd, current: boolean) => {
+    const auth = db.authorizations.find((a) => a.patient_id === patient.id && a.payer_name !== 'Self-pay');
+    const subtotal = rnd.int(60, 180) * 50;
+    // This month's invoices can't be dated after today.
+    const lastDay = current ? diffDays(thisMonth, today) : 27;
+    db.invoices.push({
+      id: db.invoices.length + 1,
+      patient_id: patient.id,
+      payer: auth ? auth.payer_name : 'Self-pay',
+      status: auth ? (current ? rnd.pick(['submitted', 'submitted', 'pending_info'] as const) : rnd.pick(['paid', 'paid', 'submitted'] as const)) : current ? 'issued' : 'paid',
+      issue_date: dateCast(addDays(month, rnd.int(0, Math.max(0, lastDay)))),
+      subtotal: subtotal.toFixed(2),
+      insurance_coverage_amount: (auth ? (subtotal * auth.coverage_percent) / 100 : 0).toFixed(2),
+    });
+  };
+  for (const patient of db.patients) {
+    add(patient, lastMonth, false);
+    // Early in the month only some families have been invoiced yet.
+    if (rnd.int(0, 3) > 0) add(patient, thisMonth, true);
+  }
 }
 
 function nearestWeekday(ymd: Ymd): Ymd {

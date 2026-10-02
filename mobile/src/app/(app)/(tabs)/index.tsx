@@ -1,4 +1,5 @@
 import { useCurrentUser } from '@/auth/session';
+import { AdminDashboard } from '@/features/dashboard/AdminDashboard';
 import { CoordinatorDashboard } from '@/features/dashboard/CoordinatorDashboard';
 import { DashboardPlaceholder } from '@/features/dashboard/DashboardPlaceholder';
 import { SupervisorDashboard } from '@/features/dashboard/SupervisorDashboard';
@@ -10,5 +11,6 @@ export default function DashboardRoute() {
   if (user.role === 'THERAPIST') return <TherapistDashboard />;
   if (user.role === 'CLINICAL_SUPERVISOR') return <SupervisorDashboard />;
   if (user.role === 'COORDINATOR') return <CoordinatorDashboard />;
+  if (user.role === 'FULL_ADMIN') return <AdminDashboard />;
   return <DashboardPlaceholder />;
 }

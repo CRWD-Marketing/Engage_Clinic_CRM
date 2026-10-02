@@ -836,6 +836,61 @@ export interface CoordinatorDashboard {
   whatsapp_inbox: WhatsappContact[];
 }
 
+/** One bar on the admin dashboard's "Lead sources · last 7 days" chart. */
+export interface LeadSourceRow {
+  source: string;
+  count: number;
+}
+
+/** An authorization renewing within 45 days (or overdue), with the values the admin card prints. */
+export interface ExpiringAuthorization {
+  id: number;
+  patient_id: number;
+  child_name: string;
+  payer_name: string;
+  /** max(0, authorized_hours_total - hoursUsed()) */
+  hours_left: number;
+  renews_at: IsoDateTime;
+  /** Whole days from today to renews_at (negative when overdue). */
+  days_to_renew: number;
+}
+
+/**
+ * DashboardController admin view (leadMetrics + scheduleMetrics +
+ * billingMetrics + patientMetrics + whatsappMetrics) as JSON.
+ */
+export interface AdminDashboard {
+  user_full_name: string;
+  location_label: string;
+  new_leads_count: number;
+  new_leads_delta: number;
+  /** Highest count first; chats and website enquiries count even if never converted to a lead. */
+  lead_sources: LeadSourceRow[];
+  /** Bar axis maximum: 10, growing in steps of 10. */
+  lead_sources_scale: number;
+  sessions_today_count: number;
+  rooms_in_use_count: number;
+  active_therapists_count: number;
+  attendance_rate: number | null;
+  attendance_delta: number | null;
+  today_sessions: CalendarSessionPayload[];
+  /** Sum of invoice subtotals issued this calendar month. */
+  revenue_mtd: number;
+  /** % change vs last month's total; null when last month had no invoices. */
+  revenue_delta: number | null;
+  last_month_name: string;
+  claims_pending_amount: number;
+  claims_pending_count: number;
+  oldest_claim_days: number | null;
+  waitlist_count: number;
+  avg_wait_weeks: number | null;
+  waitlist_next_up: WaitlistEntry[];
+  /** Soonest renewal first, first 4. */
+  authorizations_expiring: ExpiringAuthorization[];
+  /** Latest 3 conversations by last_message_at. */
+  whatsapp_inbox: WhatsappContact[];
+}
+
 // ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------

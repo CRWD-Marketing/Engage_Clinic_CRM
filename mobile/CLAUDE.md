@@ -87,6 +87,8 @@ Everything visual comes from `src/theme/`:
 
 These are copied from the web app. Don't hard-code colours in screens.
 
+Dates are picked with `src/components/DateField.tsx` (a JS month calendar in a modal, same on iOS, Android and web; value is `YYYY-MM-DD` or `''`). Don't add typed date inputs.
+
 ## Backend notes
 
 - **There is no API or Sanctum yet.** Laravel has session + CSRF web routes only, and many pages return HTML only. A real backend will need token auth and JSON endpoints, which requires the user's OK because it means touching the Laravel app.
@@ -102,7 +104,9 @@ These are copied from the web app. Don't hard-code colours in screens.
   - `whatsapp_contacts.assigned_user_id` is accepted by `POST /whatsapp/{id}/ai-state` but no UI sends or shows it.
   - Family details (`child_name`, `interested_in`, `insurance` on a contact) have no edit endpoint.
 - **Inbox JSON**: `GET /whatsapp/poll` and `POST /whatsapp/send` return rendered HTML fragments, and ai-state / convert-to-lead redirect. The mobile API needs JSON equivalents (shapes in `src/api/types.ts`: InboxContact, InboxThread, InboxPoll).
+- **Admin dashboard**: `GET /dashboard` is HTML only; the API needs the `AdminDashboard` shape in `src/api/types.ts`. The mock has no `contacts` table yet, so the "Website" lead-source bar counts leads only (Laravel also adds contact-form submissions), and its `invoices` rows hold only the columns the dashboard reads.
 - **Known Laravel issues (for later, don't fix):**
+  - Admin dashboard "oldest Nd" uses `issue_date->diffInDays(now())`, which is a float in Carbon 3, so the web can print e.g. "oldest 12.43d". The mock returns whole days.
   - Converting a chat to a lead writes `source` as `ucfirst(channel)` ("Whatsapp"), which doesn't match the lead board's "WhatsApp" badge key.
   - `POST /whatsapp/message/{message}/convert-to-lead` exists but nothing in the UI calls it.
   - Suspended users (`is_active = false`) can still log in; `LoginController` never checks. The mock login does reject them.
@@ -136,7 +140,7 @@ Paths in these docs are relative to the Laravel root (the parent of `mobile/`).
 | 4a | Coordinator dashboard mirroring `coordinator.blade.php` (6 stats, clinic schedule, intake pipeline, WhatsApp preview, no-shows needing follow-up) and the **WhatsApp / Instagram / Facebook inbox** for every role with the `whatsapp` module: list (search, channel pills, AI/staff chips, attention dot, unread), conversation (bubbles, date dividers, reply with Sending/Sent/Delivered, AI-state switch, read-only family details, Convert to Lead), 4-second polling | Built 2026-10-01; rules checked by script, walked through in a browser (plus supervisor/therapist regression). **Remaining: test on a phone** |
 | 4b | Leads for every role with the `leads` module: board as a stage switcher (New / Contacted / Initial assessment / Enrolled + Terminated history with Restore), lead panel (Success → next stage, Follow-up, notes, assign owner, follow-up date, terminate with reason, Convert to client, intake checklist status, "where this lead came from", assignment log), New lead form; all gated by `canDo` like LeadController | Built 2026-10-01 and pushed; rules checked by script, walked through in a browser. **Remaining: test on a phone** |
 | 4c | Lead intake checklist: the 7 step forms (parent contact, child details, intake form, assessment, funding with per-service payer rows, package multi-select, consent), same fields/options/required marks as the web's `ic-modal`s; saving stamps the step (`intake_step`), 7/7 auto-enrols, and Convert to client carries diagnosis, programme and an insurance authorization from the funding rows. Step definitions live in `src/features/leads/intakeSteps.ts` | Built 2026-10-02; rules checked by script, walked through in a browser. **Remaining: test on a phone** |
-| 5 | Admin overview dashboard | Not started |
+| 5 | Admin overview dashboard (FULL_ADMIN): 6 stat tiles (new leads, sessions today, attendance, revenue MTD, waitlist, claims pending), today's schedule, lead sources chart, WhatsApp inbox, authorizations expiring, waitlist, + New Lead. Also the shared `DateField` date picker (intake dates, lead follow-up, new lead). HR / Sales / Finance / Other staff dashboards still show the placeholder | Built 2026-10-02; rules checked by script, walked through in a browser. **Remaining: test on a phone** |
 | 6 | Contacts (website enquiries / booking requests) for coordinator + sales | Not started (user asked for it later) |
 | 7 | Therapists page (per-therapist schedule, close/reopen a session) for supervisor | Not started (user asked for it later) |
 | 8 | Reports (read-only summary) for supervisor / admin | Not started (user asked for it later) |

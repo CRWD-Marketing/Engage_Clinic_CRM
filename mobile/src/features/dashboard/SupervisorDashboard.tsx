@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
-import type { PatientNote, WaitlistEntry } from '@/api/types';
+import type { PatientNote } from '@/api/types';
 import { canReviewNotes } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
@@ -20,6 +20,7 @@ import {
   AttendanceTile,
   DashboardHeader,
   NotesAwaitingCard,
+  WaitlistCard,
   openPatient,
   panelStyles,
   ScheduleTodayCard,
@@ -136,33 +137,6 @@ function FlaggedNotesCard({ notes, onOpen }: { notes: PatientNote[]; onOpen: () 
   );
 }
 
-function WaitlistCard({ entries }: { entries: WaitlistEntry[] }) {
-  return (
-    <Card style={styles.waitlist}>
-      <AppText variant="heading">Waitlist — next up</AppText>
-      {entries.length === 0 ? (
-        <AppText variant="caption">No one on the waitlist.</AppText>
-      ) : (
-        entries.map((e, i) => (
-          <View key={e.id} style={styles.waitRow}>
-            <AppText style={styles.waitIndex}>{i + 1}</AppText>
-            <View style={styles.flex}>
-              <AppText variant="bodyStrong">
-                {e.child_name || e.parent_guardian_name || 'Unnamed enquiry'}
-                {e.child_age ? ` · ${e.child_age}` : ''}
-              </AppText>
-              <AppText variant="caption">
-                {e.interested_in || 'Interest not captured'}
-                {e.source ? ` · ${e.source}` : ''} · waiting {e.waiting_weeks} {plural(e.waiting_weeks, 'wk', 'wks')}
-              </AppText>
-            </View>
-          </View>
-        ))
-      )}
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   flaggedHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
@@ -181,7 +155,4 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   bangText: { fontFamily: fonts.bodyExtraBold, fontSize: 11, color: colors.white },
-  waitlist: { gap: spacing.sm },
-  waitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  waitIndex: { width: 20, fontFamily: fonts.heading, fontSize: 14, color: colors.pink },
 });

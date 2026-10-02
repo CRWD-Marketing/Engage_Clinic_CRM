@@ -9,6 +9,7 @@ import type { FundingServiceRow, IntakeOptions, LeadDetail, LeadUpdateRequest, P
 import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { DateField } from '@/components/DateField';
 import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
@@ -231,10 +232,12 @@ function FieldInput({
           {error ? <FieldError text={error} /> : null}
         </View>
       );
+    case 'date':
+      return <DateField label={label} value={String(value ?? '')} onChange={onChange} error={error} />;
     default:
       return (
         <TextField
-          label={field.kind === 'date' ? `${label} (YYYY-MM-DD)` : label}
+          label={label}
           value={String(value ?? '')}
           onChangeText={onChange}
           error={error}
@@ -248,9 +251,7 @@ function FieldInput({
                 ? 'phone-pad'
                 : field.kind === 'number'
                   ? 'number-pad'
-                  : field.kind === 'date'
-                    ? 'numbers-and-punctuation'
-                    : 'default'
+                  : 'default'
           }
         />
       );

@@ -79,6 +79,17 @@ export interface CalendarSessionRow {
   updated_at: string;
 }
 
+/** `invoices` table: only the columns the dashboard reads (billing is a later milestone). */
+export interface InvoiceRow {
+  id: number;
+  patient_id: number;
+  payer: string;
+  status: 'draft' | 'issued' | 'submitted' | 'pending_info' | 'paid' | 'rejected';
+  issue_date: string;
+  subtotal: string;
+  insurance_coverage_amount: string;
+}
+
 export interface MockDb {
   roleTemplates: RoleTemplateRow[];
   users: UserRow[];
@@ -93,4 +104,5 @@ export interface MockDb {
   authorizations: PatientAuthorizationRow[];
   whatsappContacts: WhatsappContact[];
   whatsappMessages: WhatsappMessage[];
+  invoices: InvoiceRow[];
 }

@@ -3,13 +3,16 @@
  * helpers and the per-role views built on them.
  */
 
-import { addDays, mondayOf, todayYmd } from '@/utils/dates';
+import { addDays, addMonths, diffDays, formatMonthLong, isoToYmd, mondayOf, monthEndOf, monthStartOf, todayYmd } from '@/utils/dates';
 import { fullName } from '@/utils/format';
 
 import type { ApiClient } from '../client';
 import { ApiError } from '../errors';
 import type {
+  AdminDashboard,
   CoordinatorDashboard,
+  ExpiringAuthorization,
+  LeadSourceRow,
   IntakeLead,
   Patient,
   SupervisorDashboard,
@@ -17,7 +20,7 @@ import type {
   WaitlistEntry,
 } from '../types';
 import { presentNoteWithPatient } from './notes';
-import { autoCompletePastSessions, sessionPayload } from './presenters';
+import { authorizationHoursUsed, autoCompletePastSessions, sessionPayload } from './presenters';
 import type { CalendarSessionRow, MockDb, PatientRow } from './rows';
 import { delay, getDb, requireFeature, requireUser } from './server';
 
@@ -279,10 +282,149 @@ function coordinatorDashboard(): CoordinatorDashboard {
   };
 }
 
+// ---------------------------------------------------------------------------
+// FULL_ADMIN
+// ---------------------------------------------------------------------------
+
+const CHART_BUCKETS = ['whatsapp', 'instagram', 'facebook', 'website', 'referral', 'google'];
+
+/** DashboardController::sourceBucket(): a lead's free-text source → chart channel. */
+function sourceBucket(source: string | null): string {
+  const key = (source ?? '').toLowerCase().replace(/[ \-_]/g, '');
+  if (key === '') return 'Other';
+  if (key.includes('whatsapp')) return 'whatsapp';
+  if (key.includes('instagram')) return 'instagram';
+  if (key.includes('facebook') || key.includes('messenger')) return 'facebook';
+  if (key.includes('website') || key.includes('contactus') || key.includes('webform')) return 'website';
+  if (key.includes('referral')) return 'referral';
+  if (key.includes('google')) return 'google';
+  return source as string;
+}
+
+/**
+ * leadMetrics() source chart: every new conversation in the last 7 days by
+ * channel, plus new leads not already counted through a conversation.
+ * NOTE: Laravel also adds website Contact form submissions; the mock has no
+ * contacts table until the Contacts milestone, so Website counts leads only.
+ */
+function leadSources(db: MockDb, now: Date): { rows: LeadSourceRow[]; scale: number } {
+  const weekStart = new Date(now.getTime() - WEEK_MS).toISOString();
+  const chats = db.whatsappContacts.filter((c) => c.created_at >= weekStart);
+  const chatCount = (channel: string) => chats.filter((c) => c.channel === channel).length;
+  const alreadyCounted = new Set(chats.map((c) => c.lead_id).filter((id) => id !== null));
+
+  const leadCounts = new Map<string, number>();
+  for (const lead of db.leads) {
+    if (lead.created_at < weekStart || alreadyCounted.has(lead.id)) continue;
+    const bucket = sourceBucket(lead.source);
+    leadCounts.set(bucket, (leadCounts.get(bucket) ?? 0) + 1);
+  }
+  const leadCount = (bucket: string) => leadCounts.get(bucket) ?? 0;
+
+  const rows: LeadSourceRow[] = [
+    { source: 'WhatsApp', count: chatCount('whatsapp') + leadCount('whatsapp') },
+    { source: 'Instagram', count: chatCount('instagram') + leadCount('instagram') },
+    { source: 'Facebook', count: chatCount('facebook') + leadCount('facebook') },
+    { source: 'Website', count: leadCount('website') },
+    { source: 'Referral', count: leadCount('referral') },
+    { source: 'Google', count: leadCount('google') },
+    ...[...leadCounts].filter(([bucket]) => !CHART_BUCKETS.includes(bucket)).map(([source, count]) => ({ source, count })),
+  ].sort((a, b) => b.count - a.count);
+
+  const max = Math.max(0, ...rows.map((r) => r.count));
+  return { rows, scale: Math.max(10, Math.ceil(max / 10) * 10) };
+}
+
+/** DashboardController::billingMetrics(). */
+function billingMetrics(db: MockDb, now: Date) {
+  const today = todayYmd(now);
+  const lastMonthStart = addMonths(today, -1);
+  const sumBetween = (from: string, to: string) =>
+    db.invoices
+      .filter((i) => isoToYmd(i.issue_date) >= from && isoToYmd(i.issue_date) <= to)
+      .reduce((sum, i) => sum + Number(i.subtotal), 0);
+  const mtd = sumBetween(monthStartOf(today), monthEndOf(today));
+  const lastMonth = sumBetween(lastMonthStart, monthEndOf(lastMonthStart));
+
+  const openClaims = db.invoices.filter((i) => i.payer !== 'Self-pay' && (i.status === 'submitted' || i.status === 'pending_info'));
+  return {
+    revenue_mtd: mtd,
+    revenue_delta: lastMonth > 0 ? Math.round(((mtd - lastMonth) / lastMonth) * 100) : null,
+    last_month_name: formatMonthLong(lastMonthStart).split(' ')[0],
+    claims_pending_amount: openClaims.reduce((sum, i) => sum + Number(i.insurance_coverage_amount), 0),
+    claims_pending_count: openClaims.length,
+    oldest_claim_days:
+      openClaims.length > 0 ? Math.max(...openClaims.map((i) => diffDays(isoToYmd(i.issue_date), today))) : null,
+  };
+}
+
+/** patientMetrics() `$authorizationsExpiring`: renewing within 45 days (or overdue), soonest first, first 4. */
+function authorizationsExpiring(db: MockDb, now: Date): ExpiringAuthorization[] {
+  const today = todayYmd(now);
+  const cutoff = new Date(now.getTime() + 45 * 86400_000).toISOString();
+  return db.authorizations
+    .filter((a) => a.renews_at !== null && a.renews_at <= cutoff)
+    .sort((a, b) => a.renews_at!.localeCompare(b.renews_at!))
+    .slice(0, 4)
+    .map((a) => {
+      const patient = db.patients.find((p) => p.id === a.patient_id);
+      const lead = patient ? db.leads.find((l) => l.id === patient.lead_id) : undefined;
+      const used = patient ? authorizationHoursUsed(db, patient.lead_id, a.covers_services, today) : 0;
+      return {
+        id: a.id,
+        patient_id: a.patient_id,
+        child_name: lead?.child_name ?? 'Unknown',
+        payer_name: a.payer_name ?? 'Insurance',
+        hours_left: Math.max(0, (a.authorized_hours_total ?? 0) - used),
+        renews_at: a.renews_at!,
+        days_to_renew: diffDays(today, isoToYmd(a.renews_at!)),
+      };
+    });
+}
+
+function adminDashboard(): AdminDashboard {
+  const user = requireUser();
+  requireFeature(user, 'dashboard');
+  if (user.role !== 'FULL_ADMIN') {
+    throw new ApiError(403, { message: 'This dashboard is for administrators.' });
+  }
+
+  const db = getDb();
+  const now = new Date();
+  const schedule = scheduleMetrics(db, now);
+  const leads = newLeads(db, now);
+  const sources = leadSources(db, now);
+  const wl = waitlist(db, now);
+
+  return {
+    user_full_name: fullName(user),
+    location_label: LOCATION_LABEL,
+    new_leads_count: leads.count,
+    new_leads_delta: leads.delta,
+    lead_sources: sources.rows,
+    lead_sources_scale: sources.scale,
+    sessions_today_count: schedule.todayList.length,
+    rooms_in_use_count: schedule.roomsInUse,
+    active_therapists_count: schedule.activeTherapists,
+    attendance_rate: schedule.attendanceRate,
+    attendance_delta: schedule.attendanceDelta,
+    today_sessions: schedule.todayList.map((s) => sessionPayload(db, s, now)),
+    ...billingMetrics(db, now),
+    waitlist_count: wl.count,
+    avg_wait_weeks: wl.avgWaitWeeks,
+    waitlist_next_up: wl.nextUp,
+    authorizations_expiring: authorizationsExpiring(db, now),
+    whatsapp_inbox: [...db.whatsappContacts]
+      .sort((a, b) => (b.last_message_at ?? '').localeCompare(a.last_message_at ?? ''))
+      .slice(0, 3),
+  };
+}
+
 export function createDashboardApi(): ApiClient['dashboard'] {
   return {
     therapist: () => delay(therapistDashboard),
     supervisor: () => delay(supervisorDashboard),
     coordinator: () => delay(coordinatorDashboard),
+    admin: () => delay(adminDashboard),
   };
 }

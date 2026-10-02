@@ -12,6 +12,7 @@ import { AppText } from '@/components/AppText';
 import { Button } from '@/components/Button';
 import { Card, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
+import { DateField } from '@/components/DateField';
 import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
@@ -233,13 +234,11 @@ function Panel({
             onChange={(v) => setFollowUp({ kind: 'preset', days: v === 'none' ? null : Number(v) })}
             disabled={!canWrite}
           />
-          <TextField
-            label="Or pick a date (YYYY-MM-DD)"
+          <DateField
+            label="Or pick a date"
             value={followUp.kind === 'custom' ? followUp.date : ''}
-            onChangeText={(date) => setFollowUp({ kind: 'custom', date })}
-            placeholder={addDays(todayYmd(), 5)}
-            keyboardType="numbers-and-punctuation"
-            editable={canWrite}
+            onChange={(date) => setFollowUp(date ? { kind: 'custom', date } : { kind: 'preset', days: null })}
+            disabled={!canWrite}
             hint={followUpDate ? followUpHint(followUpDate) : undefined}
           />
 
@@ -360,7 +359,6 @@ function Panel({
 }
 
 function followUpHint(date: string): string | undefined {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Use the format YYYY-MM-DD.';
   const days = diffDays(todayYmd(), date);
   return days === 0 ? 'Due today' : days > 0 ? `Due in ${days} day${days === 1 ? '' : 's'}` : `${Math.abs(days)} day${days === -1 ? '' : 's'} ago`;
 }

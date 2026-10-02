@@ -2,23 +2,22 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
-import type { CalendarSessionPayload, IntakeLead, WhatsappContact } from '@/api/types';
+import type { CalendarSessionPayload, IntakeLead } from '@/api/types';
 import { canAccessFeature } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
-import { Avatar } from '@/components/Avatar';
 import { Card, CardHeader, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
 import { StatTile } from '@/components/StatTile';
-import { EmptyRow, ErrorState, LoadingState } from '@/components/StateViews';
+import { ErrorState, LoadingState } from '@/components/StateViews';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
-import { colors, fonts, inboxColors, noteAgeColors, planCardColors, spacing } from '@/theme';
+import { colors, noteAgeColors, planCardColors, spacing } from '@/theme';
 import { formatTimeShort, formatWeekdayShort } from '@/utils/dates';
 import { plural } from '@/utils/format';
 
-import { AttendanceTile, DashboardHeader, panelStyles, ScheduleTodayCard, StatsGrid } from './panels';
+import { AttendanceTile, DashboardHeader, InboxPreviewCard, panelStyles, ScheduleTodayCard, StatsGrid } from './panels';
 
 /** Mirrors resources/views/dashboard/coordinator.blade.php. */
 export function CoordinatorDashboard() {
@@ -128,45 +127,6 @@ function IntakePipelineCard({ leads, onViewLeads }: { leads: IntakeLead[]; onVie
   );
 }
 
-function InboxPreviewCard({ contacts }: { contacts: WhatsappContact[] }) {
-  return (
-    <Card padded={false}>
-      <View style={[panelStyles.cardHead, styles.inboxHead]}>
-        <View style={styles.greenDot} />
-        <View style={styles.flex}>
-          <CardHeader title="WhatsApp inbox" actionLabel="Open →" onAction={() => router.navigate('/inbox')} />
-        </View>
-      </View>
-      {contacts.length === 0 ? (
-        <EmptyRow text="No conversations yet." />
-      ) : (
-        contacts.map((c) => (
-          <View key={c.id}>
-            <Divider />
-            <Pressable
-              onPress={() => router.push({ pathname: '/inbox/[id]', params: { id: String(c.id) } }, { withAnchor: true })}
-              style={({ pressed }) => [styles.inboxRow, pressed && panelStyles.pressed]}
-              accessibilityRole="button">
-              <Avatar id={c.id} name={c.name ?? '?'} size={36} />
-              <View style={panelStyles.rowMain}>
-                <AppText variant="bodyStrong">{c.name ?? 'Unknown contact'}</AppText>
-                <AppText variant="caption" numberOfLines={1}>
-                  {c.last_message_preview ?? 'No messages yet'}
-                </AppText>
-              </View>
-              {c.unread_count > 0 ? (
-                <View style={styles.unread}>
-                  <AppText style={styles.unreadText}>{c.unread_count}</AppText>
-                </View>
-              ) : null}
-            </Pressable>
-          </View>
-        ))
-      )}
-    </Card>
-  );
-}
-
 function NoShowsCard({ sessions }: { sessions: CalendarSessionPayload[] }) {
   return (
     <Card style={styles.noShows}>
@@ -202,17 +162,6 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.6 },
   emptyInline: { paddingTop: spacing.sm },
   intakeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
-  inboxHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: inboxColors.whatsappGreen },
-  inboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  unread: { backgroundColor: inboxColors.whatsappGreen, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 1 },
-  unreadText: { fontFamily: fonts.bodyExtraBold, fontSize: 11, color: colors.white },
   noShows: { backgroundColor: planCardColors.bg, borderColor: planCardColors.border, gap: spacing.sm },
   noShowTitle: { fontSize: 15 },
   noShowRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, paddingVertical: 4 },

@@ -30,6 +30,8 @@ export const colors = {
   info: '#24619C',
   infoBg: '#E7EFF7',
   white: '#FFFFFF',
+  /** Scrim behind modal sheets. */
+  overlay: 'rgba(22, 67, 110, 0.45)',
 } as const;
 
 export type ChipColors = { bg: string; fg: string };
@@ -147,6 +149,18 @@ export const inboxColors = {
   /** WhatsappContact::avatarColor() palette (6 colours, crc32(wa_id) % 6). */
   avatarPalette: ['#C8355F', '#24619C', '#B97F24', '#6E4FA8', '#1F8FA8', '#A8461F'],
 } as const;
+
+/** Admin dashboard "Lead sources" bars (dashboard/admin.blade.php `$sourceColors`). */
+export const leadSourceBarColors: Record<string, string> = {
+  WhatsApp: '#1FA855',
+  Instagram: '#C13584',
+  Website: '#24619C',
+  Referral: '#B97F24',
+  Google: '#6E4FA8',
+  'Google Ads': '#6E4FA8',
+  Facebook: '#1877F2',
+};
+export const leadSourceBarDefault = '#8A7D6C';
 
 /** Leads board (lead/index.blade.php, lead/_card.blade.php). */
 export const leadColors = {

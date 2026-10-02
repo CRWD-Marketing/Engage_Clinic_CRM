@@ -7,13 +7,14 @@ import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import type { CalendarSessionPayload, Patient, PatientNote } from '@/api/types';
+import type { CalendarSessionPayload, Patient, PatientNote, WaitlistEntry, WhatsappContact } from '@/api/types';
 import { AppText } from '@/components/AppText';
+import { Avatar } from '@/components/Avatar';
 import { Card, CardHeader, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { StatTile } from '@/components/StatTile';
 import { EmptyRow } from '@/components/StateViews';
-import { colors, colorsForActivity, fonts, noteAgeColors, planCardColors, spacing } from '@/theme';
+import { colors, colorsForActivity, fonts, inboxColors, noteAgeColors, planCardColors, spacing } from '@/theme';
 import {
   diffDays,
   formatDateTimeShort,
@@ -25,6 +26,7 @@ import {
   isoToYmd,
   todayYmd,
 } from '@/utils/dates';
+import { plural } from '@/utils/format';
 
 import { todayStatus } from './todayStatus';
 
@@ -200,6 +202,72 @@ export function TreatmentPlansCard({ title, patients }: { title: string; patient
   );
 }
 
+export function InboxPreviewCard({ contacts }: { contacts: WhatsappContact[] }) {
+  return (
+    <Card padded={false}>
+      <View style={[panelStyles.cardHead, styles.inboxHead]}>
+        <View style={styles.greenDot} />
+        <View style={styles.rowMain}>
+          <CardHeader title="WhatsApp inbox" actionLabel="Open →" onAction={() => router.navigate('/inbox')} />
+        </View>
+      </View>
+      {contacts.length === 0 ? (
+        <EmptyRow text="No conversations yet." />
+      ) : (
+        contacts.map((c) => (
+          <View key={c.id}>
+            <Divider />
+            <Pressable
+              onPress={() => router.push({ pathname: '/inbox/[id]', params: { id: String(c.id) } }, { withAnchor: true })}
+              style={({ pressed }) => [styles.inboxRow, pressed && panelStyles.pressed]}
+              accessibilityRole="button">
+              <Avatar id={c.id} name={c.name ?? '?'} size={36} />
+              <View style={panelStyles.rowMain}>
+                <AppText variant="bodyStrong">{c.name ?? 'Unknown contact'}</AppText>
+                <AppText variant="caption" numberOfLines={1}>
+                  {c.last_message_preview ?? 'No messages yet'}
+                </AppText>
+              </View>
+              {c.unread_count > 0 ? (
+                <View style={styles.unread}>
+                  <AppText style={styles.unreadText}>{c.unread_count}</AppText>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
+        ))
+      )}
+    </Card>
+  );
+}
+
+export function WaitlistCard({ entries }: { entries: WaitlistEntry[] }) {
+  return (
+    <Card style={styles.waitlist}>
+      <AppText variant="heading">Waitlist — next up</AppText>
+      {entries.length === 0 ? (
+        <AppText variant="caption">No one on the waitlist.</AppText>
+      ) : (
+        entries.map((e, i) => (
+          <View key={e.id} style={styles.waitRow}>
+            <AppText style={styles.waitIndex}>{i + 1}</AppText>
+            <View style={styles.rowMain}>
+              <AppText variant="bodyStrong">
+                {e.child_name || e.parent_guardian_name || 'Unnamed enquiry'}
+                {e.child_age ? ` · ${e.child_age}` : ''}
+              </AppText>
+              <AppText variant="caption">
+                {e.interested_in || 'Interest not captured'}
+                {e.source ? ` · ${e.source}` : ''} · waiting {e.waiting_weeks} {plural(e.waiting_weeks, 'wk', 'wks')}
+              </AppText>
+            </View>
+          </View>
+        ))
+      )}
+    </Card>
+  );
+}
+
 export const panelStyles = StyleSheet.create({
   pressed: { backgroundColor: colors.pageAlt },
   rowMain: { flex: 1, minWidth: 0 },
@@ -229,4 +297,18 @@ const styles = StyleSheet.create({
   planRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm, paddingVertical: 4 },
   planPressed: { opacity: 0.6 },
   planName: { flex: 1, fontSize: 13 },
+  inboxHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: inboxColors.whatsappGreen },
+  inboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  unread: { backgroundColor: inboxColors.whatsappGreen, borderRadius: 9, paddingHorizontal: 7, paddingVertical: 1 },
+  unreadText: { fontFamily: fonts.bodyExtraBold, fontSize: 11, color: colors.white },
+  waitlist: { gap: spacing.sm },
+  waitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  waitIndex: { width: 20, fontFamily: fonts.heading, fontSize: 14, color: colors.pink },
 });
