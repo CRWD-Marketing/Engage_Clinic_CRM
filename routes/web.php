@@ -60,6 +60,7 @@ require __DIR__.'/contact.php';
 require __DIR__.'/cms_forms.php';
 require __DIR__.'/topbar.php';
 require __DIR__.'/career.php';
+require __DIR__.'/vendor.php';
 require __DIR__.'/patient.php';
 require __DIR__.'/therapist.php';
 require __DIR__.'/billing.php';

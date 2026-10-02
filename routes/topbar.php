@@ -24,6 +24,7 @@ Route::middleware(['auth'])
         Route::get('search', [SearchController::class, 'search'])->name('search');
 
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
         Route::post('notifications/{id}/read', [NotificationController::class, 'read'])->name('notifications.read');
 
         Route::get('activity-feed', [ActivityController::class, 'index'])->name('activity.index');

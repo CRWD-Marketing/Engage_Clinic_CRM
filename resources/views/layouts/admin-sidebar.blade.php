@@ -684,6 +684,21 @@
             white-space: nowrap;
         }
         .topbar-dropdown-item.is-unread .item-title { color: #16436E; }
+        .topbar-dropdown-item.is-unread { background: #FDF8FA; }
+        .topbar-dropdown-item.is-unread:hover { background: #F8F5F0; }
+        .topbar-dropdown-item:not(.is-unread) .item-title { font-weight: 600; color: #6B7A8C; }
+        .topbar-dropdown-header.has-action { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .topbar-mark-all {
+            border: 0;
+            background: none;
+            padding: 0;
+            font: 700 11.5px 'Nunito Sans';
+            color: #C8355F;
+            text-transform: none;
+            letter-spacing: 0;
+            cursor: pointer;
+        }
+        .topbar-mark-all:hover { text-decoration: underline; }
         .topbar-dropdown-item .item-dot {
             width: 8px;
             height: 8px;
@@ -884,6 +899,21 @@
             </a>
             @endif
 
+            @if(Auth::user()->canAccessFeature('vendors'))
+            <a href="{{ route('vendors.index') }}" class="sidebar-link {{ request()->routeIs('vendors.*') ? 'active' : '' }}" title="Vendors">
+                <i class="fas fa-handshake"></i> <span class="link-label">Vendors</span>
+                @php
+                    $vendorCount = \App\Models\Vendor::whereNull('viewed_at')->count();
+                @endphp
+                @if($vendorCount > 0)
+                    <span class="badge badge-pulse">{{ $vendorCount }}</span>
+                    <span class="collapsed-dot"></span>
+                @else
+                    <span class="badge badge-zero">0</span>
+                @endif
+            </a>
+            @endif
+
             @if(Auth::user()->canAccessFeature('roles_access'))
             <a href="{{ route('roles.index') }}" class="sidebar-link {{ request()->routeIs('roles.*') || request()->routeIs('users.*') ? 'active' : '' }}" title="Roles & access">
                 <i class="fas fa-user-lock"></i> <span class="link-label">Roles & access</span>
@@ -992,11 +1022,7 @@
                         <button type="button" class="topbar-bell-btn" id="topbarBellBtn" title="Notifications">
                             <i class="fas fa-bell"></i>
                             @php
-                                $topbarUser = auth()->user();
-                                $topbarNotifCount = ($topbarUser->canAccessFeature('leads') ? \App\Models\Lead::where('status', 'new')->count() : 0)
-                                    + ($topbarUser->canAccessFeature('contacts') ? \App\Models\Contact::where('status', 'new')->count() : 0)
-                                    + ($topbarUser->canAccessFeature('whatsapp') ? \App\Models\WhatsappContact::sum('unread_count') : 0)
-                                    + $topbarUser->unreadNotifications()->count();
+                                $topbarNotifCount = \App\Support\TopbarNotifications::for(auth()->user())->count();
                             @endphp
                             <span class="topbar-bell-badge" id="topbarBellBadge" @if($topbarNotifCount <= 0) style="display:none;" @endif>{{ $topbarNotifCount > 99 ? '99+' : $topbarNotifCount }}</span>
                         </button>
@@ -1159,6 +1185,25 @@
                     })
                     .catch(error => console.error('Error updating application count:', error));
             }
+
+            const vendorBadges = document.querySelectorAll('.sidebar-link[href*="admin/vendors"] .badge');
+            if (vendorBadges.length > 0) {
+                fetch('{{ route("vendors.count") }}')
+                    .then(response => response.json())
+                    .then(data => {
+                        vendorBadges.forEach(badge => {
+                            badge.textContent = data.count || 0;
+                            if (data.count > 0) {
+                                badge.classList.remove('badge-zero');
+                                badge.classList.add('badge-pulse');
+                            } else {
+                                badge.classList.add('badge-zero');
+                                badge.classList.remove('badge-pulse');
+                            }
+                        });
+                    })
+                    .catch(error => console.error('Error updating vendor count:', error));
+            }
         }, 30000);
 
         // ------------------------------------------------------------------
@@ -1304,41 +1349,76 @@
                     bellPanel.innerHTML = '<div class="topbar-dropdown-header">Notifications</div><div class="topbar-dropdown-empty">You\'re all caught up</div>';
                     return;
                 }
+                const hasUnread = items.some(function (item) { return item.read === false; });
                 const rows = items.map(function (item) {
                     const unread = item.read === false;
+                    const brand = item.icon === 'fa-whatsapp' ? 'fab ' : 'fas ';
                     return '<a class="topbar-dropdown-item' + (unread ? ' is-unread' : '') + '" href="' + item.url + '"'
-                        + (item.id ? ' data-notification-id="' + escapeHtml(item.id) + '"' : '') + '>'
-                        + (unread ? '<span class="item-dot"></span>' : '<i class="fas ' + (item.icon || 'fa-bell') + '"></i>')
+                        + (item.id ? ' data-notification-id="' + escapeHtml(item.id) + '"' : '')
+                        + ' data-weight="' + (parseInt(item.weight, 10) || 1) + '">'
+                        + '<i class="' + brand + (item.icon || 'fa-bell') + '"></i>'
                         + '<div class="item-body">'
                         + '<div class="item-title">' + escapeHtml(item.title) + '</div>'
                         + '<div class="item-subtitle">' + escapeHtml(item.subtitle || '') + '</div>'
                         + '</div>'
                         + '<span class="item-time">' + escapeHtml(item.created_at || '') + '</span>'
+                        + (unread ? '<span class="item-dot"></span>' : '')
                         + '</a>';
                 }).join('');
-                bellPanel.innerHTML = '<div class="topbar-dropdown-header">Notifications</div>' + rows;
+                bellPanel.innerHTML = '<div class="topbar-dropdown-header has-action"><span>Notifications</span>'
+                    + (hasUnread ? '<button type="button" class="topbar-mark-all" id="topbarMarkAllRead">Mark all as read</button>' : '')
+                    + '</div>' + rows;
+
+                const markAllBtn = document.getElementById('topbarMarkAllRead');
+                if (markAllBtn) {
+                    markAllBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        bellPanel.querySelectorAll('.topbar-dropdown-item.is-unread').forEach(markRowRead);
+                        markAllBtn.remove();
+                        updateBellBadge(0);
+                        postNotification('{{ route("notifications.read-all") }}');
+                    });
+                }
 
                 // Mark read the moment it's clicked - the link still navigates
                 // as normal, this just fires alongside it.
                 bellPanel.querySelectorAll('.topbar-dropdown-item[data-notification-id]').forEach(function (row) {
                     row.addEventListener('click', function () {
                         if (!row.classList.contains('is-unread')) return;
-                        row.classList.remove('is-unread');
-                        const dot = row.querySelector('.item-dot');
-                        if (dot) dot.outerHTML = '<i class="fas fa-bell"></i>';
-                        updateBellBadge(Math.max(0, (parseInt(bellBadge && bellBadge.textContent, 10) || 1) - 1));
-                        fetch('{{ url("admin/notifications") }}/' + row.dataset.notificationId + '/read', {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json',
-                            },
-                        }).catch(function (error) { console.error('Error marking notification read:', error); });
+                        markRowRead(row);
+                        updateBellBadge(Math.max(0, bellCount - (parseInt(row.dataset.weight, 10) || 1)));
+                        postNotification('{{ url("admin/notifications") }}/' + encodeURIComponent(row.dataset.notificationId) + '/read');
                     });
                 });
             }
 
+            function markRowRead(row) {
+                row.classList.remove('is-unread');
+                const dot = row.querySelector('.item-dot');
+                if (dot) dot.remove();
+            }
+
+            // keepalive: clicking a row navigates away straight after, and
+            // the request still has to land.
+            function postNotification(url) {
+                fetch(url, {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (data) { if (typeof data.count === 'number') updateBellBadge(data.count); })
+                    .catch(function (error) { console.error('Error marking notification read:', error); });
+            }
+
+            // The real unread number - the badge itself caps its text at "99+".
+            let bellCount = {{ (int) $topbarNotifCount }};
+
             function updateBellBadge(count) {
+                bellCount = count;
                 if (!bellBadge) return;
                 if (count > 0) {
                     bellBadge.textContent = count > 99 ? '99+' : count;

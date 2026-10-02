@@ -32,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
             'landing_page.blog',
             'landing_page.careers',
             'landing_page.about_us',
+            'landing_page.vendor_registration',
         ], function ($view) {
             $view->with('publicServices', Service::where('is_active', true)->orderBy('name')->get());
             $view->with('publicInsurances', \App\Models\Contact::insuranceOptions());

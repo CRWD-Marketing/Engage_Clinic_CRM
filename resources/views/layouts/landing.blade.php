@@ -458,6 +458,7 @@
         <li><a href="{{ route('careers') }}" class="footer-link">Careers</a></li>
         <li><a href="{{ route('blog') }}" class="footer-link">Blog</a></li>
         <li><a href="{{ route('contact') }}" class="footer-link">Contact</a></li>
+        <li><a href="{{ route('vendor-registration') }}" class="footer-link">Vendor Registration</a></li>
       </ul>
     </div>
 

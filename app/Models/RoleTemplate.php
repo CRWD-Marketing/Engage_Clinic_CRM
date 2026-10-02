@@ -22,6 +22,7 @@ class RoleTemplate extends Model
         'calendar' => 'Calendar',
         'therapists' => 'Therapists',
         'careers' => 'Job Applications',
+        'vendors' => 'Vendors',
         'users' => 'User Management',
         'roles_access' => 'Roles & access',
         'billing' => 'Billing',
@@ -88,7 +89,7 @@ class RoleTemplate extends Model
             'name' => 'Full Admin',
             'base_role' => 'FULL_ADMIN',
             'description' => 'Complete access to every module: user management, billing, system settings, all client and financial records',
-            'modules' => ['dashboard', 'leads', 'contacts', 'cms_forms', 'whatsapp', 'knowledge_base', 'patients', 'calendar', 'therapists', 'careers', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings'],
+            'modules' => ['dashboard', 'leads', 'contacts', 'cms_forms', 'whatsapp', 'knowledge_base', 'patients', 'calendar', 'therapists', 'careers', 'vendors', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings'],
             'actions' => ['assign_lead_owner', 'reassign_lead_owner', 'terminate_lead', 'add_lead_notes', 'convert_to_client', 'book_modify_session', 'assign_change_schedule', 'assign_multiple_therapists', 'view_terminated_history', 'create_invoice', 'manage_users_roles'],
         ],
         'staff_admin' => [
