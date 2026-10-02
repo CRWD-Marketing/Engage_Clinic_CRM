@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/api/client';
 import type { CalendarFeed, CalendarFeedLeave, MyCalendarDay, MySessionPayload, User } from '@/api/types';
-import { canManageCalendar, levelFor } from '@/auth/permissions';
+import { canAccessFeature, canManageCalendar, levelFor } from '@/auth/permissions';
 import { useCurrentUser } from '@/auth/session';
 import { AppText } from '@/components/AppText';
 import { Card } from '@/components/Card';
@@ -546,6 +546,11 @@ function TopBar(props: TopBarProps) {
           {lockLine}
         </AppText>
       </View>
+      {canAccessFeature(user, 'therapists') && user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own' ? (
+        <Pressable onPress={() => router.push('/therapists')} accessibilityRole="button" hitSlop={6}>
+          <AppText variant="link">Therapists &amp; schedules →</AppText>
+        </Pressable>
+      ) : null}
       {children}
     </SafeAreaView>
   );

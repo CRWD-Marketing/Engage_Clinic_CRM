@@ -957,6 +957,42 @@ export interface ContactEmailRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Therapists & schedules
+// ---------------------------------------------------------------------------
+
+/** A therapist on the Therapists page, with their workload for the shown week. */
+export interface TherapistRosterRow {
+  id: number;
+  name: string;
+  /** "Clinical" (title-cased department). */
+  department_label: string;
+  /** Booked hours that week, cancelled and closed sessions excluded (1 decimal). */
+  weekly_hours: number;
+  /** Every session that week, whatever its status. */
+  session_count: number;
+}
+
+/** GET /therapist?therapist_id=&week= as JSON (TherapistController::index view variables). */
+export interface TherapistsIndex {
+  /** False for therapists and "own"-level users, who only get themselves. */
+  can_view_all: boolean;
+  /** Monday and Sunday of the shown week. */
+  week_start: YmdString;
+  week_end: YmdString;
+  is_current_week: boolean;
+  therapists: TherapistRosterRow[];
+  selected_therapist_id: number | null;
+  /** The selected therapist's sessions that week, closed and cancelled ones included, by date then time. */
+  sessions: CalendarSessionPayload[];
+}
+
+/** PUT /calendar/{id} JSON response. */
+export interface SessionUpdateResponse {
+  message: string;
+  session: CalendarSessionPayload;
+}
+
+// ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
