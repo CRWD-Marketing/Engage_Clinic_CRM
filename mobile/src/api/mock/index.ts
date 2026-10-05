@@ -29,6 +29,7 @@ import {
 } from './presenters';
 import { createBillingApi } from './billing';
 import { createBookingApi } from './booking';
+import { createCareersApi } from './careers';
 import { createContactsApi } from './contacts';
 import { createDashboardApi } from './dashboard';
 import { createLeaveApi, createNotificationsApi, createPatientCreationApi } from './extras';
@@ -400,6 +401,7 @@ export function createMockApi(): ApiClient {
     billing: createBillingApi(),
     users: createUsersApi(),
     roles: createRolesApi(),
+    careers: createCareersApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),

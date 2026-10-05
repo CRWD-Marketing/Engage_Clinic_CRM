@@ -97,7 +97,7 @@ class JobPostingController extends Controller
     /**
      * Shared validation for store/update.
      */
-    private function validatePosting(Request $request)
+    protected function validatePosting(Request $request)
     {
         return Validator::make($request->all(), [
             'title' => 'required|string|max:255',
@@ -115,7 +115,7 @@ class JobPostingController extends Controller
      * one at a time via the "+ Add requirement" repeater); store them as a
      * clean JSON array of non-empty, trimmed values.
      */
-    private function preparePostingData(array $data): array
+    protected function preparePostingData(array $data): array
     {
         $data['requirements'] = collect($data['requirements'] ?? [])
             ->map(fn ($line) => trim($line))

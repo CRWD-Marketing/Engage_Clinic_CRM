@@ -1,7 +1,7 @@
 import { ApiError } from '@/api/errors';
 import type { RemoteFile } from '@/api/types';
 
-/** Browser build of openPdf: fetch the PDF with the caller's token and save it as a download. */
+/** Browser build of openPdf: fetch the file with the caller's token and save it as a download. */
 export async function openPdf(file: RemoteFile, name: string = file.filename): Promise<void> {
   const response = await fetch(file.url, { headers: file.headers });
   if (!response.ok) throw new ApiError(response.status, { message: 'The PDF could not be downloaded.' });

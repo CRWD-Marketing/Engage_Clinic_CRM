@@ -121,6 +121,18 @@ export function createHttpApi(baseUrl: string): ApiClient {
       toggleSuspend: (publicId) => http.put(`roles-access/users/${publicId}/suspend`),
       destroyUser: (publicId) => http.delete(`roles-access/users/${publicId}`),
     },
+    careers: {
+      applications: (status) => http.get('careers/applications', { status: status ?? undefined }),
+      newCount: () => http.get('careers/applications/count'),
+      setStatus: (id, status) => http.patch(`careers/applications/${id}/status`, { status }),
+      addNote: (id, body) => http.post(`careers/applications/${id}/notes`, { body }),
+      destroy: (id) => http.delete(`careers/applications/${id}`),
+      resume: async (id, filename) => http.file(`careers/applications/${id}/resume`, filename),
+      postings: () => http.get('careers/postings'),
+      storePosting: (input) => http.post('careers/postings', input),
+      updatePosting: (id, input) => http.put(`careers/postings/${id}`, input),
+      destroyPosting: (id) => http.delete(`careers/postings/${id}`),
+    },
     billing: {
       overview: () => http.get('billing'),
       invoice: (id) => http.get(`billing/invoices/${id}`),

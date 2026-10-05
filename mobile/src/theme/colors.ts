@@ -207,6 +207,21 @@ export const accessChipColors = {
   customTag: { bg: '#F9E7EC', fg: '#C8355F' },
 } as const;
 
+/** Job application status badges (`$statusTokens` in career/applications/index.blade.php). */
+export const applicationStatusColors: Record<'new' | 'reviewed' | 'interviewing' | 'hired' | 'rejected', ChipColors> = {
+  new: { bg: '#EFF6FF', fg: '#1D4ED8' },
+  reviewed: { bg: '#FEFCE8', fg: '#A16207' },
+  interviewing: { bg: '#F5F3FF', fg: '#6D28D9' },
+  hired: { bg: '#F0FDF4', fg: '#15803D' },
+  rejected: { bg: '#FAFAFA', fg: '#52525B' },
+};
+
+/** Job posting status badges (`.jp-badge`). */
+export const postingStatusColors: Record<'active' | 'inactive', ChipColors> = {
+  active: { bg: '#E4F6EB', fg: '#1E8A4C' },
+  inactive: { bg: '#EFEBE3', fg: '#7A6E60' },
+};
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

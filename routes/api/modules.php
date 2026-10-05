@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\InboxController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\JobApplicationController;
+use App\Http\Controllers\Api\V1\JobPostingController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
@@ -152,4 +154,18 @@ Route::middleware('feature:roles_access')->prefix('roles-access')->group(functio
     Route::put('users/{user}/access', [RoleController::class, 'updateUserAccess']);
     Route::put('users/{user}/suspend', [RoleController::class, 'toggleSuspend']);
     Route::delete('users/{user}', [RoleController::class, 'destroyUser']);
+});
+
+// Job applications and postings (admin/job-* on the web).
+Route::middleware('feature:careers')->prefix('careers')->group(function () {
+    Route::get('applications', [JobApplicationController::class, 'index']);
+    Route::get('applications/count', [JobApplicationController::class, 'getApplicationCount']);
+    Route::get('applications/{jobApplication}/resume', [JobApplicationController::class, 'downloadResume']);
+    Route::patch('applications/{jobApplication}/status', [JobApplicationController::class, 'updateStatus']);
+    Route::post('applications/{jobApplication}/notes', [JobApplicationController::class, 'addNote']);
+    Route::delete('applications/{jobApplication}', [JobApplicationController::class, 'destroy']);
+    Route::get('postings', [JobPostingController::class, 'index']);
+    Route::post('postings', [JobPostingController::class, 'store']);
+    Route::put('postings/{job_posting}', [JobPostingController::class, 'update']);
+    Route::delete('postings/{job_posting}', [JobPostingController::class, 'destroy']);
 });

@@ -87,7 +87,10 @@ function SummaryCard({ user }: { user: User }) {
             <AppText style={styles.avatarText}>{user.first_name ? user.first_name[0].toUpperCase() : 'U'}</AppText>
           </View>
           <View
-            style={[styles.avatarDot, { backgroundColor: active ? profileColors.activeDot : profileColors.inactiveDot }]}
+            style={[
+              styles.avatarDot,
+              { backgroundColor: active ? profileColors.activeDot : profileColors.inactiveDot },
+            ]}
             accessibilityLabel={active ? 'Active' : 'Inactive'}
           />
         </View>
@@ -383,11 +386,33 @@ function onMobile(user: User, module: ModuleKey): boolean {
   if (module === 'dashboard') return true;
   // The Therapists page is for people who see the whole roster; a therapist's own schedule is their Calendar tab.
   if (module === 'therapists') return user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own';
-  return ['calendar', 'patients', 'whatsapp', 'leads', 'contacts', 'reports', 'billing', 'users', 'roles_access'].includes(module);
+  return [
+    'calendar',
+    'patients',
+    'whatsapp',
+    'leads',
+    'contacts',
+    'reports',
+    'billing',
+    'users',
+    'roles_access',
+    'careers',
+  ].includes(module);
 }
 
+/** Built for mobile but switched off for now at the clinic's request (2026-10-05): not listed and not opened. */
+const HIDDEN_MODULES: string[] = ['careers'];
+
 /** Modules without a tab of their own: they open as a screen from here (and from their related tab). */
-const PUSHED_SCREENS = { contacts: '/contacts', therapists: '/therapists', reports: '/reports', billing: '/billing', users: '/users', roles_access: '/roles' } as const;
+const PUSHED_SCREENS = {
+  contacts: '/contacts',
+  therapists: '/therapists',
+  reports: '/reports',
+  billing: '/billing',
+  users: '/users',
+  roles_access: '/roles',
+  careers: '/careers',
+} as const;
 
 const LEVEL_LABEL = { full: 'Full', own: 'Own only', view: 'View only', edit: 'Edit' } as const;
 
@@ -398,29 +423,31 @@ function ModuleAccess({ user }: { user: User }) {
         <AppText variant="heading">Module access</AppText>
         <AppText variant="caption">What you can open, and what is on mobile so far.</AppText>
       </View>
-      {heldModules(user).map((m) => {
-        const level = levelFor(user, m);
-        return (
-          <Pressable
-            key={m}
-            style={styles.moduleRow}
-            disabled={!(m in PUSHED_SCREENS) || !onMobile(user, m)}
-            onPress={() => router.push(PUSHED_SCREENS[m as keyof typeof PUSHED_SCREENS])}
-            accessibilityRole={m in PUSHED_SCREENS && onMobile(user, m) ? 'button' : undefined}
-            accessibilityLabel={m in PUSHED_SCREENS && onMobile(user, m) ? `Open ${MODULES[m]}` : undefined}>
-            <AppText variant="body" style={styles.flex}>
-              {MODULES[m]}
-            </AppText>
-            {level !== 'full' ? <Chip label={LEVEL_LABEL[level]} colors={neutralChip} /> : null}
-            {onMobile(user, m) ? null : (
-              <AppText variant="caption" color={colors.textFaint}>
-                Web only
+      {heldModules(user)
+        .filter((m) => !HIDDEN_MODULES.includes(m))
+        .map((m) => {
+          const level = levelFor(user, m);
+          return (
+            <Pressable
+              key={m}
+              style={styles.moduleRow}
+              disabled={!(m in PUSHED_SCREENS) || !onMobile(user, m)}
+              onPress={() => router.push(PUSHED_SCREENS[m as keyof typeof PUSHED_SCREENS])}
+              accessibilityRole={m in PUSHED_SCREENS && onMobile(user, m) ? 'button' : undefined}
+              accessibilityLabel={m in PUSHED_SCREENS && onMobile(user, m) ? `Open ${MODULES[m]}` : undefined}>
+              <AppText variant="body" style={styles.flex}>
+                {MODULES[m]}
               </AppText>
-            )}
-            {m in PUSHED_SCREENS && onMobile(user, m) ? <AppText variant="link">Open →</AppText> : null}
-          </Pressable>
-        );
-      })}
+              {level !== 'full' ? <Chip label={LEVEL_LABEL[level]} colors={neutralChip} /> : null}
+              {onMobile(user, m) ? null : (
+                <AppText variant="caption" color={colors.textFaint}>
+                  Web only
+                </AppText>
+              )}
+              {m in PUSHED_SCREENS && onMobile(user, m) ? <AppText variant="link">Open →</AppText> : null}
+            </Pressable>
+          );
+        })}
     </Card>
   );
 }

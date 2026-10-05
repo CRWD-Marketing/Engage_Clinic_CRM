@@ -11,6 +11,9 @@
 import { createHttpApi } from './http';
 import { createMockApi } from './mock';
 import type {
+  ApplicationResponse,
+  ApplicationsPage,
+  ApplicationStatus,
   AccessGrantInput,
   AccessTemplate,
   AccessUser,
@@ -28,6 +31,8 @@ import type {
   InvoiceEmailRequest,
   InvoicePaymentRequest,
   InvoicePreview,
+  JobPosting,
+  JobPostingInput,
   InvoiceVoidRequest,
   NewInvoiceRequest,
   PatientLedger,
@@ -329,6 +334,29 @@ export interface ApiClient {
     toggleSuspend(publicId: string): Promise<{ message: string; user: AccessUser }>;
     /** DELETE /roles-access/users/{id} */
     destroyUser(publicId: string): Promise<{ message: string }>;
+  };
+  /** Job applications and postings (Career controllers, `feature:careers`). */
+  careers: {
+    /** GET /careers/applications — newest first; counts are across every application. */
+    applications(status?: ApplicationStatus | 'all' | null): Promise<ApplicationsPage>;
+    /** GET /careers/applications/count — applications still "new". */
+    newCount(): Promise<{ success: boolean; count: number }>;
+    /** PATCH /careers/applications/{id}/status */
+    setStatus(id: number, status: ApplicationStatus): Promise<ApplicationResponse>;
+    /** POST /careers/applications/{id}/notes */
+    addNote(id: number, body: string): Promise<ApplicationResponse>;
+    /** DELETE /careers/applications/{id} — also removes the stored resume. */
+    destroy(id: number): Promise<{ message: string }>;
+    /** GET /careers/applications/{id}/resume — the file, for utils/openPdf. The mock has none (503). */
+    resume(id: number, filename: string): Promise<RemoteFile>;
+    /** GET /careers/postings */
+    postings(): Promise<{ postings: JobPosting[]; statuses: Record<JobPosting['status'], string> }>;
+    /** POST /careers/postings */
+    storePosting(input: JobPostingInput): Promise<{ message: string; posting: JobPosting }>;
+    /** PUT /careers/postings/{id} */
+    updatePosting(id: number, input: JobPostingInput): Promise<{ message: string; posting: JobPosting }>;
+    /** DELETE /careers/postings/{id} — applications keep their job title. */
+    destroyPosting(id: number): Promise<{ message: string }>;
   };
   billing: {
     /** GET /billing */

@@ -37,6 +37,10 @@ export default function AppStackLayout() {
       <Stack.Screen name="roles/user/[id]" options={{ title: 'Access' }} />
       <Stack.Screen name="roles/user-form" options={{ title: 'Add user' }} />
       <Stack.Screen name="roles/template" options={{ title: 'Role template' }} />
+      <Stack.Screen name="careers/index" options={{ title: 'Job applications' }} />
+      <Stack.Screen name="careers/[id]" options={{ title: 'Application' }} />
+      <Stack.Screen name="careers/postings" options={{ title: 'Job postings' }} />
+      <Stack.Screen name="careers/posting-form" options={{ title: 'Job posting' }} />
       <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );

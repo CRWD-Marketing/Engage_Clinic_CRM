@@ -1669,6 +1669,80 @@ export interface AccessGrantInput {
 }
 
 // ---------------------------------------------------------------------------
+// Job applications and postings (careers)
+// ---------------------------------------------------------------------------
+
+/** JobApplication::getStatuses() keys. */
+export type ApplicationStatus = 'new' | 'reviewed' | 'interviewing' | 'hired' | 'rejected';
+
+/** One job application (career/applications/index.blade.php row and detail panel). */
+export interface JobApplication {
+  id: number;
+  /** null once the posting was deleted; `job_title` is the snapshot taken when they applied. */
+  job_posting_id: number | null;
+  job_title: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  email: string;
+  /** Free text from the careers form, e.g. "3". */
+  years_experience: string | null;
+  cover_letter: string | null;
+  status: ApplicationStatus;
+  status_label: string;
+  has_resume: boolean;
+  /** The file name they uploaded. */
+  resume_name: string | null;
+  created_at: IsoDateTime;
+  /** Internal notes, newest first. */
+  notes: { id: number; body: string; author_name: string; created_at: IsoDateTime }[];
+}
+
+/** GET /careers/applications */
+export interface ApplicationsPage {
+  /** Newest first, filtered by `status` when given. */
+  applications: JobApplication[];
+  statuses: Record<ApplicationStatus, string>;
+  /** Across every application, not just the filter. */
+  status_counts: Partial<Record<ApplicationStatus, number>>;
+  total_count: number;
+  new_count: number;
+}
+
+/** What the application actions answer with. */
+export interface ApplicationResponse {
+  message: string;
+  application: JobApplication;
+}
+
+/** A job posting on the public careers page. */
+export interface JobPosting {
+  id: number;
+  title: string;
+  /** e.g. "Full-time" */
+  employment_type: string | null;
+  location: string | null;
+  description: string | null;
+  /** Trimmed, non-empty lines. */
+  requirements: string[];
+  /** Only active postings show on the careers page. */
+  status: 'active' | 'inactive';
+  applications_count: number;
+  created_at: IsoDateTime;
+}
+
+/** POST /careers/postings and PUT /careers/postings/{id} */
+export interface JobPostingInput {
+  title: string;
+  employment_type?: string | null;
+  location?: string | null;
+  description?: string | null;
+  /** Blank lines are dropped by the server. */
+  requirements?: string[];
+  status: 'active' | 'inactive';
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 
