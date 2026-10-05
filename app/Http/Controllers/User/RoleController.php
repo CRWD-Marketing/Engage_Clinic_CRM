@@ -282,6 +282,12 @@ class RoleController extends Controller
 
         $template = RoleTemplate::findOrFail($request->role_template_id);
 
+        // Same rule as Add user and the Edit dialog: only a Full Admin hands
+        // out the templates that reach clinical records or the whole system.
+        if (in_array($template->base_role, self::SENSITIVE_ROLES, true) && auth()->user()->role !== 'FULL_ADMIN') {
+            return response()->json(['message' => "Only a Full Admin can assign {$template->name}."], 403);
+        }
+
         if ($user->id === auth()->id() && ! in_array('manage_users_roles', $template->actions, true)) {
             return response()->json(['message' => 'You can’t move yourself to a template that can’t manage users & roles.'], 422);
         }

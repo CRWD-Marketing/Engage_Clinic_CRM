@@ -98,6 +98,34 @@ class RolesAccessTest extends ApiTestCase
         $this->assertDatabaseMissing('users', ['email' => 'noor.haddad@engagebehavior.com']);
     }
 
+    public function test_only_a_full_admin_moves_someone_onto_a_sensitive_template(): void
+    {
+        $therapist = User::where('role', 'THERAPIST')->firstOrFail();
+        $clinicalAdmin = RoleTemplate::where('key', 'clinical_admin')->firstOrFail();
+        $fullAdmin = RoleTemplate::where('key', 'full_admin')->firstOrFail();
+
+        $this->actingAsEmail('hr@engagebehavior.com');
+        $this->putJson($this->api("roles-access/users/{$therapist->public_id}/template"), ['role_template_id' => $fullAdmin->id])->assertForbidden()
+            ->assertJsonPath('message', 'Only a Full Admin can assign Full Admin.');
+        $this->putJson($this->api("roles-access/users/{$therapist->public_id}/template"), ['role_template_id' => $clinicalAdmin->id])->assertForbidden();
+        $this->assertSame('THERAPIST', $therapist->fresh()->role);
+
+        $this->actingAsEmail('admin@gmail.com');
+        $this->putJson($this->api("roles-access/users/{$therapist->public_id}/template"), ['role_template_id' => $clinicalAdmin->id])->assertOk();
+        $this->assertSame('CLINICAL_SUPERVISOR', $therapist->fresh()->role);
+    }
+
+    public function test_the_web_page_refuses_the_same_move(): void
+    {
+        $therapist = User::where('role', 'THERAPIST')->firstOrFail();
+        $fullAdmin = RoleTemplate::where('key', 'full_admin')->firstOrFail();
+
+        $this->actingAs($this->user('hr@engagebehavior.com'))
+            ->putJson(route('roles.users.template', $therapist), ['role_template_id' => $fullAdmin->id])
+            ->assertForbidden();
+        $this->assertSame('THERAPIST', $therapist->fresh()->role);
+    }
+
     public function test_you_cannot_lock_yourself_out(): void
     {
         $me = $this->actingAsEmail('hr@engagebehavior.com');

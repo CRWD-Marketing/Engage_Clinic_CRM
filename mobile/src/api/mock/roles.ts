@@ -417,6 +417,9 @@ function setTemplate(publicId: string, templateId: number) {
   if (!templateId) throw refuse('The role template id field is required.');
   if (!db.roleTemplates.some((t) => t.id === Number(templateId))) throw refuse('The selected role template id is invalid.');
   const template = findTemplate(db, templateId);
+  if (SENSITIVE_ROLES.includes(template.base_role) && me.role !== 'FULL_ADMIN') {
+    throw new ApiError(403, { message: `Only a Full Admin can assign ${template.name}.` });
+  }
   if (user.id === me.id && !(template.actions ?? []).includes('manage_users_roles')) {
     throw refuse('You can’t move yourself to a template that can’t manage users & roles.');
   }
