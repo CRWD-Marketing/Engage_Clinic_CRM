@@ -101,7 +101,7 @@
     </div>
   </div>
 
-  @if ($totalCount > 0)
+  @if ($hasVendors)
     <div class="vn-toolbar">
       <nav class="cf-tabs" aria-label="Filter by status">
         <a class="cf-tab {{ $currentStatus === 'all' ? 'is-on' : '' }}" href="{{ $tabUrl('all') }}">All <span class="n">{{ $totalCount }}</span></a>
@@ -137,7 +137,7 @@
   <div class="cf-card {{ $vendors->isEmpty() ? '' : 'cf-card-table' }}">
     @if ($vendors->isEmpty())
       <div class="cf-empty">
-        @if ($totalCount > 0)
+        @if ($hasVendors)
           <div class="cf-empty-icon"><i class="fas fa-magnifying-glass"></i></div>
           <div class="cf-empty-title">No vendors match</div>
           <div class="cf-empty-sub">Try a different search, status or category.</div>

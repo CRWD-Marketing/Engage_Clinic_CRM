@@ -25,8 +25,9 @@ class VendorController extends Controller
         ]);
         $status = $filters['status'] ?? 'all';
 
+        // Terminated vendors stay out of the list unless their own tab is opened.
         $query = Vendor::query()
-            ->when($status !== 'all', fn ($q) => $q->where('status', $status))
+            ->when($status !== 'all', fn ($q) => $q->where('status', $status), fn ($q) => $q->where('status', '!=', Vendor::STATUS_TERMINATED))
             ->when($filters['category'] ?? null, fn ($q, $category) => $q->where('category', $category))
             ->when($filters['search'] ?? null, function ($q, $search) {
                 $like = '%'.str_replace(['%', '_'], ['\%', '\_'], $search).'%';
@@ -52,7 +53,8 @@ class VendorController extends Controller
             'filters' => $filters + ['status' => 'all'],
             'statuses' => Vendor::getStatuses(),
             'statusCounts' => $statusCounts,
-            'totalCount' => array_sum($statusCounts),
+            'totalCount' => array_sum($statusCounts) - $statusCounts[Vendor::STATUS_TERMINATED],
+            'hasVendors' => array_sum($statusCounts) > 0,
             'categories' => Vendor::CATEGORIES,
             'stats' => [
                 'new' => Vendor::whereNull('viewed_at')->count(),
