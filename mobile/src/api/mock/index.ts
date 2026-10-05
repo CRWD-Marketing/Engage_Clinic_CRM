@@ -34,6 +34,7 @@ import { createDashboardApi } from './dashboard';
 import { createLeaveApi, createNotificationsApi, createPatientCreationApi } from './extras';
 import { createReportsApi } from './reports';
 import { createTherapistsApi } from './therapists';
+import { createUsersApi } from './users';
 import { createInboxApi } from './inbox';
 import { createLeadsApi } from './leads';
 import { createNotesApi } from './notes';
@@ -396,6 +397,7 @@ export function createMockApi(): ApiClient {
     therapists: createTherapistsApi(),
     reports: createReportsApi(),
     billing: createBillingApi(),
+    users: createUsersApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),

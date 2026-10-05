@@ -186,6 +186,12 @@ export const preAuthStatusColors: Record<'requested' | 'approved' | 'denied', Ch
 /** Claims aging bars, youngest bucket first. */
 export const claimAgingColors = ['#2E7D5B', '#B97F24', '#C8355F', '#8A2020'];
 
+/** Account status chips in User Management (user/index.blade.php). */
+export const userStatusColors: Record<'active' | 'inactive', ChipColors> = {
+  active: { bg: '#E3F1E9', fg: '#2E7D5B' },
+  inactive: { bg: '#EEF0F2', fg: '#6B7A8C' },
+};
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

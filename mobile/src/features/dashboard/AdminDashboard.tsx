@@ -100,6 +100,9 @@ export function AdminDashboard() {
       {canAccessFeature(user, 'billing') ? (
         <Button title="Open billing" variant="secondary" onPress={() => router.push('/billing')} />
       ) : null}
+      {canAccessFeature(user, 'users') ? (
+        <Button title="Open user management" variant="secondary" onPress={() => router.push('/users')} />
+      ) : null}
       <ScheduleTodayCard title="Today's schedule" sessions={d.today_sessions} showTherapist />
       <LeadSourcesCard
         rows={d.lead_sources}

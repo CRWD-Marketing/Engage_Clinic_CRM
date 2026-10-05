@@ -1491,6 +1491,66 @@ export interface RemoteFile {
 }
 
 // ---------------------------------------------------------------------------
+// User Management
+// ---------------------------------------------------------------------------
+
+/** A user as Laravel serialises the model (every column but the password), with their manager. */
+export type StaffUser = Omit<User, 'role_template'> & { manager: Omit<User, 'role_template'> | null };
+
+/** GET /users filters (CreateAccount::index). */
+export interface UserListQuery {
+  /** First name, last name, full name or email. */
+  search?: string;
+  department?: Department | '';
+  role?: Role | '';
+  status?: 'active' | 'inactive' | '';
+  page?: number;
+}
+
+/** GET /users — one page of 10, newest first. */
+export interface UserListResponse {
+  users: StaffUser[];
+  meta: { current_page: number; last_page: number; per_page: number; total: number };
+  /** Across the whole table, not the current filter. */
+  stats: { total: number; active: number; inactive: number; departments: number };
+  departments: Department[];
+  roles: Role[];
+  /** Every user, by first name: the Manager picker. */
+  managers: { id: number; name: string }[];
+  /** Deleting an account is Full Admin only; everyone else deactivates. */
+  can_delete: boolean;
+}
+
+/** GET /users/{public_id} — user/[id].blade.php. */
+export type UserProfile = StaffUser & { subordinates: Omit<User, 'role_template'>[]; can_delete: boolean };
+
+/** POST /users and PUT /users/{public_id}. Only a Full Admin may give FULL_ADMIN or CLINICAL_SUPERVISOR. */
+export interface UserInput {
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  email: string;
+  phone_number?: string | null;
+  /** Required on create; on update only when changing it. Laravel's Password::defaults() (8+ characters). */
+  password?: string;
+  password_confirmation?: string;
+  department: Department;
+  role: Role;
+  manager_id?: number | null;
+  /** "YYYY-MM-DD" */
+  start_date?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
+}
+
+/** What add / edit answer with. */
+export interface UserSaveResponse {
+  success: boolean;
+  message: string;
+  data: StaffUser;
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 

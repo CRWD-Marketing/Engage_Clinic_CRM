@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\TherapistController;
+use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Billing\BulkRunController;
 use App\Http\Controllers\Billing\ClaimController;
 use App\Http\Controllers\Billing\PreAuthController;
@@ -125,4 +126,14 @@ Route::middleware('feature:billing')->prefix('billing')->group(function () {
     // Month-end run: one invoice per family for every unbilled delivered session in a period.
     Route::get('bulk-run', [BulkRunController::class, 'preview']);
     Route::post('bulk-run', [BulkRunController::class, 'issue']);
+});
+
+// User Management (users/*). Create, update and delete are the web CreateAccount actions;
+// only a Full Admin may delete, or hand out the Full Admin and Clinical Supervisor roles.
+Route::middleware('feature:users')->prefix('users')->group(function () {
+    Route::get('/', [UserController::class, 'index']);
+    Route::post('/', [UserController::class, 'store']);
+    Route::get('{user}', [UserController::class, 'show']);
+    Route::put('{user}', [UserController::class, 'update']);
+    Route::delete('{user}', [UserController::class, 'destroy']);
 });

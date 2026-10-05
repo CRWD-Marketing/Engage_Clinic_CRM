@@ -31,6 +31,11 @@ import type {
   PreAuthRequest,
   PrepaidTopUpResponse,
   RemoteFile,
+  UserInput,
+  UserListQuery,
+  UserListResponse,
+  UserProfile,
+  UserSaveResponse,
   LeaveRequest,
   LeaveResponse,
   NotificationsResponse,
@@ -279,6 +284,19 @@ export interface ApiClient {
    * Billing & insurance (BillingController / InvoiceController, `feature:billing`).
    * Every change needs the `create_invoice` action; a view-only level blocks all of them.
    */
+  /** User Management (CreateAccount, `feature:users`). Users are addressed by `public_id`. */
+  users: {
+    /** GET /users — 10 per page, newest first, with the stat tiles and form options. */
+    list(query?: UserListQuery): Promise<UserListResponse>;
+    /** GET /users/{public_id} — with manager and direct reports. */
+    show(publicId: string): Promise<UserProfile>;
+    /** POST /users — 403 when a non-admin gives FULL_ADMIN or CLINICAL_SUPERVISOR. */
+    store(input: UserInput): Promise<UserSaveResponse>;
+    /** PUT /users/{public_id} — every field optional; the password changes only when sent. */
+    update(publicId: string, input: Partial<UserInput>): Promise<UserSaveResponse>;
+    /** DELETE /users/{public_id} — Full Admin only (403 otherwise). */
+    destroy(publicId: string): Promise<{ success: boolean; message: string }>;
+  };
   billing: {
     /** GET /billing */
     overview(): Promise<BillingOverview>;

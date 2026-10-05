@@ -48,6 +48,7 @@ Module routes use the same `feature:<module>` middleware as the web routes, so m
 | Therapists | `GET therapists` |
 | Reports | `GET reports` |
 | Billing | `GET billing`, `GET billing/invoices/{id}`, `POST billing/invoices/{id}/payments`, `POST billing/invoices/{id}/credit`, `POST billing/invoices/{id}/void`, `POST billing/invoices/{id}/send`, `GET billing/patients/{id}/ledger`, `POST billing/invoices/preview`, `POST billing/invoices`, `POST billing/patients/{id}/top-up`, `GET billing/patients/{id}/statement`, `PATCH billing/claims/{id}`, `POST billing/pre-authorizations`, `PATCH billing/pre-authorizations/{id}`, `GET/POST billing/bulk-run`, `GET billing/invoices/{id}/pdf`, `GET billing/patients/{id}/statement/pdf` |
+| Users | `GET users` (search, department, role, status, page), `POST users`, `GET users/{public_id}`, `PUT users/{public_id}`, `DELETE users/{public_id}` |
 
 Response shapes are the TypeScript types in `src/api/types.ts`. Errors are `{message, errors}` with the usual status codes (401, 403, 404, 422, 429).
 

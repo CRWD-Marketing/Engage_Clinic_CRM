@@ -30,6 +30,9 @@ export default function AppStackLayout() {
       <Stack.Screen name="billing/[id]" options={{ title: 'Invoice' }} />
       <Stack.Screen name="billing/new" options={{ title: 'New invoice' }} />
       <Stack.Screen name="billing/statement/[id]" options={{ title: 'Statement' }} />
+      <Stack.Screen name="users/index" options={{ title: 'User Management' }} />
+      <Stack.Screen name="users/[id]" options={{ title: 'User' }} />
+      <Stack.Screen name="users/form" options={{ title: 'Add user' }} />
       <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );

@@ -1,7 +1,9 @@
+import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
 import { AppText } from '@/components/AppText';
+import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
 import { Card, CardHeader, Divider } from '@/components/Card';
 import { Screen } from '@/components/Screen';
@@ -15,7 +17,7 @@ import { plural, roleLabel } from '@/utils/format';
 
 import { AttendanceTile, BarListCard, DashboardHeader, panelStyles, ScheduleTodayCard, StatsGrid } from './panels';
 
-/** Mirrors resources/views/dashboard/hr_staff.blade.php. Adding and opening staff stays on the web (User Management). */
+/** Mirrors resources/views/dashboard/hr_staff.blade.php. Staff are added and opened in User Management. */
 export function HrDashboard() {
   const query = useApiQuery('dashboard.hr', () => api.dashboard.hr());
   useRefetchOnFocus(query.reload);
@@ -32,6 +34,7 @@ export function HrDashboard() {
   return (
     <Screen refreshing={query.refreshing} onRefresh={query.refresh}>
       <DashboardHeader name={d.user_full_name} location={d.location_label} />
+      <Button title="Open user management" onPress={() => router.push('/users')} />
 
       <StatsGrid>
         <StatTile label="Active staff" value={String(d.active_staff_count)} caption={`${d.new_hires_this_month} started this month`} />

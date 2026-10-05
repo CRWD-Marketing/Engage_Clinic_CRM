@@ -102,6 +102,13 @@ export function createHttpApi(baseUrl: string): ApiClient {
     therapists: {
       index: (params) => http.get('therapists', params),
     },
+    users: {
+      list: (query) => http.get('users', { ...query }),
+      show: (publicId) => http.get(`users/${publicId}`),
+      store: (input) => http.post('users', input),
+      update: (publicId, input) => http.put(`users/${publicId}`, input),
+      destroy: (publicId) => http.delete(`users/${publicId}`),
+    },
     billing: {
       overview: () => http.get('billing'),
       invoice: (id) => http.get(`billing/invoices/${id}`),
