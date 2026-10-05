@@ -53,6 +53,7 @@ Module routes use the same `feature:<module>` middleware as the web routes, so m
 | Careers | `GET careers/applications` (status), `GET careers/applications/count`, `GET careers/applications/{id}/resume` (the file), `PATCH careers/applications/{id}/status`, `POST careers/applications/{id}/notes`, `DELETE careers/applications/{id}`, `GET/POST careers/postings`, `PUT/DELETE careers/postings/{id}` |
 | Packages | `GET packages`, `POST packages`, `PUT packages/{id}`, `DELETE packages/{id}` |
 | Vendors | `GET vendors` (status, search, category, page), `GET vendors/count`, `GET vendors/{id}`, `PATCH vendors/{id}`, `DELETE vendors/{id}`, `GET vendors/{id}/documents/{document}?download=1` (the file) |
+| Settings | `GET settings`; for each of `services`, `locations`, `insurances`: `POST settings/{kind}`, `PUT settings/{kind}/{id}`, `PATCH settings/{kind}/{id}/toggle`, `DELETE settings/{kind}/{id}` |
 
 Response shapes are the TypeScript types in `src/api/types.ts`. Errors are `{message, errors}` with the usual status codes (401, 403, 404, 422, 429).
 

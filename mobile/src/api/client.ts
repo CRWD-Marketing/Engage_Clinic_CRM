@@ -44,6 +44,10 @@ import type {
   PrepaidTopUpResponse,
   RemoteFile,
   RolesAccessPage,
+  SettingsItem,
+  SettingsItemInput,
+  SettingsKind,
+  SettingsPage,
   TemplateInput,
   UserInput,
   UserListQuery,
@@ -391,6 +395,19 @@ export interface ApiClient {
     destroy(id: number): Promise<{ message: string }>;
     /** GET /vendors/{id}/documents/{document}?download=1 — the file, for utils/openPdf. The mock has none (503). */
     document(vendorId: number, documentId: number, filename: string): Promise<RemoteFile>;
+  };
+  /** Settings: services, locations and insurances (SettingsController, `feature:settings`). */
+  settings: {
+    /** GET /settings */
+    page(): Promise<SettingsPage>;
+    /** POST /settings/{kind} — added active. */
+    store(kind: SettingsKind, input: SettingsItemInput): Promise<{ message: string; item: SettingsItem }>;
+    /** PUT /settings/{kind}/{id} */
+    update(kind: SettingsKind, id: number, input: SettingsItemInput): Promise<{ message: string; item: SettingsItem }>;
+    /** PATCH /settings/{kind}/{id}/toggle — active ↔ inactive. */
+    toggle(kind: SettingsKind, id: number): Promise<{ message: string; item: SettingsItem }>;
+    /** DELETE /settings/{kind}/{id} — packages and invoice lines that used it keep going without it. */
+    destroy(kind: SettingsKind, id: number): Promise<{ message: string }>;
   };
   billing: {
     /** GET /billing */

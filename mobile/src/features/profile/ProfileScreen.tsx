@@ -399,6 +399,7 @@ function onMobile(user: User, module: ModuleKey): boolean {
     'careers',
     'packages',
     'vendors',
+    'settings',
   ].includes(module);
 }
 
@@ -416,6 +417,7 @@ const PUSHED_SCREENS = {
   careers: '/careers',
   packages: '/packages',
   vendors: '/vendors',
+  settings: '/settings',
 } as const;
 
 const LEVEL_LABEL = { full: 'Full', own: 'Own only', view: 'View only', edit: 'Edit' } as const;

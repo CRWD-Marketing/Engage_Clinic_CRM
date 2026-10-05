@@ -1913,6 +1913,35 @@ export interface VendorUpdateInput {
 }
 
 // ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+
+/** The three lists on the Settings page. */
+export type SettingsKind = 'services' | 'locations' | 'insurances';
+
+/** A service, location (service zone) or insurance payer. Inactive ones drop out of the pickers. */
+export interface SettingsItem {
+  id: number;
+  name: string;
+  is_active: boolean;
+  /** Insurances only. */
+  default_coverage_percent?: number;
+}
+
+/** GET /settings — each list by name. */
+export interface SettingsPage {
+  services: SettingsItem[];
+  locations: SettingsItem[];
+  insurances: SettingsItem[];
+}
+
+/** POST /settings/{kind} and PUT /settings/{kind}/{id}. Insurances also need the coverage (0–100). */
+export interface SettingsItemInput {
+  name: string;
+  default_coverage_percent?: number | string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 

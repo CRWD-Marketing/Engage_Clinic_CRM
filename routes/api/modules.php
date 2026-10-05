@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\PackageController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
+use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TherapistController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\VendorController;
@@ -188,4 +189,21 @@ Route::middleware('feature:vendors')->prefix('vendors')->group(function () {
     Route::patch('{vendor}', [VendorController::class, 'update']);
     Route::delete('{vendor}', [VendorController::class, 'destroy']);
     Route::get('{vendor}/documents/{document}', [VendorController::class, 'document']);
+});
+
+// Settings: the services, locations and insurances that packages and authorizations pick from.
+Route::middleware('feature:settings')->prefix('settings')->group(function () {
+    Route::get('/', [SettingsController::class, 'index']);
+    Route::post('services', [SettingsController::class, 'storeService']);
+    Route::put('services/{service}', [SettingsController::class, 'updateService']);
+    Route::patch('services/{service}/toggle', [SettingsController::class, 'toggleService']);
+    Route::delete('services/{service}', [SettingsController::class, 'destroyService']);
+    Route::post('locations', [SettingsController::class, 'storeLocation']);
+    Route::put('locations/{location}', [SettingsController::class, 'updateLocation']);
+    Route::patch('locations/{location}/toggle', [SettingsController::class, 'toggleLocation']);
+    Route::delete('locations/{location}', [SettingsController::class, 'destroyLocation']);
+    Route::post('insurances', [SettingsController::class, 'storeInsurance']);
+    Route::put('insurances/{insurance}', [SettingsController::class, 'updateInsurance']);
+    Route::patch('insurances/{insurance}/toggle', [SettingsController::class, 'toggleInsurance']);
+    Route::delete('insurances/{insurance}', [SettingsController::class, 'destroyInsurance']);
 });

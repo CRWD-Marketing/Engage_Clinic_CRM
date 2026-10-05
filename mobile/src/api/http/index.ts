@@ -147,6 +147,13 @@ export function createHttpApi(baseUrl: string): ApiClient {
       destroy: (id) => http.delete(`vendors/${id}`),
       document: async (vendorId, documentId, filename) => http.file(`vendors/${vendorId}/documents/${documentId}?download=1`, filename),
     },
+    settings: {
+      page: () => http.get('settings'),
+      store: (kind, input) => http.post(`settings/${kind}`, input),
+      update: (kind, id, input) => http.put(`settings/${kind}/${id}`, input),
+      toggle: (kind, id) => http.patch(`settings/${kind}/${id}/toggle`),
+      destroy: (kind, id) => http.delete(`settings/${kind}/${id}`),
+    },
     billing: {
       overview: () => http.get('billing'),
       invoice: (id) => http.get(`billing/invoices/${id}`),

@@ -45,6 +45,7 @@ export default function AppStackLayout() {
       <Stack.Screen name="packages/form" options={{ title: 'Package' }} />
       <Stack.Screen name="vendors/index" options={{ title: 'Vendors' }} />
       <Stack.Screen name="vendors/[id]" options={{ title: 'Vendor' }} />
+      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );
