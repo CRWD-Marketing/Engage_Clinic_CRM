@@ -21,6 +21,16 @@ class RoleController extends Controller
     private const SENSITIVE_ROLES = ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'];
 
     /**
+     * Grants only a Full Admin may hand out - money, system settings, and
+     * the power to change access itself. Anyone else who manages users &
+     * roles (e.g. HR) can still grant everything else, and can take these
+     * away, but can't add them to a user or a template (themselves included).
+     */
+    private const PROTECTED_MODULES = ['billing', 'settings'];
+
+    private const PROTECTED_ACTIONS = ['manage_users_roles'];
+
+    /**
      * Roles & access - users with their role template / access level, and the
      * template cards (system + custom).
      */
@@ -59,6 +69,9 @@ class RoleController extends Controller
         $this->assertCanManage();
 
         $data = $this->validateTemplate($request);
+        if ($refused = $this->refuseProtectedGrants([], [], $data['modules'], $data['actions'])) {
+            return $refused;
+        }
         $key = Str::slug($data['name'], '_');
         $base = $key;
         for ($i = 2; RoleTemplate::where('key', $key)->exists(); $i++) {
@@ -86,6 +99,13 @@ class RoleController extends Controller
         }
 
         $data = $this->validateTemplate($request, $template);
+
+        if (! $this->isFullAdmin() && in_array($template->base_role, self::SENSITIVE_ROLES, true)) {
+            return response()->json(['message' => "Only a Full Admin can change the {$template->name} template."], 403);
+        }
+        if ($refused = $this->refuseProtectedGrants($template->modules ?? [], $template->actions ?? [], $data['modules'] ?? $template->modules ?? [], $data['actions'] ?? $template->actions ?? [])) {
+            return $refused;
+        }
 
         // System templates keep their name / base role - only the grants move.
         if ($template->is_system) {
@@ -231,6 +251,12 @@ class RoleController extends Controller
         $template = RoleTemplate::findOrFail($data['role_template_id']);
         $templateChanged = (int) $template->id !== (int) $user->role_template_id;
 
+        // Their email and password are the keys to that account, so the whole
+        // edit is left to a Full Admin, not just a template change.
+        if ($refused = $this->refuseSensitiveUser($user)) {
+            return $refused;
+        }
+
         if ($templateChanged && in_array($template->base_role, self::SENSITIVE_ROLES, true) && auth()->user()->role !== 'FULL_ADMIN') {
             return response()->json(['message' => "Only a Full Admin can assign {$template->name}."], 403);
         }
@@ -274,6 +300,9 @@ class RoleController extends Controller
     public function updateUserTemplate(Request $request, User $user)
     {
         $this->assertCanManage();
+        if ($refused = $this->refuseSensitiveUser($user)) {
+            return $refused;
+        }
 
         $validator = Validator::make($request->all(), ['role_template_id' => ['required', 'exists:role_templates,id']]);
         if ($validator->fails()) {
@@ -324,6 +353,10 @@ class RoleController extends Controller
         $actions = array_values(array_unique($request->input('actions', [])));
         $moduleLevels = array_intersect_key($request->input('module_levels', []), array_flip($modules));
 
+        if ($refused = $this->refuseSensitiveUser($user) ?? $this->refuseProtectedGrants($user->effectiveModules() ?? [], $user->effectiveActions() ?? [], $modules, $actions)) {
+            return $refused;
+        }
+
         if ($user->id === auth()->id() && (! in_array('roles_access', $modules, true) || ! in_array('manage_users_roles', $actions, true))) {
             return response()->json(['message' => 'You can’t remove your own access to Roles & access.'], 422);
         }
@@ -339,6 +372,9 @@ class RoleController extends Controller
     public function toggleSuspend(User $user)
     {
         $this->assertCanManage();
+        if ($refused = $this->refuseSensitiveUser($user)) {
+            return $refused;
+        }
 
         if ($user->id === auth()->id()) {
             return response()->json(['message' => 'You can’t suspend your own account.'], 422);
@@ -355,6 +391,9 @@ class RoleController extends Controller
     public function destroyUser(User $user)
     {
         $this->assertCanManage();
+        if ($refused = $this->refuseSensitiveUser($user)) {
+            return $refused;
+        }
 
         if ($user->id === auth()->id()) {
             return response()->json(['message' => 'You can’t remove your own account.'], 422);
@@ -367,6 +406,44 @@ class RoleController extends Controller
     }
 
     // ---- Helpers ------------------------------------------------------
+
+    private function isFullAdmin(): bool
+    {
+        return auth()->user()->role === 'FULL_ADMIN';
+    }
+
+    /**
+     * A Full Admin or Clinical Supervisor account - its details and
+     * password, template, access, suspension or removal - is only changed
+     * by a Full Admin, so nobody else can take over, lock out or demote the
+     * people above them.
+     */
+    private function refuseSensitiveUser(User $user): ?\Illuminate\Http\JsonResponse
+    {
+        if ($this->isFullAdmin() || ! in_array($user->role, self::SENSITIVE_ROLES, true)) {
+            return null;
+        }
+        $label = $user->role === 'FULL_ADMIN' ? 'a Full Admin' : 'a Clinical Supervisor';
+
+        return response()->json(['message' => "Only a Full Admin can change the access of {$label}."], 403);
+    }
+
+    /** Refuses adding a protected grant (see PROTECTED_MODULES / PROTECTED_ACTIONS) unless the caller is a Full Admin. */
+    private function refuseProtectedGrants(array $beforeModules, array $beforeActions, array $modules, array $actions): ?\Illuminate\Http\JsonResponse
+    {
+        if ($this->isFullAdmin()) {
+            return null;
+        }
+        $added = array_merge(
+            array_map(fn ($m) => RoleTemplate::MODULES[$m], array_values(array_intersect(array_diff($modules, $beforeModules), self::PROTECTED_MODULES))),
+            array_map(fn ($a) => RoleTemplate::ACTIONS[$a], array_values(array_intersect(array_diff($actions, $beforeActions), self::PROTECTED_ACTIONS))),
+        );
+        if (! $added) {
+            return null;
+        }
+
+        return response()->json(['message' => 'Only a Full Admin can grant '.implode(', ', $added).'.'], 403);
+    }
 
     private function assertCanManage(): void
     {

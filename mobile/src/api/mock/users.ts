@@ -187,6 +187,10 @@ function update(publicId: string, input: Partial<UserInput>) {
   const user = findUser(db, publicId);
   validate(db, input, user);
   if (input.role) assertCanAssignRole(me, input.role);
+  // A Full Admin or Clinical Supervisor account is only edited by a Full Admin.
+  if (SENSITIVE_ROLES.includes(user.role) && me.role !== 'FULL_ADMIN') {
+    throw new ApiError(403, { message: `Only a Full Admin can edit a ${user.role === 'FULL_ADMIN' ? 'Full Admin' : 'Clinical Supervisor'} account.` });
+  }
 
   const text = (v: string | null | undefined) => (v === undefined ? undefined : v?.trim() || null);
   const changes: Partial<UserRow> = {

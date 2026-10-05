@@ -13,12 +13,13 @@ import { Chip } from '@/components/Chip';
 import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
+import { useCurrentUser } from '@/auth/session';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { leaveFlash, useReturnFlash } from '@/hooks/useReturnFlash';
 import { accessStatusColors, colors, spacing } from '@/theme';
 
-import { AccessEditor, levelsOf } from './AccessEditor';
+import { AccessEditor, levelsOf, PROTECTED_GRANTS, PROTECTED_ROLES } from './AccessEditor';
 
 type Flash = { text: string; tone: 'success' | 'danger' } | null;
 
@@ -84,7 +85,11 @@ function Detail({
   const [busy, setBusy] = useState(false);
   const template = d.templates.find((t) => t.id === u.template_id);
   const status = u.status.charAt(0).toUpperCase() + u.status.slice(1);
-  const canChange = d.can_manage;
+  const me = useCurrentUser();
+  const fullAdmin = me.role === 'FULL_ADMIN';
+  // A Full Admin or Clinical Supervisor account is changed by a Full Admin only.
+  const protectedAccount = !fullAdmin && PROTECTED_ROLES.includes(u.base_role);
+  const canChange = d.can_manage && !protectedAccount;
 
   async function run(action: () => Promise<{ message: string }>, after?: () => void) {
     setBusy(true);
@@ -131,6 +136,9 @@ function Detail({
       </Card>
 
       {flash ? <Banner text={flash.text} tone={flash.tone} /> : null}
+      {d.can_manage && protectedAccount ? (
+        <Banner text={`Only a Full Admin can change ${u.base_role === 'FULL_ADMIN' ? 'a Full Admin' : 'a Clinical Supervisor'} account.`} tone="info" />
+      ) : null}
 
       <Card style={styles.gap}>
         <AppText variant="heading">Role template</AppText>
@@ -150,7 +158,10 @@ function Detail({
             ? `Starts from ${template?.name ?? 'their role'} · turn anything on or off to grant beyond (or trim below) the template.`
             : `On ${template?.name ?? 'their role'} · view only.`}
         </AppText>
-        <AccessEditor page={d} value={grants} onChange={setGrants} disabled={!canChange} />
+        <AccessEditor page={d} value={grants} onChange={setGrants} disabled={!canChange} locked={fullAdmin ? [] : PROTECTED_GRANTS} />
+        {canChange && !fullAdmin ? (
+          <AppText variant="caption">Billing, Settings and Manage users &amp; roles are granted by a Full Admin.</AppText>
+        ) : null}
         {canChange ? <Button title="Save access" loading={busy} onPress={() => run(() => api.roles.setAccess(u.id, grants))} /> : null}
       </Card>
 

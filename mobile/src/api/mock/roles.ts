@@ -18,6 +18,9 @@ import { dateCast, laravelIso } from './seed';
 import { delay, EMAIL_PATTERN, getDb, requireFeature, requireUser, toApiUser } from './server';
 
 const SENSITIVE_ROLES: Role[] = ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'];
+/** Grants only a Full Admin may add (RoleController::PROTECTED_MODULES / PROTECTED_ACTIONS). */
+const PROTECTED_MODULES: ModuleKey[] = ['billing', 'settings'];
+const PROTECTED_ACTIONS: ActionKey[] = ['manage_users_roles'];
 
 /** RoleTemplate::DEPARTMENT_FOR_ROLE */
 const DEPARTMENT_FOR_ROLE: RolesAccessPage['department_for_role'] = {
@@ -113,6 +116,22 @@ function templatePayload(db: MockDb, t: RoleTemplateRow): AccessTemplate {
     locked: t.key === 'full_admin',
     users_count: db.users.filter((u) => u.role_template_id === t.id).length,
   };
+}
+
+/** A Full Admin or Clinical Supervisor account is only changed by a Full Admin. */
+function refuseSensitiveUser(me: UserRow, user: UserRow) {
+  if (me.role === 'FULL_ADMIN' || !SENSITIVE_ROLES.includes(user.role)) return;
+  throw new ApiError(403, { message: `Only a Full Admin can change the access of ${user.role === 'FULL_ADMIN' ? 'a Full Admin' : 'a Clinical Supervisor'}.` });
+}
+
+/** Adding Billing, Settings or "Manage users & roles" is Full Admin only; taking them away is not. */
+function refuseProtectedGrants(me: UserRow, before: { modules: ModuleKey[]; actions: ActionKey[] }, after: { modules: ModuleKey[]; actions: ActionKey[] }) {
+  if (me.role === 'FULL_ADMIN') return;
+  const added = [
+    ...after.modules.filter((m) => !before.modules.includes(m) && PROTECTED_MODULES.includes(m)).map((m) => MODULES[m]),
+    ...after.actions.filter((a) => !before.actions.includes(a) && PROTECTED_ACTIONS.includes(a)).map((a) => ACTION_LABELS[a]),
+  ];
+  if (added.length) throw new ApiError(403, { message: `Only a Full Admin can grant ${added.join(', ')}.` });
 }
 
 const canManage = (u: UserRow) => canDo(toApiUser(u), 'manage_users_roles') && levelFor(toApiUser(u), 'roles_access') !== 'view';
@@ -237,9 +256,10 @@ const slug = (name: string) =>
     .replace(/^_+|_+$/g, '');
 
 function storeTemplate(input: TemplateInput) {
-  requireManager();
+  const me = requireManager();
   const db = getDb();
   const data = validateTemplate(db, input, null);
+  refuseProtectedGrants(me, { modules: [], actions: [] }, { modules: data.modules!, actions: data.actions! });
   const base = slug(data.name!);
   let key = base;
   for (let i = 2; db.roleTemplates.some((t) => t.key === key); i++) key = `${base}_${i}`;
@@ -260,11 +280,19 @@ function storeTemplate(input: TemplateInput) {
 }
 
 function updateTemplate(id: number, input: TemplateInput) {
-  requireManager();
+  const me = requireManager();
   const db = getDb();
   const template = findTemplate(db, id);
   if (template.key === 'full_admin') throw refuse('Full Admin always has every module and action.');
   const data = validateTemplate(db, input, template);
+  if (me.role !== 'FULL_ADMIN' && SENSITIVE_ROLES.includes(template.base_role)) {
+    throw new ApiError(403, { message: `Only a Full Admin can change the ${template.name} template.` });
+  }
+  refuseProtectedGrants(
+    me,
+    { modules: template.modules ?? [], actions: template.actions ?? [] },
+    { modules: data.modules ?? template.modules ?? [], actions: data.actions ?? template.actions ?? [] },
+  );
   // System templates keep their name and base role; only the grants move.
   if (template.is_system) {
     delete data.name;
@@ -376,6 +404,8 @@ function updateUser(publicId: string, input: AccessUserInput) {
   validateUser(db, input, user);
   const template = findTemplate(db, input.role_template_id);
   const templateChanged = template.id !== user.role_template_id;
+  // Their email and password are the keys to that account, so the whole edit is left to a Full Admin.
+  refuseSensitiveUser(me, user);
 
   if (templateChanged && SENSITIVE_ROLES.includes(template.base_role) && me.role !== 'FULL_ADMIN') {
     throw new ApiError(403, { message: `Only a Full Admin can assign ${template.name}.` });
@@ -414,6 +444,7 @@ function setTemplate(publicId: string, templateId: number) {
   const me = requireManager();
   const db = getDb();
   const user = findUser(db, publicId);
+  refuseSensitiveUser(me, user);
   if (!templateId) throw refuse('The role template id field is required.');
   if (!db.roleTemplates.some((t) => t.id === Number(templateId))) throw refuse('The selected role template id is invalid.');
   const template = findTemplate(db, templateId);
@@ -440,6 +471,9 @@ function setAccess(publicId: string, input: AccessGrantInput) {
 
   const modules = unique(input.modules);
   const actions = unique(input.actions);
+  refuseSensitiveUser(me, user);
+  const current = toApiUser(user);
+  refuseProtectedGrants(me, { modules: effectiveModules(current) ?? [], actions: effectiveActions(current) ?? [] }, { modules, actions });
   if (user.id === me.id && (!modules.includes('roles_access') || !actions.includes('manage_users_roles'))) {
     throw refuse('You can’t remove your own access to Roles & access.');
   }
@@ -451,6 +485,7 @@ function toggleSuspend(publicId: string) {
   const me = requireManager();
   const db = getDb();
   const user = findUser(db, publicId);
+  refuseSensitiveUser(me, user);
   if (user.id === me.id) throw refuse('You can’t suspend your own account.');
   user.is_active = !user.is_active;
   return {
@@ -463,6 +498,7 @@ function destroyUser(publicId: string) {
   const me = requireManager();
   const db = getDb();
   const user = findUser(db, publicId);
+  refuseSensitiveUser(me, user);
   if (user.id === me.id) throw refuse('You can’t remove your own account.');
   db.users = db.users.filter((u) => u.id !== user.id);
   return { message: `${user.first_name} removed.` };

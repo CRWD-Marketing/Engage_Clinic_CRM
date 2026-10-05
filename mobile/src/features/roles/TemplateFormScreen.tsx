@@ -13,12 +13,13 @@ import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
+import { useCurrentUser } from '@/auth/session';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { leaveFlash } from '@/hooks/useReturnFlash';
 import { spacing } from '@/theme';
 import { roleLabel } from '@/utils/format';
 
-import { AccessEditor, levelsOf } from './AccessEditor';
+import { AccessEditor, levelsOf, PROTECTED_GRANTS } from './AccessEditor';
 
 /**
  * New role template, or edit one (`id`). The web edits a card's chips in place, one
@@ -54,6 +55,7 @@ function Form({ page: d, template }: { page: RolesAccessPage; template: AccessTe
   const [nameError, setNameError] = useState<string | undefined>();
   // A system template keeps its name and base role; only the grants move.
   const fixed = template?.is_system ?? false;
+  const fullAdmin = useCurrentUser().role === 'FULL_ADMIN';
 
   async function save() {
     setError(null);
@@ -110,7 +112,8 @@ function Form({ page: d, template }: { page: RolesAccessPage; template: AccessTe
       </Card>
 
       <Card>
-        <AccessEditor page={d} value={grants} onChange={setGrants} />
+        <AccessEditor page={d} value={grants} onChange={setGrants} locked={fullAdmin ? [] : PROTECTED_GRANTS} />
+        {fullAdmin ? null : <AppText variant="caption">Billing, Settings and Manage users &amp; roles are granted by a Full Admin.</AppText>}
       </Card>
 
       <Button title={editing ? 'Save template' : 'Create role'} loading={busy} onPress={save} />

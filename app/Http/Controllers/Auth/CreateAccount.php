@@ -248,6 +248,13 @@ public function update(Request $request, User $user): JsonResponse|RedirectRespo
         $this->assertCanAssignRole($validated['role']);
     }
 
+    // A Full Admin or Clinical Supervisor account - details, password, role,
+    // status - is only edited by a Full Admin (same rule as Roles & access),
+    // so nobody else can take it over, lock it out or demote it.
+    if (in_array($user->role, ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'], true) && auth()->user()->role !== 'FULL_ADMIN') {
+        abort(403, $user->role === 'FULL_ADMIN' ? 'Only a Full Admin can edit a Full Admin account.' : 'Only a Full Admin can edit a Clinical Supervisor account.');
+    }
+
     $user->update($validated);
 
     if ($this->wantsJsonResponse($request)) {

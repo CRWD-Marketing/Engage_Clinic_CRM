@@ -12,6 +12,7 @@ import { Card, CardHeader, Divider } from '@/components/Card';
 import { Chip } from '@/components/Chip';
 import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
+import { useCurrentUser } from '@/auth/session';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { leaveFlash, useReturnFlash } from '@/hooks/useReturnFlash';
@@ -44,6 +45,8 @@ function Profile({ user: u, flash, refreshing, onRefresh }: { user: UserProfile;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const name = fullName(u);
+  // A Full Admin or Clinical Supervisor account is edited by a Full Admin only.
+  const canEdit = useCurrentUser().role === 'FULL_ADMIN' || !['FULL_ADMIN', 'CLINICAL_SUPERVISOR'].includes(u.role);
   const open = (publicId: string) => router.push({ pathname: '/users/[id]', params: { id: publicId } });
 
   async function remove() {
@@ -75,7 +78,11 @@ function Profile({ user: u, flash, refreshing, onRefresh }: { user: UserProfile;
           </View>
           <Chip label={u.is_active ? 'Active' : 'Inactive'} colors={userStatusColors[u.is_active ? 'active' : 'inactive']} />
         </View>
-        <Button title="Edit" variant="secondary" onPress={() => router.push({ pathname: '/users/form', params: { id: u.public_id } })} />
+        {canEdit ? (
+          <Button title="Edit" variant="secondary" onPress={() => router.push({ pathname: '/users/form', params: { id: u.public_id } })} />
+        ) : (
+          <AppText variant="caption">Only a Full Admin can edit this account.</AppText>
+        )}
         {u.can_delete ? <Button title="Delete" variant="secondary" onPress={() => setConfirming(!confirming)} /> : null}
         {confirming ? (
           <View style={styles.confirm}>

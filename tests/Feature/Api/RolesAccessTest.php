@@ -34,13 +34,13 @@ class RolesAccessTest extends ApiTestCase
         $this->postJson($this->api('roles-access/templates'), ['name' => ''])->assertStatus(422);
         $created = $this->postJson($this->api('roles-access/templates'), [
             'name' => 'Insurance Officer', 'description' => 'Claims follow-up', 'base_role' => 'FINANCE_STAFF',
-            'modules' => ['billing'], 'module_levels' => ['billing' => 'view'], 'actions' => [],
+            'modules' => ['reports'], 'module_levels' => ['reports' => 'view'], 'actions' => [],
         ])->assertCreated()
             ->assertJsonPath('template.key', 'insurance_officer')
             ->assertJsonPath('template.is_system', false)
-            ->assertJsonPath('template.module_levels.billing', 'view');
+            ->assertJsonPath('template.module_levels.reports', 'view');
         // Dashboard is always added to a new template.
-        $this->assertEqualsCanonicalizing(['dashboard', 'billing'], $created->json('template.modules'));
+        $this->assertEqualsCanonicalizing(['dashboard', 'reports'], $created->json('template.modules'));
         $id = $created->json('template.id');
 
         $this->putJson($this->api("roles-access/templates/{$id}"), ['actions' => ['create_invoice']])->assertOk()

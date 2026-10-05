@@ -21,11 +21,14 @@ export function AccessEditor({
   value,
   onChange,
   disabled,
+  locked = [],
 }: {
   page: Pick<RolesAccessPage, 'modules' | 'levels' | 'actions'>;
   value: AccessGrantInput;
   onChange: (value: AccessGrantInput) => void;
   disabled?: boolean;
+  /** Grants that can be taken away but not switched on here (Full Admin only). */
+  locked?: string[];
 }) {
   const modules = Object.keys(page.modules) as ModuleKey[];
   const actions = Object.keys(page.actions) as ActionKey[];
@@ -52,7 +55,7 @@ export function AccessEditor({
         const on = value.modules.includes(m);
         return (
           <View key={m} style={styles.module}>
-            <Toggle label={page.modules[m]} on={on} kind="module" disabled={disabled} onPress={() => toggleModule(m)} />
+            <Toggle label={page.modules[m]} on={on} kind="module" disabled={disabled || (!on && locked.includes(m))} onPress={() => toggleModule(m)} />
             {on ? (
               <OptionPills<Level>
                 options={levels.map((l) => ({ value: l, label: page.levels[l] }))}
@@ -70,7 +73,14 @@ export function AccessEditor({
       </AppText>
       <View style={styles.chips}>
         {actions.map((a) => (
-          <Toggle key={a} label={page.actions[a]} on={value.actions.includes(a)} kind="action" disabled={disabled} onPress={() => toggleAction(a)} />
+          <Toggle
+            key={a}
+            label={page.actions[a]}
+            on={value.actions.includes(a)}
+            kind="action"
+            disabled={disabled || (!value.actions.includes(a) && locked.includes(a))}
+            onPress={() => toggleAction(a)}
+          />
         ))}
       </View>
     </View>
@@ -112,3 +122,8 @@ const styles = StyleSheet.create({
   },
   chipText: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.textSecondary },
 });
+
+/** Accounts only a Full Admin may change (RoleController::SENSITIVE_ROLES). */
+export const PROTECTED_ROLES = ['FULL_ADMIN', 'CLINICAL_SUPERVISOR'];
+/** Grants only a Full Admin may add (RoleController::PROTECTED_MODULES / PROTECTED_ACTIONS). */
+export const PROTECTED_GRANTS = ['billing', 'settings', 'manage_users_roles'];

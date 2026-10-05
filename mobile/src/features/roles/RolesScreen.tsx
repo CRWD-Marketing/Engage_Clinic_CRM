@@ -14,13 +14,14 @@ import { Chip } from '@/components/Chip';
 import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { Banner, EmptyRow, ErrorState, LoadingState } from '@/components/StateViews';
+import { useCurrentUser } from '@/auth/session';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
 import { useReturnFlash } from '@/hooks/useReturnFlash';
 import { accessChipColors, accessStatusColors, colors, spacing } from '@/theme';
 import { roleLabel } from '@/utils/format';
 
-import { levelsOf, Toggle } from './AccessEditor';
+import { levelsOf, PROTECTED_ROLES, Toggle } from './AccessEditor';
 
 type Tab = 'users' | 'templates';
 type Flash = { text: string; tone: 'success' | 'danger' } | null;
@@ -117,6 +118,7 @@ function UserItem({ user: u, template, moduleCount }: { user: AccessUser; templa
 }
 
 function TemplatesTab({ page: d, setFlash, onChanged }: { page: RolesAccessPage; setFlash: (f: Flash) => void; onChanged: () => void }) {
+  const fullAdmin = useCurrentUser().role === 'FULL_ADMIN';
   const [deleting, setDeleting] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -175,7 +177,7 @@ function TemplatesTab({ page: d, setFlash, onChanged }: { page: RolesAccessPage;
 
           {t.locked ? <AppText variant="caption">🔒 Locked — Full Admin always has every module and action.</AppText> : null}
           <AppText variant="caption">Template only — editing it does not change people already assigned.</AppText>
-          {d.can_manage && !t.locked ? (
+          {d.can_manage && !t.locked && (fullAdmin || !PROTECTED_ROLES.includes(t.base_role)) ? (
             <Button title="Edit template" variant="secondary" onPress={() => router.push({ pathname: '/roles/template', params: { id: String(t.id) } })} />
           ) : null}
           {d.can_manage && !t.is_system ? <Button title="Delete role" variant="secondary" onPress={() => setDeleting(deleting === t.id ? null : t.id)} /> : null}
