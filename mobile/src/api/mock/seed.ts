@@ -223,6 +223,18 @@ const PATIENT_NOTE_BODIES = [
 // Builder
 // ---------------------------------------------------------------------------
 
+/** RoleTemplate::SYSTEM descriptions. */
+const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
+  full_admin: 'Complete access to every module: user management, billing, system settings, all client and financial records',
+  staff_admin: 'Staff / HR profiles, internal scheduling, job applications and user accounts. No billing or clinical data',
+  sales: 'Leads, deals, pipeline, client communication and intake forms only. No clinical records',
+  scheduling: 'Appointment calendars, client communication and intake coordination',
+  finance: 'Invoicing, payments and financial reporting. No clinical records',
+  clinical_admin: 'Full clinical records, treatment plans and oversight of therapist accounts and session notes',
+  clinical_standard: "Session notes and records limited to the therapist's own assigned clients",
+  basic: 'Limited or custom access, defined case by case — currently invoices and quotations only',
+};
+
 export function buildSeed(now: Date = new Date()): MockDb {
   const rnd = createRandom(20260930);
   const today = todayYmd(now);
@@ -233,7 +245,7 @@ export function buildSeed(now: Date = new Date()): MockDb {
     id: i + 1,
     key,
     name: t.name,
-    description: null,
+    description: TEMPLATE_DESCRIPTIONS[key] ?? null,
     base_role: t.base_role,
     modules: [...t.modules],
     module_levels: t.module_levels ? { ...t.module_levels } : null,

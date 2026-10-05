@@ -192,6 +192,21 @@ export const userStatusColors: Record<'active' | 'inactive', ChipColors> = {
   inactive: { bg: '#EEF0F2', fg: '#6B7A8C' },
 };
 
+/** Access status chips on Roles & access (user/roles.blade.php `.ra-status`). */
+export const accessStatusColors: Record<'active' | 'invited' | 'suspended', ChipColors> = {
+  active: { bg: '#E4F6EB', fg: '#1E8A4C' },
+  invited: { bg: '#FDF3B0', fg: '#7A5C00' },
+  suspended: { bg: '#FBE1E1', fg: '#B3261E' },
+};
+
+/** Module / action toggles and template tags on Roles & access (`.ra-chip`, `.ra-tag`). */
+export const accessChipColors = {
+  module: { bg: '#E4F6EB', fg: '#1E7A46', border: '#BFE9CE' },
+  action: { bg: '#F9E7EC', fg: '#C8355F', border: '#F0C2CF' },
+  systemTag: { bg: '#EEF0F2', fg: '#5A6B7E' },
+  customTag: { bg: '#F9E7EC', fg: '#C8355F' },
+} as const;
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

@@ -14,6 +14,7 @@ import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
 import { useApiQuery } from '@/hooks/useApiQuery';
+import { leaveFlash } from '@/hooks/useReturnFlash';
 import { colors, spacing } from '@/theme';
 import { isoToYmd } from '@/utils/dates';
 
@@ -77,8 +78,14 @@ function Form({ options, user }: { options: UserListResponse; user: UserProfile 
       ...(editing ? (password ? { password, password_confirmation: confirm } : {}) : { password: generated, password_confirmation: generated }),
     };
     try {
-      const res = user ? await api.users.update(user.public_id, input) : await api.users.store(input);
-      router.replace({ pathname: '/users/[id]', params: { id: res.data.public_id, flash: res.message } });
+      if (user) {
+        const res = await api.users.update(user.public_id, input);
+        leaveFlash(`users.show:${user.public_id}`, res.message);
+        router.back();
+      } else {
+        const res = await api.users.store(input);
+        router.replace({ pathname: '/users/[id]', params: { id: res.data.public_id, flash: res.message } });
+      }
     } catch (e) {
       setError(errorMessage(e));
       if (isApiError(e)) setFieldErrors(Object.fromEntries(Object.keys(e.errors).map((k) => [k, e.fieldError(k)!])));

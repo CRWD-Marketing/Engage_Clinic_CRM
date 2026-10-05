@@ -383,11 +383,11 @@ function onMobile(user: User, module: ModuleKey): boolean {
   if (module === 'dashboard') return true;
   // The Therapists page is for people who see the whole roster; a therapist's own schedule is their Calendar tab.
   if (module === 'therapists') return user.role !== 'THERAPIST' && levelFor(user, 'therapists') !== 'own';
-  return ['calendar', 'patients', 'whatsapp', 'leads', 'contacts', 'reports', 'billing', 'users'].includes(module);
+  return ['calendar', 'patients', 'whatsapp', 'leads', 'contacts', 'reports', 'billing', 'users', 'roles_access'].includes(module);
 }
 
 /** Modules without a tab of their own: they open as a screen from here (and from their related tab). */
-const PUSHED_SCREENS = { contacts: '/contacts', therapists: '/therapists', reports: '/reports', billing: '/billing', users: '/users' } as const;
+const PUSHED_SCREENS = { contacts: '/contacts', therapists: '/therapists', reports: '/reports', billing: '/billing', users: '/users', roles_access: '/roles' } as const;
 
 const LEVEL_LABEL = { full: 'Full', own: 'Own only', view: 'View only', edit: 'Edit' } as const;
 

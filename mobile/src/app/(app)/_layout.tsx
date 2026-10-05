@@ -33,6 +33,10 @@ export default function AppStackLayout() {
       <Stack.Screen name="users/index" options={{ title: 'User Management' }} />
       <Stack.Screen name="users/[id]" options={{ title: 'User' }} />
       <Stack.Screen name="users/form" options={{ title: 'Add user' }} />
+      <Stack.Screen name="roles/index" options={{ title: 'Roles & access' }} />
+      <Stack.Screen name="roles/user/[id]" options={{ title: 'Access' }} />
+      <Stack.Screen name="roles/user-form" options={{ title: 'Add user' }} />
+      <Stack.Screen name="roles/template" options={{ title: 'Role template' }} />
       <Stack.Screen name="contacts/[id]" options={{ title: 'Submission' }} />
     </Stack>
   );

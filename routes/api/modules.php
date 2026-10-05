@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\NoteReviewController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\TherapistController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Billing\BulkRunController;
@@ -136,4 +137,19 @@ Route::middleware('feature:users')->prefix('users')->group(function () {
     Route::get('{user}', [UserController::class, 'show']);
     Route::put('{user}', [UserController::class, 'update']);
     Route::delete('{user}', [UserController::class, 'destroy']);
+});
+
+// Roles & access (roles-access/*). Changes need the "Manage users & roles" action and a
+// Roles & access level that is not view-only (checked in the web controller).
+Route::middleware('feature:roles_access')->prefix('roles-access')->group(function () {
+    Route::get('/', [RoleController::class, 'index']);
+    Route::post('templates', [RoleController::class, 'storeTemplate']);
+    Route::put('templates/{template}', [RoleController::class, 'updateTemplate']);
+    Route::delete('templates/{template}', [RoleController::class, 'destroyTemplate']);
+    Route::post('users', [RoleController::class, 'storeUser']);
+    Route::put('users/{user}', [RoleController::class, 'updateUser']);
+    Route::put('users/{user}/template', [RoleController::class, 'updateUserTemplate']);
+    Route::put('users/{user}/access', [RoleController::class, 'updateUserAccess']);
+    Route::put('users/{user}/suspend', [RoleController::class, 'toggleSuspend']);
+    Route::delete('users/{user}', [RoleController::class, 'destroyUser']);
 });

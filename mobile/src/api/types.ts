@@ -1551,6 +1551,124 @@ export interface UserSaveResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Roles & access
+// ---------------------------------------------------------------------------
+
+/**
+ * A module → level map as Laravel sends it. An empty PHP array arrives as
+ * `[]` rather than `{}`, so read it through `levelsOf()` in features/roles.
+ */
+export type ModuleLevels = Partial<Record<ModuleKey, Level>> | [];
+
+/** A user on the Roles & access page (RoleController::userPayload()). */
+export interface AccessUser {
+  /** The public_id: what the user routes take. */
+  id: string;
+  /** The numeric id (what `manager_id` points at). */
+  uid: number;
+  name: string;
+  initials: string;
+  email: string;
+  job_title: string | null;
+  first_name: string;
+  middle_name: string | null;
+  last_name: string;
+  phone_number: string | null;
+  department: Department;
+  manager_id: number | null;
+  /** "YYYY-MM-DD" */
+  start_date: YmdString | null;
+  notes: string | null;
+  is_active: boolean;
+  template_id: number | null;
+  base_role: Role;
+  /** Effective grants: their own, or their template's. */
+  modules: ModuleKey[];
+  module_levels: ModuleLevels;
+  actions: ActionKey[];
+  /** How many modules they can open. */
+  access: number;
+  /** User::accessStatus(): suspended (inactive), invited (never signed in), or active. */
+  status: 'active' | 'invited' | 'suspended';
+  is_me: boolean;
+}
+
+/** A role template card (RoleController::templatePayload()). */
+export interface AccessTemplate {
+  id: number;
+  key: string;
+  name: string;
+  description: string | null;
+  base_role: Role;
+  modules: ModuleKey[];
+  module_levels: ModuleLevels;
+  actions: ActionKey[];
+  /** One of the eight from the account request form: name and base role are fixed, and it can't be deleted. */
+  is_system: boolean;
+  /** Full Admin: always every module and action. */
+  locked: boolean;
+  users_count: number;
+}
+
+/** GET /roles-access — everything user/roles.blade.php is rendered with. */
+export interface RolesAccessPage {
+  /** By first name. */
+  users: AccessUser[];
+  /** System templates first. */
+  templates: AccessTemplate[];
+  modules: Record<ModuleKey, string>;
+  levels: Record<Level, string>;
+  actions: Record<ActionKey, string>;
+  base_roles: Role[];
+  departments: Department[];
+  /** Active users: the Manager picker. */
+  managers: { id: number; name: string }[];
+  /** The department a new user lands in for each base role. */
+  department_for_role: Record<Role, Department>;
+  stats: { total: number; active: number; invited: number; suspended: number };
+  /** Has "Manage users & roles" and a Roles & access level that is not view-only. */
+  can_manage: boolean;
+}
+
+/** POST /roles-access/templates (name required) and PUT /roles-access/templates/{id} (any subset). */
+export interface TemplateInput {
+  name?: string;
+  description?: string | null;
+  base_role?: Role;
+  modules?: ModuleKey[];
+  module_levels?: Partial<Record<ModuleKey, Level>>;
+  actions?: ActionKey[];
+}
+
+/** POST /roles-access/users and PUT /roles-access/users/{id}. */
+export interface AccessUserInput {
+  first_name: string;
+  middle_name?: string | null;
+  last_name: string;
+  email: string;
+  phone_number?: string | null;
+  job_title?: string | null;
+  /** 8–72 characters. Required to add; on edit only sent to change it. */
+  password?: string | null;
+  role_template_id: number;
+  /** Defaults to the template's base-role department. */
+  department?: Department | null;
+  manager_id?: number | null;
+  start_date?: YmdString | null;
+  notes?: string | null;
+  is_active?: boolean;
+  /** Add only: email a set-your-password link. */
+  send_invite?: boolean;
+}
+
+/** PUT /roles-access/users/{id}/access — the user's own grants, replacing their template's. */
+export interface AccessGrantInput {
+  modules: ModuleKey[];
+  module_levels: Partial<Record<ModuleKey, Level>>;
+  actions: ActionKey[];
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 

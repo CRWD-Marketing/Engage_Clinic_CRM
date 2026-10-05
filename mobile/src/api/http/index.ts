@@ -109,6 +109,18 @@ export function createHttpApi(baseUrl: string): ApiClient {
       update: (publicId, input) => http.put(`users/${publicId}`, input),
       destroy: (publicId) => http.delete(`users/${publicId}`),
     },
+    roles: {
+      page: () => http.get('roles-access'),
+      storeTemplate: (input) => http.post('roles-access/templates', input),
+      updateTemplate: (id, input) => http.put(`roles-access/templates/${id}`, input),
+      destroyTemplate: (id) => http.delete(`roles-access/templates/${id}`),
+      storeUser: (input) => http.post('roles-access/users', input),
+      updateUser: (publicId, input) => http.put(`roles-access/users/${publicId}`, input),
+      setTemplate: (publicId, templateId) => http.put(`roles-access/users/${publicId}/template`, { role_template_id: templateId }),
+      setAccess: (publicId, input) => http.put(`roles-access/users/${publicId}/access`, input),
+      toggleSuspend: (publicId) => http.put(`roles-access/users/${publicId}/suspend`),
+      destroyUser: (publicId) => http.delete(`roles-access/users/${publicId}`),
+    },
     billing: {
       overview: () => http.get('billing'),
       invoice: (id) => http.get(`billing/invoices/${id}`),

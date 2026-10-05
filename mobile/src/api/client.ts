@@ -11,6 +11,10 @@
 import { createHttpApi } from './http';
 import { createMockApi } from './mock';
 import type {
+  AccessGrantInput,
+  AccessTemplate,
+  AccessUser,
+  AccessUserInput,
   BillingInvoice,
   BillingOverview,
   BulkRunGroup,
@@ -31,6 +35,8 @@ import type {
   PreAuthRequest,
   PrepaidTopUpResponse,
   RemoteFile,
+  RolesAccessPage,
+  TemplateInput,
   UserInput,
   UserListQuery,
   UserListResponse,
@@ -296,6 +302,33 @@ export interface ApiClient {
     update(publicId: string, input: Partial<UserInput>): Promise<UserSaveResponse>;
     /** DELETE /users/{public_id} — Full Admin only (403 otherwise). */
     destroy(publicId: string): Promise<{ success: boolean; message: string }>;
+  };
+  /**
+   * Roles & access (RoleController, `feature:roles_access`). Every change needs the
+   * "Manage users & roles" action and a non-view-only Roles & access level. Users are
+   * addressed by public_id; you can never lock yourself out (422).
+   */
+  roles: {
+    /** GET /roles-access */
+    page(): Promise<RolesAccessPage>;
+    /** POST /roles-access/templates — Dashboard is always added. */
+    storeTemplate(input: TemplateInput): Promise<{ message: string; template: AccessTemplate }>;
+    /** PUT /roles-access/templates/{id} — system templates keep their name and base role; Full Admin is locked (422). */
+    updateTemplate(id: number, input: TemplateInput): Promise<{ message: string; template: AccessTemplate }>;
+    /** DELETE /roles-access/templates/{id} — custom only; its users fall back to their base role's system template. */
+    destroyTemplate(id: number): Promise<{ message: string }>;
+    /** POST /roles-access/users — 403 when a non-admin picks a Full Admin or Clinical Supervisor template. */
+    storeUser(input: AccessUserInput): Promise<{ message: string; user: AccessUser }>;
+    /** PUT /roles-access/users/{id} — a template change re-applies that template's access. */
+    updateUser(publicId: string, input: AccessUserInput): Promise<{ message: string; user: AccessUser }>;
+    /** PUT /roles-access/users/{id}/template */
+    setTemplate(publicId: string, templateId: number): Promise<{ message: string; user: AccessUser }>;
+    /** PUT /roles-access/users/{id}/access — the user's own modules, levels and actions. */
+    setAccess(publicId: string, input: AccessGrantInput): Promise<{ message: string; user: AccessUser }>;
+    /** PUT /roles-access/users/{id}/suspend — toggles. */
+    toggleSuspend(publicId: string): Promise<{ message: string; user: AccessUser }>;
+    /** DELETE /roles-access/users/{id} */
+    destroyUser(publicId: string): Promise<{ message: string }>;
   };
   billing: {
     /** GET /billing */

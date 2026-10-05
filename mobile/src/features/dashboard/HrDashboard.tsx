@@ -35,6 +35,7 @@ export function HrDashboard() {
     <Screen refreshing={query.refreshing} onRefresh={query.refresh}>
       <DashboardHeader name={d.user_full_name} location={d.location_label} />
       <Button title="Open user management" onPress={() => router.push('/users')} />
+      <Button title="Open roles & access" variant="secondary" onPress={() => router.push('/roles')} />
 
       <StatsGrid>
         <StatTile label="Active staff" value={String(d.active_staff_count)} caption={`${d.new_hires_this_month} started this month`} />

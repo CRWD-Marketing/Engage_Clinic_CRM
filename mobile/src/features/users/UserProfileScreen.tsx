@@ -1,5 +1,5 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
@@ -14,6 +14,7 @@ import { Screen } from '@/components/Screen';
 import { Banner, ErrorState, LoadingState } from '@/components/StateViews';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
+import { leaveFlash, useReturnFlash } from '@/hooks/useReturnFlash';
 import { colors, spacing, userStatusColors } from '@/theme';
 import { formatDayMonthYear, isoToYmd, timeAgo } from '@/utils/dates';
 
@@ -21,9 +22,12 @@ import { enumLabel, fullName } from './userFormat';
 
 /** user/[id].blade.php: contact details, employment, direct reports and the record dates. */
 export function UserProfileScreen() {
-  const { id, flash } = useLocalSearchParams<{ id: string; flash?: string }>();
+  const { id, flash: carried } = useLocalSearchParams<{ id: string; flash?: string }>();
   const query = useApiQuery(`users.show:${id}`, () => api.users.show(id));
   useRefetchOnFocus(query.reload);
+  const [flash, setFlash] = useState<string | undefined>(carried);
+  const showReturned = useCallback((text: string) => setFlash(text), []);
+  useReturnFlash(`users.show:${id}`, showReturned);
 
   if (!query.data) {
     return (
@@ -46,7 +50,8 @@ function Profile({ user: u, flash, refreshing, onRefresh }: { user: UserProfile;
     setBusy(true);
     setError(null);
     try {
-      await api.users.destroy(u.public_id);
+      const res = await api.users.destroy(u.public_id);
+      leaveFlash('users', res.message);
       router.back();
     } catch (e) {
       setError(errorMessage(e));

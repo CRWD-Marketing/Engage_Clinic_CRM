@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { api } from '@/api/client';
@@ -12,12 +12,13 @@ import { Chip } from '@/components/Chip';
 import { OptionPills } from '@/components/OptionPills';
 import { Screen } from '@/components/Screen';
 import { StatTile } from '@/components/StatTile';
-import { EmptyRow, ErrorState, LoadingState } from '@/components/StateViews';
+import { Banner, EmptyRow, ErrorState, LoadingState } from '@/components/StateViews';
 import { TextField } from '@/components/TextField';
 import { StatsGrid } from '@/features/dashboard/panels';
 import { useApiQuery } from '@/hooks/useApiQuery';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useRefetchOnFocus } from '@/hooks/useRefetchOnFocus';
+import { useReturnFlash } from '@/hooks/useReturnFlash';
 import { colors, spacing, userStatusColors } from '@/theme';
 
 import { enumLabel, fullName } from './userFormat';
@@ -35,6 +36,9 @@ export function UsersScreen() {
     api.users.list({ search: term, ...filters, page }),
   );
   useRefetchOnFocus(query.reload);
+  const [flash, setFlash] = useState<string | null>(null);
+  const showReturned = useCallback((text: string) => setFlash(text), []);
+  useReturnFlash('users', showReturned);
 
   // A new search or filter starts again from page 1.
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K]) => {
@@ -65,6 +69,7 @@ export function UsersScreen() {
       </StatsGrid>
 
       <Button title="Add user" onPress={() => router.push('/users/form')} />
+      {flash ? <Banner text={flash} tone="success" /> : null}
 
       <TextField
         label="Search users"
