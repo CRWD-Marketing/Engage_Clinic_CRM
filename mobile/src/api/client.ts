@@ -35,6 +35,9 @@ import type {
   JobPostingInput,
   InvoiceVoidRequest,
   NewInvoiceRequest,
+  PackageInput,
+  PackageRow,
+  PackagesPage,
   PatientLedger,
   PreAuthorization,
   PreAuthRequest,
@@ -357,6 +360,17 @@ export interface ApiClient {
     updatePosting(id: number, input: JobPostingInput): Promise<{ message: string; posting: JobPosting }>;
     /** DELETE /careers/postings/{id} — applications keep their job title. */
     destroyPosting(id: number): Promise<{ message: string }>;
+  };
+  /** Packages (PackageController, `feature:packages`). */
+  packages: {
+    /** GET /packages */
+    list(): Promise<PackagesPage>;
+    /** POST /packages — created active. */
+    store(input: PackageInput): Promise<{ message: string; package: PackageRow }>;
+    /** PUT /packages/{id} */
+    update(id: number, input: PackageInput): Promise<{ message: string; package: PackageRow }>;
+    /** DELETE /packages/{id} */
+    destroy(id: number): Promise<{ message: string }>;
   };
   billing: {
     /** GET /billing */

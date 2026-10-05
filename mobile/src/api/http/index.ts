@@ -133,6 +133,12 @@ export function createHttpApi(baseUrl: string): ApiClient {
       updatePosting: (id, input) => http.put(`careers/postings/${id}`, input),
       destroyPosting: (id) => http.delete(`careers/postings/${id}`),
     },
+    packages: {
+      list: () => http.get('packages'),
+      store: (input) => http.post('packages', input),
+      update: (id, input) => http.put(`packages/${id}`, input),
+      destroy: (id) => http.delete(`packages/${id}`),
+    },
     billing: {
       overview: () => http.get('billing'),
       invoice: (id) => http.get(`billing/invoices/${id}`),

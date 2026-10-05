@@ -222,6 +222,12 @@ export const postingStatusColors: Record<'active' | 'inactive', ChipColors> = {
   inactive: { bg: '#EFEBE3', fg: '#7A6E60' },
 };
 
+/** Package funding badges (`.pk-badge.insurance` / `.self-pay`). */
+export const fundingBadgeColors: Record<'insurance' | 'self_pay', ChipColors> = {
+  insurance: { bg: '#E7EFF7', fg: '#24619C' },
+  self_pay: { bg: '#FDF6E9', fg: '#8A5A10' },
+};
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

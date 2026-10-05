@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\JobApplicationController;
 use App\Http\Controllers\Api\V1\JobPostingController;
 use App\Http\Controllers\Api\V1\LeadController;
 use App\Http\Controllers\Api\V1\NoteReviewController;
+use App\Http\Controllers\Api\V1\PackageController;
 use App\Http\Controllers\Api\V1\PatientController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -168,4 +169,12 @@ Route::middleware('feature:careers')->prefix('careers')->group(function () {
     Route::post('postings', [JobPostingController::class, 'store']);
     Route::put('postings/{job_posting}', [JobPostingController::class, 'update']);
     Route::delete('postings/{job_posting}', [JobPostingController::class, 'destroy']);
+});
+
+// Packages (custom client packages: service, location, hours and rate).
+Route::middleware('feature:packages')->prefix('packages')->group(function () {
+    Route::get('/', [PackageController::class, 'index']);
+    Route::post('/', [PackageController::class, 'store']);
+    Route::put('{package}', [PackageController::class, 'update']);
+    Route::delete('{package}', [PackageController::class, 'destroy']);
 });

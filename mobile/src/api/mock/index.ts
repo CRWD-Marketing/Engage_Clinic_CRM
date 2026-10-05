@@ -33,6 +33,7 @@ import { createCareersApi } from './careers';
 import { createContactsApi } from './contacts';
 import { createDashboardApi } from './dashboard';
 import { createLeaveApi, createNotificationsApi, createPatientCreationApi } from './extras';
+import { createPackagesApi } from './packages';
 import { createReportsApi } from './reports';
 import { createRolesApi } from './roles';
 import { createTherapistsApi } from './therapists';
@@ -402,6 +403,7 @@ export function createMockApi(): ApiClient {
     users: createUsersApi(),
     roles: createRolesApi(),
     careers: createCareersApi(),
+    packages: createPackagesApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),

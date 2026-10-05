@@ -1743,6 +1743,55 @@ export interface JobPostingInput {
 }
 
 // ---------------------------------------------------------------------------
+// Packages
+// ---------------------------------------------------------------------------
+
+/** One package on the Packages page (package/index.blade.php). */
+export interface PackageRow {
+  id: number;
+  name: string;
+  service_id: number | null;
+  service: string | null;
+  location_id: number | null;
+  location: string | null;
+  /** "Insurance" or "Self pay" */
+  funding_type: string | null;
+  /** "Home base" or "Clinic" */
+  delivery_mode: string | null;
+  /** Used as the package's total hours by booking (see the known issue in CLAUDE.md). */
+  hours_per_week: number;
+  /** AED per hour, VAT excluded. */
+  rate: number;
+  /** hours × rate, VAT excluded. */
+  total_excl_vat: number;
+  is_active: boolean;
+  /** Package::summaryLabel(), e.g. "ABA therapy session · Home base · 30 h/wk · AED 337/hr". */
+  summary: string;
+}
+
+/** GET /packages */
+export interface PackagesPage {
+  /** By name. */
+  packages: PackageRow[];
+  /** Active services and locations (Settings). */
+  services: { id: number; name: string }[];
+  locations: { id: number; name: string }[];
+  funding_types: string[];
+  delivery_modes: string[];
+}
+
+/** POST /packages and PUT /packages/{id} */
+export interface PackageInput {
+  name: string;
+  service_id?: number | null;
+  location_id?: number | null;
+  funding_type?: string | null;
+  delivery_mode?: string | null;
+  hours_per_week?: number | string | null;
+  rate?: number | string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 

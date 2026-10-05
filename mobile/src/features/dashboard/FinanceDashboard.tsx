@@ -39,6 +39,9 @@ export function FinanceDashboard() {
     <Screen refreshing={query.refreshing} onRefresh={query.refresh}>
       <DashboardHeader name={d.user_full_name} location={d.location_label} />
       {canAccessFeature(user, 'billing') ? <Button title="Open billing" onPress={() => router.push('/billing')} /> : null}
+      {canAccessFeature(user, 'packages') ? (
+        <Button title="Open packages" variant="secondary" onPress={() => router.push('/packages')} />
+      ) : null}
 
       <StatsGrid>
         <StatTile

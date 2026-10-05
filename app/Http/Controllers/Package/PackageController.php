@@ -46,7 +46,7 @@ class PackageController extends Controller
         return back()->with('success', 'Package removed.');
     }
 
-    private function validated(Request $request): array
+    protected function validated(Request $request): array
     {
         return $request->validate([
             'name' => 'required|string|max:255',

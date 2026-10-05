@@ -51,6 +51,7 @@ Module routes use the same `feature:<module>` middleware as the web routes, so m
 | Users | `GET users` (search, department, role, status, page), `POST users`, `GET users/{public_id}`, `PUT users/{public_id}`, `DELETE users/{public_id}` |
 | Roles & access | `GET roles-access`, `POST roles-access/templates`, `PUT/DELETE roles-access/templates/{id}`, `POST roles-access/users`, `PUT/DELETE roles-access/users/{public_id}`, `PUT roles-access/users/{public_id}/template`, `PUT roles-access/users/{public_id}/access`, `PUT roles-access/users/{public_id}/suspend` |
 | Careers | `GET careers/applications` (status), `GET careers/applications/count`, `GET careers/applications/{id}/resume` (the file), `PATCH careers/applications/{id}/status`, `POST careers/applications/{id}/notes`, `DELETE careers/applications/{id}`, `GET/POST careers/postings`, `PUT/DELETE careers/postings/{id}` |
+| Packages | `GET packages`, `POST packages`, `PUT packages/{id}`, `DELETE packages/{id}` |
 
 Response shapes are the TypeScript types in `src/api/types.ts`. Errors are `{message, errors}` with the usual status codes (401, 403, 404, 422, 429).
 
