@@ -103,6 +103,9 @@ export function AdminDashboard() {
       {canAccessFeature(user, 'users') ? (
         <Button title="Open user management" variant="secondary" onPress={() => router.push('/users')} />
       ) : null}
+      {canAccessFeature(user, 'vendors') ? (
+        <Button title="Open vendors" variant="secondary" onPress={() => router.push('/vendors')} />
+      ) : null}
       {canAccessFeature(user, 'packages') ? (
         <Button title="Open packages" variant="secondary" onPress={() => router.push('/packages')} />
       ) : null}

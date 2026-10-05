@@ -50,6 +50,11 @@ import type {
   UserListResponse,
   UserProfile,
   UserSaveResponse,
+  VendorListQuery,
+  VendorPage,
+  VendorsPage,
+  VendorDetail,
+  VendorUpdateInput,
   LeaveRequest,
   LeaveResponse,
   NotificationsResponse,
@@ -371,6 +376,21 @@ export interface ApiClient {
     update(id: number, input: PackageInput): Promise<{ message: string; package: PackageRow }>;
     /** DELETE /packages/{id} */
     destroy(id: number): Promise<{ message: string }>;
+  };
+  /** Vendors registered through the website form (VendorController, `feature:vendors`). */
+  vendors: {
+    /** GET /vendors — 20 per page, newest first. */
+    list(query?: VendorListQuery): Promise<VendorsPage>;
+    /** GET /vendors/count — registrations nobody has opened yet. */
+    newCount(): Promise<{ success: boolean; count: number }>;
+    /** GET /vendors/{id} — opening it clears the "new" marker (unless view-only). */
+    show(id: number): Promise<VendorPage>;
+    /** PATCH /vendors/{id} — status, critical flag, internal owner, notes. */
+    update(id: number, input: VendorUpdateInput): Promise<{ message: string; vendor: VendorDetail }>;
+    /** DELETE /vendors/{id} — and its uploaded files. */
+    destroy(id: number): Promise<{ message: string }>;
+    /** GET /vendors/{id}/documents/{document}?download=1 — the file, for utils/openPdf. The mock has none (503). */
+    document(vendorId: number, documentId: number, filename: string): Promise<RemoteFile>;
   };
   billing: {
     /** GET /billing */

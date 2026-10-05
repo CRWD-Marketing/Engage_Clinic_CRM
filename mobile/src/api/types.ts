@@ -1792,6 +1792,127 @@ export interface PackageInput {
 }
 
 // ---------------------------------------------------------------------------
+// Vendors
+// ---------------------------------------------------------------------------
+
+/** Vendor::getStatuses() keys. */
+export type VendorStatus = 'prospect' | 'under_review' | 'active' | 'on_hold' | 'suspended' | 'terminated';
+
+/** One vendor on the Vendors list (vendor/index.blade.php). */
+export interface VendorRow {
+  id: number;
+  /** "ENG-VND-2026-0001" */
+  reference: string | null;
+  legal_name: string;
+  trade_name: string | null;
+  contact_name: string;
+  email: string;
+  phone: string;
+  category: string;
+  /** What they typed when the category is "Other". */
+  category_label: string;
+  primary_service: string;
+  /** Across their dated documents: any expired → expired; missing or expiring → pending. */
+  compliance_status: 'complete' | 'pending' | 'expired';
+  status: VendorStatus;
+  status_label: string;
+  is_critical: boolean;
+  /** Not opened yet by anyone who can act on it. */
+  is_new: boolean;
+  created_at: IsoDateTime;
+}
+
+/** GET /vendors */
+export interface VendorsPage {
+  /** 20 per page, newest first. */
+  vendors: VendorRow[];
+  meta: { current_page: number; last_page: number; per_page: number; total: number };
+  statuses: Record<VendorStatus, string>;
+  status_counts: Record<VendorStatus, number>;
+  total_count: number;
+  categories: string[];
+  stats: { new: number; critical: number; documents_expiring: number; contracts_expiring: number };
+  /** The public registration form to share with a vendor. */
+  registration_url: string;
+  can_edit: boolean;
+}
+
+export interface VendorListQuery {
+  status?: VendorStatus | 'all';
+  search?: string;
+  category?: string;
+  page?: number;
+}
+
+/** A compliance document a vendor uploaded. */
+export interface VendorDocumentRow {
+  id: number;
+  type: string;
+  label: string;
+  document_number: string | null;
+  issue_date: YmdString | null;
+  expiry_date: YmdString | null;
+  /** valid / expiring (30 days) / expired / pending (no expiry on a dated document) / on_file */
+  state: 'valid' | 'expiring' | 'expired' | 'pending' | 'on_file';
+  days_to_expiry: number | null;
+  file_name: string | null;
+  file_mime: string | null;
+  file_size: number | null;
+}
+
+/** Everything vendor/show.blade.php shows. */
+export interface VendorDetail extends VendorRow {
+  website: string | null;
+  address: string;
+  city: string;
+  emirate: string;
+  position: string;
+  alt_contact: string | null;
+  finance_email: string | null;
+  description: string | null;
+  years_in_business: string | null;
+  referred_by: string | null;
+  pricing: string;
+  monthly_cost: number | null;
+  payment_terms: string;
+  payment_method: string;
+  vat_registered: boolean | null;
+  trn: string | null;
+  accepts_po: boolean | null;
+  contract_start: YmdString | null;
+  contract_end: YmdString | null;
+  bank_name: string;
+  account_holder: string;
+  /** Grouped in fours. */
+  iban: string | null;
+  swift: string | null;
+  signatory_name: string;
+  declared_at: IsoDateTime | null;
+  internal_owner_id: number | null;
+  internal_owner: string | null;
+  notes: string | null;
+  documents: VendorDocumentRow[];
+}
+
+/** GET /vendors/{id} — opening it clears the "new" marker. */
+export interface VendorPage extends VendorDetail {
+  /** Active users, for the Internal owner picker. */
+  owners: { id: number; name: string }[];
+  /** The next newer / older vendor, for paging through them. */
+  neighbours: { newer: number | null; older: number | null };
+  statuses: Record<VendorStatus, string>;
+  can_edit: boolean;
+}
+
+/** PATCH /vendors/{id} */
+export interface VendorUpdateInput {
+  status: VendorStatus;
+  is_critical: boolean;
+  internal_owner_id: number | null;
+  notes: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Notifications bell, staff leave, add patient
 // ---------------------------------------------------------------------------
 

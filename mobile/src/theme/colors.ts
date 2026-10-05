@@ -228,6 +228,16 @@ export const fundingBadgeColors: Record<'insurance' | 'self_pay', ChipColors> = 
   self_pay: { bg: '#FDF6E9', fg: '#8A5A10' },
 };
 
+/** Vendor, compliance and document badges (vendor/partials/status-badge.blade.php). */
+export const vendorBadgeColors = {
+  blue: { bg: '#EFF6FF', fg: '#1D4ED8' },
+  green: { bg: '#F0FDF4', fg: '#15803D' },
+  amber: { bg: '#FEFCE8', fg: '#A16207' },
+  red: { bg: '#FEF2F2', fg: '#B91C1C' },
+  critical: { bg: '#FCEAF0', fg: '#A82348' },
+  grey: { bg: '#F4F4F5', fg: '#52525B' },
+} as const;
+
 /** Invoice status chips on the other-staff dashboard (dashboard/other_staff.blade.php `$statusColors`). */
 export const invoiceStatusColors: Record<string, ChipColors & { label: string }> = {
   draft: { bg: '#EEF0F2', fg: '#6B7A8C', label: 'Draft' },

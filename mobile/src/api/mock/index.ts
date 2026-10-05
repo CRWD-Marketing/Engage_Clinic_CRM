@@ -38,6 +38,7 @@ import { createReportsApi } from './reports';
 import { createRolesApi } from './roles';
 import { createTherapistsApi } from './therapists';
 import { createUsersApi } from './users';
+import { createVendorsApi } from './vendors';
 import { createInboxApi } from './inbox';
 import { createLeadsApi } from './leads';
 import { createNotesApi } from './notes';
@@ -404,6 +405,7 @@ export function createMockApi(): ApiClient {
     roles: createRolesApi(),
     careers: createCareersApi(),
     packages: createPackagesApi(),
+    vendors: createVendorsApi(),
     calendar: {
       myWeek: (date) => delay(() => myWeek(date)),
       feed: (start, end) => delay(() => feed(start, end)),

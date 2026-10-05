@@ -398,6 +398,7 @@ function onMobile(user: User, module: ModuleKey): boolean {
     'roles_access',
     'careers',
     'packages',
+    'vendors',
   ].includes(module);
 }
 
@@ -414,6 +415,7 @@ const PUSHED_SCREENS = {
   roles_access: '/roles',
   careers: '/careers',
   packages: '/packages',
+  vendors: '/vendors',
 } as const;
 
 const LEVEL_LABEL = { full: 'Full', own: 'Own only', view: 'View only', edit: 'Edit' } as const;

@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\TherapistController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\VendorController;
 use App\Http\Controllers\Billing\BulkRunController;
 use App\Http\Controllers\Billing\ClaimController;
 use App\Http\Controllers\Billing\PreAuthController;
@@ -177,4 +178,14 @@ Route::middleware('feature:packages')->prefix('packages')->group(function () {
     Route::post('/', [PackageController::class, 'store']);
     Route::put('{package}', [PackageController::class, 'update']);
     Route::delete('{package}', [PackageController::class, 'destroy']);
+});
+
+// Vendors registered through the website form (admin/vendors on the web).
+Route::middleware('feature:vendors')->prefix('vendors')->group(function () {
+    Route::get('/', [VendorController::class, 'index']);
+    Route::get('count', [VendorController::class, 'count']);
+    Route::get('{vendor}', [VendorController::class, 'show']);
+    Route::patch('{vendor}', [VendorController::class, 'update']);
+    Route::delete('{vendor}', [VendorController::class, 'destroy']);
+    Route::get('{vendor}/documents/{document}', [VendorController::class, 'document']);
 });
