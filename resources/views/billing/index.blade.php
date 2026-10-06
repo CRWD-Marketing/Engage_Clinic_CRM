@@ -97,6 +97,8 @@
         .inv-table td[data-label="Patient"]::before { margin-bottom: 4px; }
         .inv-table td:not([data-label]) { display: block; text-align: center; border-bottom: none; }
         .inv-actions { min-width: 0; width: 100%; }
+        .inv-table td[data-label="Status"] > div { text-align: right; }
+        .inv-table td[data-label="Status"] .wf-track { justify-content: flex-end; }
     }
 
     /* ── Phone ───────────────────────────────────────────────────────────
@@ -133,6 +135,57 @@
         }
     }
     .status-sel { border: 1px solid #E2DACE; border-radius: 7px; padding: 5px 8px; font: 800 11px 'Nunito Sans'; background: #fff; }
+
+    /* Invoice list: money columns line up on the decimal, the Finance
+       workflow reads as a five-step track, and the one next step for the
+       signed-in role is a button instead of being buried in the menu. */
+    .inv-table th.num, .inv-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .inv-table tbody tr:hover td { background: #FFFBF5; }
+    .inv-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .inv-chip { border: 1px solid #E2DACE; background: #fff; border-radius: 999px; padding: 5px 12px; font: 800 11px 'Nunito Sans'; color: #5A6B7E; cursor: pointer; white-space: nowrap; }
+    .inv-chip:hover { border-color: #16436E; }
+    .inv-chip.active { background: #16436E; color: #fff; border-color: #16436E; }
+    .inv-chip .n { opacity: .65; margin-left: 5px; }
+    .inv-chip.attn:not(.active) { border-color: #E9CF9C; background: #FDF6E9; color: #8A5A10; }
+    .wf { margin-top: 9px; }
+    .wf-track { display: flex; align-items: center; justify-content: center; }
+    .wf-dot { width: 8px; height: 8px; border-radius: 50%; background: #E6DFD3; flex-shrink: 0; }
+    .wf-bar { width: 12px; height: 2px; background: #E6DFD3; }
+    .wf-dot.done, .wf-bar.done { background: #1E7A46; }
+    .wf-dot.now { width: 10px; height: 10px; background: var(--wf); box-shadow: 0 0 0 3px color-mix(in srgb, var(--wf) 22%, transparent); }
+    .wf-label { font: 800 10.5px 'Nunito Sans'; color: var(--wf); margin-top: 5px; white-space: nowrap; }
+    .act-btn.next { background: #16436E; color: #fff; border-color: #16436E; padding: 7px 10px; font-size: 11.5px; border-radius: 9px; }
+    .act-btn.next:hover { background: #0F3256; }
+    .act-btn.next.go { background: #1E7A46; border-color: #1E7A46; }
+    .act-btn.next.go:hover { background: #17633A; }
+    .act-btn.next.quiet { background: #fff; color: #16436E; border-color: #B9C9DA; }
+    .act-btn.next.quiet:hover { background: #EEF3F8; }
+    .act-wait { font: 700 10.5px 'Nunito Sans'; color: #98897A; text-align: center; }
+    .inv-actions { min-width: 140px; }
+
+    /* Claims sit in the narrow column - a card per claim rather than a
+       six-column table squeezed until every word wraps. */
+    .claim-card { border: 1px solid #F0EAE0; border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+    .claim-card:last-child { margin-bottom: 0; }
+    .claim-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .claim-amt { font: 800 13.5px 'Nunito Sans'; color: #16436E; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+    .claim-age { font: 700 11px 'Nunito Sans'; color: #8A7D6C; text-align: right; margin-top: 2px; }
+    .claim-age.late { color: #B3261E; }
+    .claim-insurer { display: inline-block; background: #EEF3F8; color: #24619C; border-radius: 6px; padding: 2px 8px; font: 800 10.5px 'Nunito Sans'; margin-top: 6px; }
+    .claim-foot { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+    .claim-foot .status-sel { flex: 1; min-width: 0; padding: 7px 8px; }
+
+    /* Quotations */
+    .quote-card { border: 1px solid #F0EAE0; border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 18px; align-items: center; }
+    .quote-money { text-align: right; }
+    .quote-total { font: 800 15px 'Nunito Sans'; color: #16436E; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .quote-acts { display: flex; flex-direction: column; gap: 6px; min-width: 170px; }
+    .quote-links { display: flex; gap: 10px; justify-content: center; }
+    .quote-links button, .quote-links a { background: none; border: none; padding: 0; font: 800 10.5px 'Nunito Sans'; color: #24619C; cursor: pointer; text-decoration: none; }
+    .quote-links .danger { color: #B3261E; }
+    .q-check { display: flex; align-items: flex-start; gap: 8px; font: 700 12.5px 'Nunito Sans'; color: #2B3A4C; cursor: pointer; }
+    .q-check input { accent-color: #C8355F; margin-top: 2px; }
+    @media (max-width: 820px) { .quote-card { grid-template-columns: minmax(0, 1fr); gap: 10px; } .quote-money { text-align: left; } }
     .age-chip { border-radius: 7px; padding: 3px 9px; font: 800 10.5px 'Nunito Sans'; white-space: nowrap; }
 
     .bar-row { margin-bottom: 12px; }
@@ -207,10 +260,14 @@
      data-services='@json($services)'
      data-methods='@json($methods)'
      data-claim-statuses='@json($claimStatuses)'
+     data-preauth-channels='@json($preauthChannels)'
+     data-quotations='@json($quotationsForJs)'
+     data-quotation-options='@json($quotationOptions)'
      data-aging='@json($aging)'
      data-cancel-policy='@json($cancelPolicy)'
      data-bulk-defaults='@json($bulkDefaults)'
      data-can-invoice="{{ $canInvoice ? '1' : '0' }}"
+     data-can-approve="{{ $canApprove ? '1' : '0' }}"
      data-base-url="{{ url('billing') }}">
 
     <div class="role-strip">
@@ -235,6 +292,7 @@
 
     <div class="bl-tabs" id="bl-tabs">
         <button type="button" class="bl-tab active" data-tab="invoices">Invoices &amp; claims</button>
+        <button type="button" class="bl-tab" data-tab="quotations">Quotations</button>
         <button type="button" class="bl-tab" data-tab="aging">Aging &amp; statements</button>
         <button type="button" class="bl-tab" data-tab="bulk">Bulk run</button>
     </div>
@@ -246,17 +304,19 @@
             <div class="bl-tile"><div class="bl-tile-label">Collected</div><div class="bl-tile-value" style="color:#1E7A46;">AED {{ number_format($tiles['collected_mtd'], 0) }}</div></div>
             <div class="bl-tile"><div class="bl-tile-label">Outstanding claims</div><div class="bl-tile-value warn">AED {{ number_format($tiles['outstanding_claims'], 0) }}</div></div>
             <div class="bl-tile"><div class="bl-tile-label">Avg. claim cycle</div><div class="bl-tile-value">{{ $tiles['avg_claim_cycle'] }} days</div></div>
+            <div class="bl-tile"><div class="bl-tile-label">Awaiting Finance</div><div class="bl-tile-value" id="tile-awaiting">0</div></div>
         </div>
 
         <div class="bl-grid">
             <div>
                 <div class="bl-card">
                     <div class="bl-card-head">
-                        <div><div class="bl-card-title">Invoices &amp; payments</div><div class="bl-card-sub">Record receipts and issue credit notes</div></div>
+                        <div><div class="bl-card-title">Invoices &amp; payments</div><div class="bl-card-sub">Draft → Finance verification → Finalized → Dispatched</div></div>
                     </div>
+                    <div class="inv-filters" id="invoice-filters"></div>
                     <div style="overflow-x:auto;">
                         <table class="inv-table">
-                            <thead><tr><th>Patient</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+                            <thead><tr><th style="text-align:left;">Patient</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th><th>Next step</th></tr></thead>
                             <tbody id="invoice-list"></tbody>
                         </table>
                     </div>
@@ -273,12 +333,8 @@
 
                 <div class="bl-card">
                     <div class="bl-card-head"><div><div class="bl-card-title">Insurance claims</div></div></div>
-                    <div style="overflow-x:auto;">
-                        <table class="claim-table">
-                            <thead><tr><th>Patient</th><th>Insurer</th><th class="num">Amount</th><th class="num">Age</th><th>Status</th></tr></thead>
-                            <tbody id="claims-body"></tbody>
-                        </table>
-                    </div>
+                    <div id="claims-body"></div>
+                    <div id="claims-pagination" class="inv-pagination"></div>
                 </div>
 
                 <div class="bl-card">
@@ -287,6 +343,7 @@
                         @if ($canInvoice)<button type="button" class="bl-btn bl-btn-sm" id="btn-new-preauth">+ Request pre-auth</button>@endif
                     </div>
                     <div id="preauth-list"></div>
+                    <div id="preauth-pagination" class="inv-pagination"></div>
                 </div>
 
                 <div class="bl-card">
@@ -297,6 +354,21 @@
                     @endif
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ============ TAB: Quotations ============ -->
+    <div class="bl-tab-panel" id="tab-quotations" style="display:none;">
+        <div class="bl-card">
+            <div class="bl-card-head">
+                <div>
+                    <div class="bl-card-title">Quotations</div>
+                    <div class="bl-card-sub">Quotation → customer confirmation → payment confirmation → sessions can be scheduled</div>
+                </div>
+                @if ($canInvoice)<button type="button" class="bl-btn bl-btn-primary bl-btn-sm" id="btn-new-quote">+ New quotation</button>@endif
+            </div>
+            <div id="quote-list"></div>
+            <div id="quote-pagination" class="inv-pagination"></div>
         </div>
     </div>
 
@@ -382,7 +454,7 @@
                 <div style="max-width:200px;"><label class="f-label" for="bulk-payer">Payer</label><select id="bulk-payer" class="f-select"><option value="all">All payers</option>@foreach ($payers as $p)<option value="{{ $p }}">{{ $p }}</option>@endforeach</select></div>
                 <div style="margin-left:auto; display:flex; gap:8px;">
                     <button type="button" class="bl-btn" id="bulk-select-all">Select all</button>
-                    @if ($canInvoice)<button type="button" class="bl-btn bl-btn-primary" id="bulk-issue" disabled>Issue invoices</button>@endif
+                    @if ($canInvoice)<button type="button" class="bl-btn bl-btn-primary" id="bulk-issue" disabled>Raise draft invoices</button>@endif
                 </div>
             </div>
             <div id="bulk-list"></div>
@@ -435,8 +507,8 @@
         <div id="picker-step-preview" style="display:none;">
             <div id="preview-body"></div>
             <div class="f-row" style="margin-top:14px;">
-                <button type="button" class="btn-save" id="preview-save">Save invoice</button>
-                <button type="button" class="btn-save btn-dark" id="preview-send">Send invoice</button>
+                <button type="button" class="btn-save" id="preview-save">Save draft</button>
+                <button type="button" class="btn-save btn-dark" id="preview-send">Save &amp; submit to Finance</button>
                 <button type="button" class="btn-cancel" id="preview-back">Back</button>
             </div>
         </div>
@@ -531,6 +603,104 @@
     </div>
 </div>
 
+<!-- New quotation -->
+<div id="quote-modal" class="cmodal-overlay">
+    <div class="cmodal wide">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title">New quotation</div><button type="button" class="cx" data-close="quote-modal">✕</button></div>
+        <div class="cmodal-sub">Location, payment mode and service come first — they decide the price</div>
+        <div class="f-error" id="quote-error"></div>
+        <div class="f-row">
+            <div><label class="f-label" for="q-patient">Client *</label><select id="q-patient" class="f-select"></select></div>
+            <div><label class="f-label" for="q-location">Customer location *</label><select id="q-location" class="f-select"></select></div>
+        </div>
+        <div class="f-row">
+            <div><label class="f-label" for="q-mode">Payment mode *</label><select id="q-mode" class="f-select"></select></div>
+            <div id="q-payer-wrap"><label class="f-label" for="q-payer">Insurer *</label><select id="q-payer" class="f-select"></select></div>
+            <div><label class="f-label" for="q-service">Service type *</label><select id="q-service" class="f-select"></select></div>
+        </div>
+        <div class="f-row">
+            <div><label class="f-label" for="q-basis">Pricing basis *</label><select id="q-basis" class="f-select"></select></div>
+            <div><label class="f-label" for="q-unit">Billed per *</label><select id="q-unit" class="f-select"><option value="hour">Hour</option><option value="session">Session</option></select></div>
+            <div><label class="f-label" for="q-qty">Quantity *</label><input type="number" min="0.5" step="0.5" id="q-qty" class="f-input"></div>
+            <div><label class="f-label" for="q-rate">Rate (AED) *</label><input type="number" min="0.01" step="0.01" id="q-rate" class="f-input"></div>
+        </div>
+        <div class="warn-box" id="q-total"></div>
+        <div class="f-row">
+            <div style="flex:2;"><label class="f-label" for="q-terms">Payment terms *</label><input type="text" id="q-terms" class="f-input"></div>
+            <div><label class="f-label" for="q-valid">Valid until *</label><input type="date" id="q-valid" class="f-input"></div>
+        </div>
+        <div><label class="f-label" for="q-notes">Notes</label><input type="text" id="q-notes" class="f-input" placeholder="optional"></div>
+        <div class="f-row"><button type="button" class="btn-save" id="quote-save">Save quotation</button><button type="button" class="btn-cancel" data-close="quote-modal">Cancel</button></div>
+    </div>
+</div>
+
+<!-- Quotation step: sent / customer confirmed / cancelled -->
+<div id="qstep-modal" class="cmodal-overlay">
+    <div class="cmodal">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title" id="qstep-title"></div><button type="button" class="cx" data-close="qstep-modal">✕</button></div>
+        <div class="cmodal-sub" id="qstep-sub"></div>
+        <div class="f-error" id="qstep-error"></div>
+        <div id="qstep-send"><label class="f-label" for="qstep-via">Shared with the customer by *</label><select id="qstep-via" class="f-select"></select></div>
+        <div id="qstep-confirm" class="f-row">
+            <div><label class="f-label" for="qstep-method">Confirmation *</label><select id="qstep-method" class="f-select"></select></div>
+            <div><label class="f-label" for="qstep-date">Confirmed on *</label><input type="date" id="qstep-date" class="f-input"></div>
+        </div>
+        <div id="qstep-cancel"><label class="f-label" for="qstep-reason">Reason *</label><input type="text" id="qstep-reason" class="f-input" placeholder="e.g. customer declined"></div>
+        <div class="f-row"><button type="button" class="btn-save" id="qstep-save">Save</button><button type="button" class="btn-cancel" data-close="qstep-modal">Close</button></div>
+    </div>
+</div>
+
+<!-- Quotation: payment confirmation / insurance activation -->
+<div id="qclear-modal" class="cmodal-overlay">
+    <div class="cmodal">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title" id="qclear-title"></div><button type="button" class="cx" data-close="qclear-modal">✕</button></div>
+        <div class="cmodal-sub" id="qclear-sub"></div>
+        <div class="warn-box">Saving this clears the client for session scheduling.</div>
+        <div class="f-error" id="qclear-error"></div>
+        <div id="qclear-self" style="display:flex; flex-direction:column; gap:14px;">
+            <div class="f-row">
+                <div><label class="f-label" for="qclear-amount">Amount received (AED) *</label><input type="number" step="0.01" min="0.01" id="qclear-amount" class="f-input"></div>
+                <div><label class="f-label" for="qclear-method">Method *</label><select id="qclear-method" class="f-select"></select></div>
+            </div>
+            <div class="f-row">
+                <div><label class="f-label" for="qclear-date">Received on *</label><input type="date" id="qclear-date" class="f-input"></div>
+                <div><label class="f-label" for="qclear-ref">Reference</label><input type="text" id="qclear-ref" class="f-input" placeholder="transfer / slip no."></div>
+            </div>
+            <label class="q-check"><input type="checkbox" id="qclear-policy"><span>Signed prepayment policy received and passed to Finance</span></label>
+            <label class="q-check" id="qclear-pos-wrap"><input type="checkbox" id="qclear-pos"><span>Signed card POS fee agreement received <span id="qclear-pos-fee" style="font-weight:600; color:#8A7D6C;"></span></span></label>
+        </div>
+        <div id="qclear-ins" style="display:flex; flex-direction:column; gap:12px;">
+            <label class="q-check"><input type="checkbox" id="qclear-noc"><span>NOC received from the customer</span></label>
+            <label class="q-check"><input type="checkbox" id="qclear-liab"><span>Customer acknowledged 100% personal liability for amounts the insurer rejects</span></label>
+        </div>
+        <div class="f-row"><button type="button" class="btn-save" id="qclear-save">Confirm</button><button type="button" class="btn-cancel" data-close="qclear-modal">Cancel</button></div>
+    </div>
+</div>
+
+<!-- Record the payer's pre-authorization decision -->
+<div id="padec-modal" class="cmodal-overlay">
+    <div class="cmodal">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title" id="padec-title">Record payer decision</div><button type="button" class="cx" data-close="padec-modal">✕</button></div>
+        <div class="cmodal-sub" id="padec-sub"></div>
+        <div class="warn-box" id="padec-hint"></div>
+        <div class="f-error" id="padec-error"></div>
+        <div class="f-row">
+            <div><label class="f-label" for="padec-date">Decision received on *</label><input type="date" id="padec-date" class="f-input"></div>
+            <div><label class="f-label" for="padec-channel">Received via *</label><select id="padec-channel" class="f-select"></select></div>
+        </div>
+        <div id="padec-approve-fields" style="display:flex; flex-direction:column; gap:14px;">
+            <div><label class="f-label" for="padec-ref">Payer approval reference *</label><input type="text" id="padec-ref" class="f-input" placeholder="As given by the payer"></div>
+            <div class="f-row">
+                <div><label class="f-label" for="padec-hours">Hours approved *</label><input type="number" min="1" id="padec-hours" class="f-input"></div>
+                <div><label class="f-label" for="padec-pct">Coverage % *</label><input type="number" min="1" max="100" id="padec-pct" class="f-input" placeholder="e.g. 80"></div>
+            </div>
+            <div><label class="f-label" for="padec-to">Valid until</label><input type="date" id="padec-to" class="f-input"></div>
+        </div>
+        <div id="padec-deny-fields"><label class="f-label" for="padec-reason">Reason given by the payer *</label><textarea id="padec-reason" class="f-textarea" rows="3" placeholder="e.g. clinical justification insufficient — progress report requested"></textarea></div>
+        <div class="f-row"><button type="button" class="btn-save" id="padec-save">Save</button><button type="button" class="btn-cancel" data-close="padec-modal">Cancel</button></div>
+    </div>
+</div>
+
 <!-- Top up prepaid -->
 <div id="topup-modal" class="cmodal-overlay">
     <div class="cmodal">
@@ -539,6 +709,55 @@
         <div class="f-error" id="topup-error"></div>
         <div><label class="f-label" for="topup-hours">Hours to add</label><input type="number" min="1" id="topup-hours" class="f-input" value="10"></div>
         <div class="f-row"><button type="button" class="btn-save" id="topup-save">Add hours</button><button type="button" class="btn-cancel" data-close="topup-modal">Cancel</button></div>
+    </div>
+</div>
+
+<!-- Return for correction -->
+<div id="return-modal" class="cmodal-overlay">
+    <div class="cmodal">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title">Return for correction</div><button type="button" class="cx" data-close="return-modal">✕</button></div>
+        <div class="cmodal-sub" id="return-sub"></div>
+        <div class="f-error" id="return-error"></div>
+        <div><label class="f-label" for="return-reason">What needs correcting *</label><textarea id="return-reason" class="f-textarea" rows="3" placeholder="e.g. 12 Sep session billed 2 h, attendance sheet shows 1 h"></textarea></div>
+        <div class="f-row"><button type="button" class="btn-save" id="return-save">Return to Operations</button><button type="button" class="btn-cancel" data-close="return-modal">Cancel</button></div>
+    </div>
+</div>
+
+<!-- Log a WhatsApp dispatch -->
+<div id="wa-modal" class="cmodal-overlay">
+    <div class="cmodal">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title">Log WhatsApp dispatch</div><button type="button" class="cx" data-close="wa-modal">✕</button></div>
+        <div class="cmodal-sub" id="wa-sub"></div>
+        <div class="f-error" id="wa-error"></div>
+        <div><label class="f-label" for="wa-to">WhatsApp number *</label><input type="text" id="wa-to" class="f-input" placeholder="+971 …"></div>
+        <div><label class="f-label" for="wa-at">Sent at</label><input type="datetime-local" id="wa-at" class="f-input"></div>
+        <div><label class="f-label" for="wa-note">Note</label><input type="text" id="wa-note" class="f-input" placeholder="optional"></div>
+        <div class="f-row"><button type="button" class="btn-save" id="wa-save">Log dispatch</button><button type="button" class="btn-cancel" data-close="wa-modal">Cancel</button></div>
+    </div>
+</div>
+
+<!-- Invoice history -->
+<div id="history-modal" class="cmodal-overlay">
+    <div class="cmodal wide">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title">Invoice history</div><button type="button" class="cx" data-close="history-modal">✕</button></div>
+        <div class="cmodal-sub" id="history-sub"></div>
+        <div id="history-body"></div>
+    </div>
+</div>
+
+<!-- Insurance submission -->
+<div id="claim-modal" class="cmodal-overlay">
+    <div class="cmodal">
+        <div style="display:flex; justify-content:space-between;"><div class="cmodal-title">Insurance submission</div><button type="button" class="cx" data-close="claim-modal">✕</button></div>
+        <div class="cmodal-sub" id="claim-sub"></div>
+        <div class="f-error" id="claim-error"></div>
+        <div><label class="f-label" for="claim-status">Status</label><select id="claim-status" class="f-select"></select></div>
+        <div><label class="f-label" for="claim-portal">Insurance portal</label><input type="text" id="claim-portal" class="f-input" placeholder="e.g. Daman"></div>
+        <div><label class="f-label" for="claim-payer-ref">Insurer claim reference</label><input type="text" id="claim-payer-ref" class="f-input" placeholder="CL-ON-000-0000XXX"></div>
+        <div><label class="f-label" for="claim-medical">Medical report *</label><select id="claim-medical" class="f-select"></select></div>
+        <div><label class="f-label" for="claim-assessment">Engage assessment report</label><select id="claim-assessment" class="f-select"></select></div>
+        <div><label class="f-label" for="claim-notes">Notes</label><input type="text" id="claim-notes" class="f-input"></div>
+        <div class="f-row"><button type="button" class="btn-save" id="claim-save">Save</button><button type="button" class="btn-cancel" data-close="claim-modal">Cancel</button></div>
     </div>
 </div>
 
@@ -555,15 +774,21 @@
     const SERVICES = JSON.parse(root.dataset.services);
     const METHODS = JSON.parse(root.dataset.methods);
     const CLAIM_STATUSES = JSON.parse(root.dataset.claimStatuses);
+    const PREAUTH_CHANNELS = JSON.parse(root.dataset.preauthChannels);
+    let QUOTES = JSON.parse(root.dataset.quotations);
+    const QOPT = JSON.parse(root.dataset.quotationOptions);
+    const QUOTE_COLORS = { draft: ['#F1EDE5', '#8A7D6C'], sent: ['#E7EFF7', '#24619C'], customer_confirmed: ['#F7EEDD', '#B97F24'], cleared: ['#E3F1E9', '#1E7A46'], cancelled: ['#EEEEEE', '#6B6B6B'], expired: ['#F9E4E2', '#B3261E'] };
     const AGING_ROWS = JSON.parse(root.dataset.aging).rows;
     const POLICY = JSON.parse(root.dataset.cancelPolicy);
     const BULK_DEFAULTS = JSON.parse(root.dataset.bulkDefaults);
     const CAN_INVOICE = root.dataset.canInvoice === '1';
+    const CAN_APPROVE = root.dataset.canApprove === '1';
     const BASE = root.dataset.baseUrl;
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
     const STATUS_COLORS = { paid: ['#E3F1E9', '#1E7A46'], partly_paid: ['#F7EEDD', '#B97F24'], outstanding: ['#F9E4E2', '#B3261E'], voided: ['#EEEEEE', '#6B6B6B'] };
-    const CLAIM_COLORS = { draft: ['#F1EDE5', '#8A7D6C'], submitted: ['#E7EFF7', '#24619C'], pending_info: ['#F7EEDD', '#B97F24'], rejected: ['#F9E4E2', '#B3261E'], settled: ['#E3F1E9', '#1E7A46'] };
+    const WORKFLOW_COLORS = { draft: ['#F1EDE5', '#8A7D6C'], pending_verification: ['#F7EEDD', '#B97F24'], correction_required: ['#F9E4E2', '#B3261E'], approved: ['#E7EFF7', '#24619C'], finalized: ['#E3F1E9', '#1E7A46'], dispatched: ['#E3F1E9', '#1E7A46'] };
+    const CLAIM_COLORS = { draft: ['#F1EDE5', '#8A7D6C'], documents_ready: ['#E7EFF7', '#24619C'], submitted: ['#E7EFF7', '#24619C'], pending_info: ['#F7EEDD', '#B97F24'], rejected: ['#F9E4E2', '#B3261E'], settled: ['#E3F1E9', '#1E7A46'] };
     const PA_COLORS = { requested: ['#E7EFF7', '#24619C'], approved: ['#E3F1E9', '#1E7A46'], denied: ['#F9E4E2', '#B3261E'] };
     const PAYER_PALETTE = ['#C8355F', '#16436E', '#B97F24', '#6E4FA8', '#1F8FA8', '#2E7D5B'];
 
@@ -595,15 +820,84 @@
     const INVOICES_PER_PAGE = 10;
     let invoicePage = 1;
 
+    // Where each invoice sits in the Finance workflow, as filter chips.
+    const INVOICE_FILTERS = [
+        { key: 'all', label: 'All', test: () => true },
+        { key: 'draft', label: 'Drafts', test: i => !i.voided && (i.workflow === 'draft' || i.workflow === 'correction_required') },
+        { key: 'pending', label: 'Awaiting Finance', attn: true, test: i => !i.voided && i.workflow === 'pending_verification' },
+        { key: 'approved', label: 'To finalize', attn: true, test: i => !i.voided && i.workflow === 'approved' },
+        { key: 'final', label: 'Finalized', test: i => !i.voided && i.is_final },
+        { key: 'voided', label: 'Voided', test: i => i.voided },
+    ];
+    let invoiceFilter = 'all';
+    const WF_STEPS = ['draft', 'pending_verification', 'approved', 'finalized', 'dispatched'];
+
+    function workflowTrack(i) {
+        const at = i.workflow === 'correction_required' ? 1 : Math.max(0, WF_STEPS.indexOf(i.workflow));
+        const complete = i.workflow === 'dispatched';
+        const color = (WORKFLOW_COLORS[i.workflow] || WORKFLOW_COLORS.draft)[1];
+        const track = WF_STEPS.map((_, n) => {
+            const cls = complete || n < at ? 'done' : (n === at ? 'now' : '');
+            return (n ? `<span class="wf-bar ${complete || n <= at ? 'done' : ''}"></span>` : '') + `<span class="wf-dot ${cls}"></span>`;
+        }).join('');
+        const stamps = i.stamps.length ? ' · ' + i.stamps.map(st => st === 'paid' ? 'PAID stamp' : 'Company Stamp').join(' + ') : '';
+        return `<div class="wf" style="--wf:${color};" title="${esc(i.workflow_label + stamps)}"><div class="wf-track">${track}</div><div class="wf-label">${esc(i.workflow_label)}</div></div>`;
+    }
+
+    // The single step this invoice is waiting on, if the signed-in role can take it.
+    function nextStep(i) {
+        const wf = i.workflow;
+        if (CAN_INVOICE && (wf === 'draft' || wf === 'correction_required')) return { act: 'submit', label: wf === 'draft' ? 'Submit to Finance' : 'Resubmit to Finance' };
+        if (wf === 'pending_verification') return CAN_APPROVE ? { act: 'approve', label: 'Approve', go: true } : { wait: 'With Finance for verification' };
+        if (wf === 'approved') return CAN_INVOICE ? { act: 'finalize', label: 'Finalize & stamp', go: true } : { wait: 'Approved — to be finalized' };
+        if (wf === 'finalized') return { act: 'email', label: 'Send to customer', quiet: true };
+        if (CAN_INVOICE && i.dispatches.some(d => d.kind === 'invoice' && !d.confirmed_at)) return { act: 'confirm', label: 'Confirm receipt' };
+        if (CAN_INVOICE && i.balance > 0.01) return { act: 'pay', label: 'Record payment' };
+        return null;
+    }
+
+    function runInvoiceAction(act, inv) {
+        ({
+            pay: openPayment,
+            credit: openCredit,
+            void: openVoid,
+            email: () => openEmail(inv, 'invoice'),
+            pdf: () => window.open(inv.print_url, '_blank'),
+            submit: () => workflowStep(inv, 'submit'),
+            approve: () => workflowStep(inv, 'approve'),
+            finalize: () => workflowStep(inv, 'finalize'),
+            return: openReturn,
+            whatsapp: openWhatsapp,
+            confirm: confirmReceipt,
+            history: openHistory,
+        })[act](inv);
+    }
+
+    function renderInvoiceFilters() {
+        const box = document.getElementById('invoice-filters');
+        box.innerHTML = INVOICE_FILTERS.map(f => {
+            const n = INVOICES.filter(f.test).length;
+            return `<button type="button" class="inv-chip ${f.key === invoiceFilter ? 'active' : ''} ${f.attn && n ? 'attn' : ''}" data-filter="${f.key}">${f.label}<span class="n">${n}</span></button>`;
+        }).join('');
+        box.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => { invoiceFilter = b.dataset.filter; invoicePage = 1; renderInvoices(); }));
+        const awaiting = INVOICES.filter(INVOICE_FILTERS[2].test).length;
+        const tile = document.getElementById('tile-awaiting');
+        tile.textContent = awaiting + (awaiting === 1 ? ' invoice' : ' invoices');
+        tile.classList.toggle('warn', awaiting > 0);
+    }
+
     function renderInvoices() {
         const list = document.getElementById('invoice-list');
         const pager = document.getElementById('invoice-pagination');
+        renderInvoiceFilters();
         if (!INVOICES.length) { list.innerHTML = '<tr><td colspan="6" class="bl-empty">No invoices raised yet.</td></tr>'; pager.innerHTML = ''; return; }
+        const shown = INVOICES.filter(INVOICE_FILTERS.find(f => f.key === invoiceFilter).test);
+        if (!shown.length) { list.innerHTML = '<tr><td colspan="6" class="bl-empty">No invoices at this stage.</td></tr>'; pager.innerHTML = ''; return; }
 
-        const pageCount = Math.max(1, Math.ceil(INVOICES.length / INVOICES_PER_PAGE));
+        const pageCount = Math.max(1, Math.ceil(shown.length / INVOICES_PER_PAGE));
         if (invoicePage > pageCount) invoicePage = pageCount;
         const start = (invoicePage - 1) * INVOICES_PER_PAGE;
-        const pageItems = INVOICES.slice(start, start + INVOICES_PER_PAGE);
+        const pageItems = shown.slice(start, start + INVOICES_PER_PAGE);
 
         list.innerHTML = pageItems.map(i => {
             const [bg, fg] = STATUS_COLORS[i.status] || STATUS_COLORS.outstanding;
@@ -612,28 +906,41 @@
             if (i.voided) metaLine = `<div class="inv-meta voided">Voided ${esc(i.voided_on)} — ${esc(i.void_reason)}${i.replaced_by ? ' · reissued as ' + esc(i.replaced_by) : ''}</div>`;
             else if (i.credit > 0) metaLine = `<div class="inv-meta voided">Credit note AED ${money(i.credit)} — ${esc((i.credit_reason || '').split('\n').pop())}</div>`;
             const replacesLine = i.replaces ? `<div class="inv-meta link">Replaces voided invoice ${esc(i.replaces)}</div>` : '';
-            const actions = i.voided ? `<a href="${i.print_url}" target="_blank" class="act-btn">Open PDF</a>` : `
+            const correctionLine = i.workflow === 'correction_required' && i.correction_note ? `<div class="inv-meta voided">Finance: ${esc(i.correction_note)}</div>` : '';
+            const dispatchLines = i.dispatches.filter(d => d.kind === 'invoice').map(d => `<div class="inv-meta link">Sent by ${esc(d.channel_label)} to ${esc(d.sent_to)} · ${esc(d.sent_at)} · ${d.confirmed_at ? 'receipt confirmed ' + esc(d.confirmed_at) : 'receipt not yet confirmed'}</div>`).join('');
+            const unconfirmed = i.dispatches.find(d => d.kind === 'invoice' && !d.confirmed_at);
+            const wf = i.workflow;
+            const next = i.voided ? null : nextStep(i);
+            const nextHtml = !next ? '' : (next.wait ? `<div class="act-wait">${esc(next.wait)}</div>` : `<button type="button" class="act-btn next ${next.go ? 'go' : ''} ${next.quiet ? 'quiet' : ''}" data-next="${next.act}" data-id="${i.id}">${esc(next.label)}</button>`);
+            const actions = i.voided ? `<a href="${i.print_url}" target="_blank" class="act-btn">Open PDF</a>` : `${nextHtml}
                 <select class="act-dropdown" data-id="${i.id}">
-                    <option value="">Actions…</option>
+                    <option value="">More actions…</option>
+                    ${CAN_INVOICE && (wf === 'draft' || wf === 'correction_required') ? `<option value="submit">${wf === 'draft' ? 'Submit to Finance' : 'Resubmit to Finance'}</option>` : ''}
+                    ${CAN_APPROVE && wf === 'pending_verification' ? `<option value="approve">Approve (Finance)</option><option value="return">Return for correction</option>` : ''}
+                    ${CAN_INVOICE && wf === 'approved' ? `<option value="finalize">Finalize &amp; apply stamp</option>` : ''}
                     ${CAN_INVOICE && i.balance > 0.01 ? `<option value="pay">Record payment</option>` : ''}
                     ${CAN_INVOICE ? `<option value="credit">Credit note</option>` : ''}
-                    <option value="pdf">Open PDF</option>
-                    <option value="email">Send by email</option>
+                    <option value="pdf">${i.is_final ? 'Open PDF' : 'Open draft'}</option>
+                    ${i.is_final ? `<option value="email">Send by email</option>` : ''}
+                    ${CAN_INVOICE && i.is_final ? `<option value="whatsapp">Log WhatsApp dispatch</option>` : ''}
+                    ${CAN_INVOICE && unconfirmed ? `<option value="confirm">Confirm customer receipt</option>` : ''}
+                    <option value="history">History</option>
                     ${CAN_INVOICE ? `<option value="void">Void / reissue</option>` : ''}
                 </select>`;
+
 
             return `<tr data-id="${i.id}">
                 <td data-label="Patient" style="text-align:left;">
                     <div class="inv-name">${esc(i.patient)}</div>
                     <div class="inv-meta">${esc(i.number)} · ${esc(i.payer)} · due ${esc(i.due_label)}</div>
                     ${receiptLines}
-                    ${metaLine}${replacesLine}
+                    ${metaLine}${replacesLine}${correctionLine}${dispatchLines}
                 </td>
-                <td data-label="Total">${money(i.total)}</td>
-                <td data-label="Paid" style="color:#1E7A46;">${money(i.paid)}</td>
-                <td data-label="Balance" style="color:${i.balance > 0.01 ? '#B3261E' : '#1E7A46'};">${money(i.balance)}</td>
-                <td data-label="Status"><span class="inv-status" style="background:${bg}; color:${fg};">${esc(i.status_label)}</span></td>
-                <td data-label="Actions"><div class="inv-actions">${actions}</div></td>
+                <td data-label="Total" class="num">${money(i.total)}</td>
+                <td data-label="Paid" class="num" style="color:${i.paid > 0 ? '#1E7A46' : '#B0A493'};">${money(i.paid)}</td>
+                <td data-label="Balance" class="num" style="color:${i.balance > 0.01 ? '#B3261E' : '#B0A493'}; ${i.balance > 0.01 ? 'font-weight:800;' : ''}">${money(i.balance)}</td>
+                <td data-label="Status"><div><span class="inv-status" style="background:${bg}; color:${fg};">${esc(i.status_label)}</span>${i.voided ? '' : workflowTrack(i)}</div></td>
+                <td data-label="Next step"><div class="inv-actions">${actions}</div></td>
             </tr>`;
         }).join('');
 
@@ -641,18 +948,14 @@
             const act = sel.value;
             sel.value = '';
             if (!act) return;
-            const inv = INVOICES.find(i => i.id === Number(sel.dataset.id));
-            ({
-                pay: openPayment,
-                credit: openCredit,
-                void: openVoid,
-                email: () => openEmail(inv, 'invoice'),
-                pdf: () => window.open(inv.print_url, '_blank'),
-            })[act](inv);
+            runInvoiceAction(act, INVOICES.find(i => i.id === Number(sel.dataset.id)));
+        }));
+        list.querySelectorAll('[data-next]').forEach(btn => btn.addEventListener('click', () => {
+            runInvoiceAction(btn.dataset.next, INVOICES.find(i => i.id === Number(btn.dataset.id)));
         }));
 
         pager.innerHTML = `
-            <div class="inv-pagination-info">Showing ${start + 1}–${Math.min(start + INVOICES_PER_PAGE, INVOICES.length)} of ${INVOICES.length}</div>
+            <div class="inv-pagination-info">Showing ${start + 1}–${Math.min(start + INVOICES_PER_PAGE, shown.length)} of ${shown.length}</div>
             <div class="inv-pagination-nav">
                 <button type="button" class="bl-btn bl-btn-sm" id="inv-page-prev" ${invoicePage <= 1 ? 'disabled' : ''}>‹ Prev</button>
                 <div class="inv-pagination-info" style="align-self:center;">Page ${invoicePage} of ${pageCount}</div>
@@ -668,6 +971,71 @@
         renderInvoices();
     }
     function addInvoices(rows) { INVOICES = [...rows, ...INVOICES]; invoicePage = 1; renderInvoices(); }
+
+    // ---- Finance verification workflow ----
+    async function workflowStep(inv, step, body = null) {
+        try {
+            const r = await api(`${BASE}/invoices/${inv.id}/${step}`, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}) });
+            replaceInvoice(r.invoice); toast(r.message);
+            return r;
+        } catch (e) { toast(e.message); return null; }
+    }
+
+    let returnTarget = null;
+    function openReturn(inv) {
+        returnTarget = inv;
+        document.getElementById('return-error').style.display = 'none';
+        document.getElementById('return-sub').textContent = `${inv.number} · ${inv.patient} · AED ${money(inv.total)}`;
+        document.getElementById('return-reason').value = '';
+        openModal('return-modal');
+    }
+    document.getElementById('return-save').addEventListener('click', async () => {
+        document.getElementById('return-error').style.display = 'none';
+        try {
+            const r = await api(`${BASE}/invoices/${returnTarget.id}/return`, { method: 'POST', body: JSON.stringify({ reason: document.getElementById('return-reason').value }) });
+            replaceInvoice(r.invoice); closeModal('return-modal'); toast(r.message);
+        } catch (e) { showError('return-error', e); }
+    });
+
+    // ---- Dispatch log (WhatsApp is sent by hand, then recorded here) ----
+    let waTarget = null;
+    function openWhatsapp(inv) {
+        waTarget = inv;
+        document.getElementById('wa-error').style.display = 'none';
+        document.getElementById('wa-sub').textContent = `${inv.number} · send the finalized PDF from WhatsApp, then record it here`;
+        document.getElementById('wa-to').value = inv.phone || '';
+        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('wa-at').value = now.toISOString().slice(0, 16);
+        document.getElementById('wa-note').value = '';
+        openModal('wa-modal');
+    }
+    document.getElementById('wa-save').addEventListener('click', async () => {
+        document.getElementById('wa-error').style.display = 'none';
+        try {
+            const r = await api(`${BASE}/invoices/${waTarget.id}/dispatches`, { method: 'POST', body: JSON.stringify({
+                channel: 'whatsapp', sent_to: document.getElementById('wa-to').value,
+                sent_at: document.getElementById('wa-at').value || null, note: document.getElementById('wa-note').value || null,
+            }) });
+            replaceInvoice(r.invoice); closeModal('wa-modal'); toast(r.message);
+        } catch (e) { showError('wa-error', e); }
+    });
+    function confirmReceipt(inv) {
+        const d = inv.dispatches.find(x => x.kind === 'invoice' && !x.confirmed_at);
+        if (d) workflowStep(inv, `dispatches/${d.id}/confirm`);
+    }
+
+    async function openHistory(inv) {
+        document.getElementById('history-sub').textContent = `${inv.number} · ${inv.patient}${inv.retain_until ? ' · keep on record until ' + inv.retain_until : ''}`;
+        const body = document.getElementById('history-body');
+        body.innerHTML = '<div class="bl-empty">Loading…</div>';
+        openModal('history-modal');
+        try {
+            const r = await api(`${BASE}/invoices/${inv.id}/history`);
+            body.innerHTML = r.events.length
+                ? r.events.map(ev => `<div style="padding:9px 0; border-bottom:1px solid #EFE8DC;"><div class="inv-name">${esc(ev.label)}</div><div class="inv-meta">${esc(ev.at)} · ${esc(ev.by)}</div>${ev.note ? `<div class="inv-meta" style="color:#2B3A4C;">${esc(ev.note)}</div>` : ''}</div>`).join('')
+                : '<div class="bl-empty">No history recorded — this invoice predates the audit trail.</div>';
+        } catch (e) { body.innerHTML = `<div class="bl-empty">${esc(e.message)}</div>`; }
+    }
 
     // ---- Record payment ----
     let payTarget = null;
@@ -771,19 +1139,231 @@
         }
     });
 
+    // ---- Side-column lists: five to a page, latest first ----
+    const SIDE_PER_PAGE = 5;
+    const sidePage = { claims: 1, preauths: 1, quotes: 1 };
+    function pageSlice(key, items) {
+        const pageCount = Math.max(1, Math.ceil(items.length / SIDE_PER_PAGE));
+        sidePage[key] = Math.min(Math.max(1, sidePage[key]), pageCount);
+        const start = (sidePage[key] - 1) * SIDE_PER_PAGE;
+        return { items: items.slice(start, start + SIDE_PER_PAGE), start, pageCount };
+    }
+    function renderSidePager(key, elId, total, start, pageCount, rerender) {
+        const pager = document.getElementById(elId);
+        if (total <= SIDE_PER_PAGE) { pager.innerHTML = ''; pager.style.display = 'none'; return; }
+        pager.style.display = '';
+        pager.innerHTML = `
+            <div class="inv-pagination-info">${start + 1}–${Math.min(start + SIDE_PER_PAGE, total)} of ${total}</div>
+            <div class="inv-pagination-nav">
+                <button type="button" class="bl-btn bl-btn-sm" data-dir="-1" ${sidePage[key] <= 1 ? 'disabled' : ''}>‹ Prev</button>
+                <div class="inv-pagination-info" style="align-self:center;">${sidePage[key]} / ${pageCount}</div>
+                <button type="button" class="bl-btn bl-btn-sm" data-dir="1" ${sidePage[key] >= pageCount ? 'disabled' : ''}>Next ›</button>
+            </div>`;
+        pager.querySelectorAll('[data-dir]').forEach(b => b.addEventListener('click', () => { sidePage[key] += Number(b.dataset.dir); rerender(); }));
+    }
+
+    // ================= Quotations =================
+    function opts(list, sel) { return list.map(v => `<option ${v === sel ? 'selected' : ''}>${esc(v)}</option>`).join(''); }
+    function replaceQuote(row) { const i = QUOTES.findIndex(x => x.id === row.id); if (i >= 0) QUOTES[i] = row; else { QUOTES.unshift(row); sidePage.quotes = 1; } renderQuotes(); }
+
+    function renderQuotes() {
+        const box = document.getElementById('quote-list');
+        if (!QUOTES.length) { box.innerHTML = '<div class="bl-empty">No quotations yet. A client needs a payment-confirmed quotation before sessions are scheduled.</div>'; renderSidePager('quotes', 'quote-pagination', 0, 0, 1, renderQuotes); return; }
+        const page = pageSlice('quotes', QUOTES);
+        renderSidePager('quotes', 'quote-pagination', QUOTES.length, page.start, page.pageCount, renderQuotes);
+        box.innerHTML = page.items.map(q => {
+            const [bg, fg] = QUOTE_COLORS[q.status] || QUOTE_COLORS.draft;
+            const next = !CAN_INVOICE || q.expired ? null : ({
+                draft: { act: 'send', label: 'Mark as sent' },
+                sent: { act: 'confirm', label: 'Customer confirmed' },
+                customer_confirmed: { act: 'clear', label: q.insurance ? 'Activate insurance billing' : 'Confirm payment', go: true },
+            })[q.status];
+            const open = ['draft', 'sent', 'customer_confirmed'].includes(q.status) || q.expired;
+            return `<div class="quote-card">
+                <div>
+                    <div class="inv-name">${esc(q.patient)} — ${esc(q.service)}</div>
+                    <div class="inv-meta">${esc(q.number)} · ${esc(q.location)} · ${esc(q.insurance ? 'Insurance · ' + (q.payer || '') : 'Self-pay')} · ${esc(q.pricing_basis)}</div>
+                    <div class="inv-meta">${q.quantity} ${esc(q.unit)}${q.quantity === 1 ? '' : 's'} × AED ${money(q.rate)} · ${esc(q.terms || '')} · valid until ${esc(q.valid_until)}</div>
+                    ${q.sent ? `<div class="inv-meta link">Sent ${esc(q.sent)}${q.confirmed ? ' · customer confirmed ' + esc(q.confirmed) : ''}</div>` : ''}
+                    ${q.status === 'cleared' && !q.insurance ? `<div class="inv-meta receipt">AED ${money(q.amount_received)} received ${esc(q.cleared_on)} · ${esc(q.payment_method)}${q.payment_reference ? ' · ref ' + esc(q.payment_reference) : ''} · AED ${money(q.prepaid_balance)} not yet invoiced${q.pos_fee > 0 ? ' · POS fee AED ' + money(q.pos_fee) : ''}</div>` : ''}
+                    ${q.status === 'cleared' && q.insurance ? `<div class="inv-meta receipt">NOC and liability acknowledgement on file · activated ${esc(q.cleared_on)}</div>` : ''}
+                </div>
+                <div class="quote-money">
+                    <div class="quote-total">AED ${money(q.total)}</div>
+                    <div class="inv-meta">incl. VAT AED ${money(q.vat)}</div>
+                    <div style="margin-top:6px;"><span class="inv-status" style="background:${bg}; color:${fg};">${esc(q.status_label)}</span></div>
+                </div>
+                <div class="quote-acts">
+                    ${next ? `<button type="button" class="act-btn next ${next.go ? 'go' : ''}" data-qact="${next.act}" data-id="${q.id}">${esc(next.label)}</button>` : (q.status === 'cleared' ? '<div class="act-wait">Cleared for scheduling</div>' : '')}
+                    <div class="quote-links">
+                        <a href="${q.print_url}" target="_blank">Open</a>
+                        <button type="button" data-qact="history" data-id="${q.id}">History</button>
+                        ${CAN_INVOICE && open ? `<button type="button" class="danger" data-qact="cancel" data-id="${q.id}">Cancel</button>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+        box.querySelectorAll('[data-qact]').forEach(b => b.addEventListener('click', () => {
+            const q = QUOTES.find(x => x.id === Number(b.dataset.id));
+            ({ send: () => openQuoteStep(q, 'send'), confirm: () => openQuoteStep(q, 'confirm'), cancel: () => openQuoteStep(q, 'cancel'), clear: () => openQuoteClear(q), history: () => openQuoteHistory(q) })[b.dataset.qact]();
+        }));
+    }
+
+    // ---- New quotation ----
+    function quoteTotals() {
+        const sub = (Number(document.getElementById('q-qty').value) || 0) * (Number(document.getElementById('q-rate').value) || 0);
+        const vat = sub * QOPT.vat_rate / 100;
+        const pos = sub * QOPT.pos_fee_pct / 100 * (1 + QOPT.vat_rate / 100);
+        document.getElementById('q-total').innerHTML = `Service value AED ${money(sub)} + VAT ${QOPT.vat_rate}% AED ${money(vat)} = <strong>AED ${money(sub + vat)}</strong>` +
+            (document.getElementById('q-mode').value === 'Insurance' ? '' : ` · if paid by card, POS fee ${QOPT.pos_fee_pct}% + VAT = AED ${money(pos)}, charged separately`);
+    }
+    function quoteModeChanged() {
+        const ins = document.getElementById('q-mode').value === 'Insurance';
+        document.getElementById('q-payer-wrap').style.display = ins ? '' : 'none';
+        if (ins) document.getElementById('q-basis').value = 'Insurance approved rate';
+        else if (document.getElementById('q-basis').value === 'Insurance approved rate') document.getElementById('q-basis').value = 'Per hour';
+        quoteTotals();
+    }
+    document.getElementById('btn-new-quote')?.addEventListener('click', () => {
+        document.getElementById('quote-error').style.display = 'none';
+        document.getElementById('q-patient').innerHTML = PATIENTS.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
+        document.getElementById('q-location').innerHTML = opts(QOPT.locations);
+        document.getElementById('q-mode').innerHTML = opts(QOPT.payment_modes);
+        document.getElementById('q-payer').innerHTML = opts(PAYERS.filter(p => p !== 'Self-pay'));
+        document.getElementById('q-service').innerHTML = opts(SERVICES);
+        document.getElementById('q-basis').innerHTML = opts(QOPT.pricing_bases);
+        document.getElementById('q-unit').value = 'hour';
+        document.getElementById('q-qty').value = 20;
+        const patient = PATIENTS[0];
+        document.getElementById('q-rate').value = patient ? patient.rate : '';
+        document.getElementById('q-terms').value = QOPT.default_terms;
+        document.getElementById('q-valid').value = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+        document.getElementById('q-notes').value = '';
+        quoteModeChanged();
+        openModal('quote-modal');
+    });
+    document.getElementById('q-mode').addEventListener('change', quoteModeChanged);
+    document.getElementById('q-patient').addEventListener('change', e => {
+        const p = PATIENTS.find(x => x.id === Number(e.target.value));
+        if (p) { document.getElementById('q-rate').value = p.rate; quoteTotals(); }
+    });
+    ['q-qty', 'q-rate'].forEach(id => document.getElementById(id).addEventListener('input', quoteTotals));
+    document.getElementById('quote-save').addEventListener('click', async () => {
+        document.getElementById('quote-error').style.display = 'none';
+        const btn = document.getElementById('quote-save');
+        if (btn.disabled) return;
+        btn.disabled = true; btn.textContent = 'Saving…';
+        const ins = document.getElementById('q-mode').value === 'Insurance';
+        try {
+            const r = await api(`${BASE}/quotations`, { method: 'POST', body: JSON.stringify({
+                patient_id: document.getElementById('q-patient').value, location: document.getElementById('q-location').value,
+                payment_mode: document.getElementById('q-mode').value, payer: ins ? document.getElementById('q-payer').value : null,
+                service: document.getElementById('q-service').value, pricing_basis: document.getElementById('q-basis').value,
+                billing_unit: document.getElementById('q-unit').value, quantity: document.getElementById('q-qty').value,
+                rate: document.getElementById('q-rate').value, payment_terms: document.getElementById('q-terms').value,
+                valid_until: document.getElementById('q-valid').value, notes: document.getElementById('q-notes').value || null,
+            }) });
+            replaceQuote(r.quotation); closeModal('quote-modal'); toast(r.message);
+        } catch (e) { showError('quote-error', e); }
+        finally { btn.disabled = false; btn.textContent = 'Save quotation'; }
+    });
+
+    // ---- Sent / customer confirmed / cancelled ----
+    let qstepTarget = null, qstepKind = 'send';
+    function openQuoteStep(q, kind) {
+        qstepTarget = q; qstepKind = kind;
+        document.getElementById('qstep-error').style.display = 'none';
+        document.getElementById('qstep-title').textContent = { send: 'Quotation sent', confirm: 'Customer confirmation', cancel: 'Cancel quotation' }[kind];
+        document.getElementById('qstep-sub').textContent = `${q.number} · ${q.patient} · AED ${money(q.total)}`;
+        ['send', 'confirm', 'cancel'].forEach(k => document.getElementById('qstep-' + k).style.display = k === kind ? (k === 'confirm' ? 'flex' : '') : 'none');
+        document.getElementById('qstep-via').innerHTML = opts(QOPT.send_channels);
+        document.getElementById('qstep-method').innerHTML = opts(QOPT.confirmation_methods);
+        document.getElementById('qstep-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('qstep-reason').value = '';
+        document.getElementById('qstep-save').textContent = { send: 'Mark as sent', confirm: 'Record confirmation', cancel: 'Cancel quotation' }[kind];
+        openModal('qstep-modal');
+    }
+    document.getElementById('qstep-save').addEventListener('click', async () => {
+        document.getElementById('qstep-error').style.display = 'none';
+        const body = { send: { sent_via: document.getElementById('qstep-via').value }, confirm: { confirmation_method: document.getElementById('qstep-method').value, confirmed_on: document.getElementById('qstep-date').value }, cancel: { reason: document.getElementById('qstep-reason').value } }[qstepKind];
+        try {
+            const r = await api(`${BASE}/quotations/${qstepTarget.id}/${qstepKind}`, { method: 'POST', body: JSON.stringify(body) });
+            replaceQuote(r.quotation); closeModal('qstep-modal'); toast(r.message);
+        } catch (e) { showError('qstep-error', e); }
+    });
+
+    // ---- Payment confirmation / insurance activation ----
+    let qclearTarget = null;
+    function openQuoteClear(q) {
+        qclearTarget = q;
+        document.getElementById('qclear-error').style.display = 'none';
+        document.getElementById('qclear-title').textContent = q.insurance ? 'Activate insurance billing' : 'Confirm payment';
+        document.getElementById('qclear-sub').textContent = `${q.number} · ${q.patient} · AED ${money(q.total)}${q.insurance ? ' · ' + (q.payer || '') : ''}`;
+        document.getElementById('qclear-self').style.display = q.insurance ? 'none' : 'flex';
+        document.getElementById('qclear-ins').style.display = q.insurance ? 'flex' : 'none';
+        document.getElementById('qclear-amount').value = q.total.toFixed(2);
+        document.getElementById('qclear-method').innerHTML = opts(QOPT.pay_methods);
+        document.getElementById('qclear-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('qclear-ref').value = '';
+        ['qclear-policy', 'qclear-pos', 'qclear-noc', 'qclear-liab'].forEach(id => document.getElementById(id).checked = false);
+        document.getElementById('qclear-pos-fee').textContent = `— fee AED ${money(q.pos_fee_if_card)} (${QOPT.pos_fee_pct}% + VAT)`;
+        qclearMethodChanged();
+        openModal('qclear-modal');
+    }
+    function qclearMethodChanged() { document.getElementById('qclear-pos-wrap').style.display = document.getElementById('qclear-method').value === 'Card' ? 'flex' : 'none'; }
+    document.getElementById('qclear-method').addEventListener('change', qclearMethodChanged);
+    document.getElementById('qclear-save').addEventListener('click', async () => {
+        document.getElementById('qclear-error').style.display = 'none';
+        const q = qclearTarget;
+        const body = q.insurance
+            ? { noc_received: document.getElementById('qclear-noc').checked, liability_acknowledged: document.getElementById('qclear-liab').checked }
+            : { amount_received: document.getElementById('qclear-amount').value, payment_method: document.getElementById('qclear-method').value,
+                payment_received_on: document.getElementById('qclear-date').value, payment_reference: document.getElementById('qclear-ref').value || null,
+                prepayment_policy_received: document.getElementById('qclear-policy').checked, pos_agreement_received: document.getElementById('qclear-pos').checked };
+        try {
+            const r = await api(`${BASE}/quotations/${q.id}/clear`, { method: 'POST', body: JSON.stringify(body) });
+            replaceQuote(r.quotation); closeModal('qclear-modal'); toast(r.message);
+        } catch (e) { showError('qclear-error', e); }
+    });
+
+    async function openQuoteHistory(q) {
+        document.getElementById('history-sub').textContent = `${q.number} · ${q.patient} · keep on record until ${q.retain_until}`;
+        const body = document.getElementById('history-body');
+        body.innerHTML = '<div class="bl-empty">Loading…</div>';
+        openModal('history-modal');
+        try {
+            const r = await api(`${BASE}/quotations/${q.id}/history`);
+            body.innerHTML = r.events.map(ev => `<div style="padding:9px 0; border-bottom:1px solid #EFE8DC;"><div class="inv-name">${esc(ev.label)}</div><div class="inv-meta">${esc(ev.at)} · ${esc(ev.by)}</div>${ev.note ? `<div class="inv-meta" style="color:#2B3A4C;">${esc(ev.note)}</div>` : ''}</div>`).join('') || '<div class="bl-empty">No history recorded.</div>';
+        } catch (e) { body.innerHTML = `<div class="bl-empty">${esc(e.message)}</div>`; }
+    }
+
     // ================= Claims =================
     function renderClaims() {
         const body = document.getElementById('claims-body');
-        if (!CLAIMS.length) { body.innerHTML = '<tr><td colspan="5" class="bl-empty">No claims submitted yet.</td></tr>'; return; }
-        body.innerHTML = CLAIMS.map(c => {
+        if (!CLAIMS.length) { body.innerHTML = '<div class="bl-empty">No claims raised yet.</div>'; renderSidePager('claims', 'claims-pagination', 0, 0, 1, renderClaims); return; }
+        const page = pageSlice('claims', CLAIMS);
+        renderSidePager('claims', 'claims-pagination', CLAIMS.length, page.start, page.pageCount, renderClaims);
+        body.innerHTML = page.items.map(c => {
             const [bg, fg] = CLAIM_COLORS[c.status];
-            return `<tr data-id="${c.id}">
-                <td><strong>${esc(c.patient)}</strong><div style="color:#8A7D6C; font-weight:600;">${esc(c.reference)}${c.period ? ' · ' + esc(c.period) : ''}</div></td>
-                <td>${esc(c.insurer)}</td>
-                <td class="num">AED ${money(c.amount)}</td>
-                <td class="num" style="color:${c.age > 30 && c.open ? '#B3261E' : '#2B3A4C'};">${c.open ? c.age + 'd' : 'closed'}</td>
-                <td><select class="status-sel" data-id="${c.id}" style="background:${bg}; color:${fg};">${Object.entries(CLAIM_STATUSES).map(([k, l]) => `<option value="${k}" ${k === c.status ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></td>
-            </tr>`;
+            const late = c.open && c.age > 30 && !['draft', 'documents_ready'].includes(c.status);
+            return `<div class="claim-card" data-id="${c.id}">
+                <div class="claim-top">
+                    <div style="min-width:0;">
+                        <div class="inv-name">${esc(c.patient)}</div>
+                        <div class="inv-meta">${esc(c.reference)}${c.period ? ' · ' + esc(c.period) : ''}${c.invoice ? ' · ' + esc(c.invoice) : ''}</div>
+                        ${c.payer_reference ? `<div class="inv-meta link">Insurer ref ${esc(c.payer_reference)}${c.portal ? ' · ' + esc(c.portal) : ''}</div>` : ''}
+                        <span class="claim-insurer">${esc(c.insurer)}</span>
+                    </div>
+                    <div>
+                        <div class="claim-amt">AED ${money(c.amount)}</div>
+                        <div class="claim-age ${late ? 'late' : ''}">${c.open ? (c.submitted_on && !['draft', 'documents_ready'].includes(c.status) ? c.age + ' d since submission' : 'not yet submitted') : 'closed'}</div>
+                    </div>
+                </div>
+                <div class="claim-foot">
+                    <select class="status-sel" data-id="${c.id}" style="background:${bg}; color:${fg};" ${CAN_INVOICE ? '' : 'disabled'}>${Object.entries(CLAIM_STATUSES).map(([k, l]) => `<option value="${k}" ${k === c.status ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+                    ${CAN_INVOICE ? `<button type="button" class="bl-btn bl-btn-sm" data-claim-open="${c.id}">Submission details</button>` : ''}
+                </div>
+            </div>`;
         }).join('');
         body.querySelectorAll('.status-sel').forEach(sel => sel.addEventListener('change', async () => {
             const c = CLAIMS.find(x => x.id === Number(sel.dataset.id));
@@ -794,7 +1374,44 @@
                 toast(r.message);
             } catch (e) { toast(e.message); renderClaims(); }
         }));
+        body.querySelectorAll('[data-claim-open]').forEach(b => b.addEventListener('click', () => openClaim(CLAIMS.find(x => x.id === Number(b.dataset.claimOpen)))));
     }
+
+    // ---- Insurance submission record: portal, insurer reference, documents ----
+    let claimTarget = null;
+    async function openClaim(c) {
+        claimTarget = c;
+        document.getElementById('claim-error').style.display = 'none';
+        document.getElementById('claim-sub').textContent = `${c.reference} · ${c.patient} · ${c.insurer} · AED ${money(c.amount)} incl. VAT${c.service_date ? ' · service date ' + c.service_date : ''}`;
+        document.getElementById('claim-status').innerHTML = Object.entries(CLAIM_STATUSES).map(([k, l]) => `<option value="${k}" ${k === c.status ? 'selected' : ''}>${esc(l)}</option>`).join('');
+        document.getElementById('claim-portal').value = c.portal || '';
+        document.getElementById('claim-payer-ref').value = c.payer_reference || '';
+        document.getElementById('claim-notes').value = c.notes || '';
+        ['claim-medical', 'claim-assessment'].forEach(id => document.getElementById(id).innerHTML = '<option value="">Loading…</option>');
+        openModal('claim-modal');
+        try {
+            const r = await api(`${BASE}/claims/${c.id}`);
+            const opts = sel => '<option value="">— none attached —</option>' + r.documents.map(d => `<option value="${d.id}" ${d.id === sel ? 'selected' : ''}>${esc(d.name)}${d.type ? ' (' + esc(d.type) + ')' : ''}</option>`).join('');
+            document.getElementById('claim-medical').innerHTML = opts(r.claim.medical_report_document_id);
+            document.getElementById('claim-assessment').innerHTML = opts(r.claim.assessment_report_document_id);
+        } catch (e) { showError('claim-error', e); }
+    }
+    document.getElementById('claim-save').addEventListener('click', async () => {
+        document.getElementById('claim-error').style.display = 'none';
+        try {
+            const r = await api(`${BASE}/claims/${claimTarget.id}`, { method: 'PATCH', body: JSON.stringify({
+                status: document.getElementById('claim-status').value,
+                portal: document.getElementById('claim-portal').value || null,
+                payer_reference: document.getElementById('claim-payer-ref').value || null,
+                medical_report_document_id: document.getElementById('claim-medical').value || null,
+                assessment_report_document_id: document.getElementById('claim-assessment').value || null,
+                notes: document.getElementById('claim-notes').value || null,
+            }) });
+            const idx = CLAIMS.findIndex(x => x.id === claimTarget.id); CLAIMS[idx] = r.claim; renderClaims();
+            if (r.invoice) replaceInvoice(r.invoice);
+            closeModal('claim-modal'); toast(r.message);
+        } catch (e) { showError('claim-error', e); }
+    });
 
     function renderClaimAging() {
         const box = document.getElementById('claim-aging-bars');
@@ -815,27 +1432,79 @@
     // ================= Pre-authorizations =================
     function renderPreauths() {
         const box = document.getElementById('preauth-list');
-        if (!PREAUTHS.length) { box.innerHTML = '<div class="bl-empty">No pre-authorization requests on file.</div>'; return; }
-        box.innerHTML = PREAUTHS.map(p => {
+        if (!PREAUTHS.length) { box.innerHTML = '<div class="bl-empty">No pre-authorization requests on file.</div>'; renderSidePager('preauths', 'preauth-pagination', 0, 0, 1, renderPreauths); return; }
+        const page = pageSlice('preauths', PREAUTHS);
+        renderSidePager('preauths', 'preauth-pagination', PREAUTHS.length, page.start, page.pageCount, renderPreauths);
+        box.innerHTML = page.items.map(p => {
             const [bg, fg] = PA_COLORS[p.status];
             return `<div class="inv-row" style="grid-template-columns:1fr auto;" data-id="${p.id}">
                 <div>
                     <div class="inv-name">${esc(p.patient)} — ${esc(p.service)}</div>
                     <div class="inv-meta">${esc(p.payer)} · ${p.hours} h · ${esc(p.from)} → ${esc(p.to)} · submitted ${esc(p.submitted)}</div>
                     <div class="inv-meta">Ref ${esc(p.reference)}${p.payer_reference ? ' · payer ref ' + esc(p.payer_reference) : ''}</div>
+                    ${p.status === 'approved' && p.approved_hours ? `<div class="inv-meta receipt">Approved ${p.approved_hours} h at ${p.coverage_percent}%${p.on_client_file ? ' · added to client file' : ''}</div>` : ''}
                     ${p.status === 'denied' && p.denial_reason ? `<div class="inv-meta voided">${esc(p.denial_reason)}</div>` : ''}
+                    ${p.decided_on ? `<div class="inv-meta">Payer answered ${esc(p.decided_on)}${p.decision_channel ? ' via ' + esc(p.decision_channel) : ''}${p.decided_by ? ' · recorded by ' + esc(p.decided_by) : ''}</div>` : ''}
+                    ${p.status === 'requested' ? `<div class="inv-meta">Awaiting the payer’s answer</div>` : ''}
                 </div>
-                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
-                    <span class="inv-status" style="background:${bg}; color:${fg};">${esc(p.status_label)}</span>
+                <div style="display:flex; flex-direction:column; align-items:stretch; gap:6px; min-width:96px;">
+                    <span class="inv-status" style="background:${bg}; color:${fg}; text-align:center;">${esc(p.status_label)}</span>
+                    ${CAN_INVOICE && p.status === 'requested' ? `<button type="button" class="act-btn next go" data-decide="approved" data-id="${p.id}">Approved</button><button type="button" class="act-btn danger" data-decide="denied" data-id="${p.id}">Denied</button>` : ''}
                     ${CAN_INVOICE && p.status === 'denied' ? `<button type="button" class="act-btn" data-resubmit="${p.id}">Resubmit</button>` : ''}
                 </div>
             </div>`;
         }).join('');
+        box.querySelectorAll('[data-decide]').forEach(btn => btn.addEventListener('click', () => {
+            openDecision(PREAUTHS.find(x => x.id === Number(btn.dataset.id)), btn.dataset.decide);
+        }));
         box.querySelectorAll('[data-resubmit]').forEach(btn => btn.addEventListener('click', () => {
             const p = PREAUTHS.find(x => x.id === Number(btn.dataset.resubmit));
             openPreauth(p);
         }));
     }
+
+    // ---- Payer decision: the payer answers outside the CRM, staff record it ----
+    let decisionTarget = null, decisionStatus = 'approved';
+    function openDecision(p, status) {
+        decisionTarget = p; decisionStatus = status;
+        const approving = status === 'approved';
+        document.getElementById('padec-error').style.display = 'none';
+        document.getElementById('padec-title').textContent = approving ? 'Payer approved the request' : 'Payer denied the request';
+        document.getElementById('padec-sub').textContent = `${p.reference} · ${p.patient} · ${p.payer} · ${p.service} · ${p.hours} h requested`;
+        document.getElementById('padec-hint').textContent = approving
+            ? 'Record what the payer confirmed. Saving adds these hours to the client’s file, so sessions start billing to this payer. This can’t be undone here.'
+            : 'Record the payer’s reason. A denied request stays on file and can be resubmitted as a new one.';
+        document.getElementById('padec-date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('padec-channel').innerHTML = PREAUTH_CHANNELS.map(c => `<option>${esc(c)}</option>`).join('');
+        document.getElementById('padec-approve-fields').style.display = approving ? 'flex' : 'none';
+        document.getElementById('padec-deny-fields').style.display = approving ? 'none' : '';
+        document.getElementById('padec-ref').value = '';
+        document.getElementById('padec-hours').value = p.hours;
+        document.getElementById('padec-pct').value = '';
+        document.getElementById('padec-to').value = p.to_iso;
+        document.getElementById('padec-reason').value = '';
+        const save = document.getElementById('padec-save');
+        save.textContent = approving ? 'Record approval' : 'Record denial';
+        openModal('padec-modal');
+    }
+    document.getElementById('padec-save').addEventListener('click', async () => {
+        document.getElementById('padec-error').style.display = 'none';
+        const approving = decisionStatus === 'approved';
+        try {
+            const r = await api(`${BASE}/pre-authorizations/${decisionTarget.id}`, { method: 'PATCH', body: JSON.stringify({
+                status: decisionStatus,
+                decided_on: document.getElementById('padec-date').value,
+                decision_channel: document.getElementById('padec-channel').value,
+                payer_reference: approving ? document.getElementById('padec-ref').value : null,
+                approved_hours: approving ? document.getElementById('padec-hours').value : null,
+                coverage_percent: approving ? document.getElementById('padec-pct').value : null,
+                valid_to: approving ? document.getElementById('padec-to').value || null : null,
+                denial_reason: approving ? null : document.getElementById('padec-reason').value,
+            }) });
+            const idx = PREAUTHS.findIndex(x => x.id === decisionTarget.id); PREAUTHS[idx] = r.preauth; renderPreauths();
+            closeModal('padec-modal'); toast(r.message);
+        } catch (e) { showError('padec-error', e); }
+    });
 
     function openPreauth(from = null) {
         document.getElementById('preauth-error').style.display = 'none';
@@ -864,6 +1533,12 @@
     document.getElementById('btn-new-preauth')?.addEventListener('click', () => openPreauth());
     document.getElementById('preauth-save').addEventListener('click', async () => {
         const err = document.getElementById('preauth-error'); err.style.display = 'none';
+        // One click, one request: the button locks until the server answers,
+        // and the form closes as soon as the request is filed.
+        const btn = document.getElementById('preauth-save');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.textContent = 'Submitting…';
         try {
             const r = await api(`${BASE}/pre-authorizations`, { method: 'POST', body: JSON.stringify({
                 patient_id: document.getElementById('pa-patient').value, payer: document.getElementById('pa-payer').value,
@@ -871,8 +1546,13 @@
                 valid_from: document.getElementById('pa-from').value, valid_to: document.getElementById('pa-to').value,
                 justification: document.getElementById('pa-just').value || null, resubmitted_from_id: preauthResubmitFrom,
             }) });
-            PREAUTHS.unshift(r.preauth); renderPreauths(); closeModal('preauth-modal'); toast(r.message);
-        } catch (e) { showError('preauth-error', e); }
+            PREAUTHS.unshift(r.preauth); sidePage.preauths = 1; renderPreauths(); closeModal('preauth-modal'); toast(r.message);
+        } catch (e) {
+            showError('preauth-error', e);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Submit request';
+        }
     });
 
     // ================= Aging & statements tab =================
@@ -1089,6 +1769,7 @@
         box.innerHTML = `
             <div class="cmodal-sub" style="margin:0 0 10px;">${esc(p.invoice_number)} · issue ${esc(p.issue_date)} · due ${esc(p.due_date)}${p.settled_count ? ` · <span style="color:#B3261E;">${p.settled_count} already billed</span>` : ''}</div>
             ${authWarnings}
+            ${p.quotation_notice ? `<div class="warn-box" style="margin-bottom:12px;">${esc(p.quotation_notice)}</div>` : ''}
             <div style="overflow-x:auto; max-height:32vh;"><table class="claim-table"><thead><tr><th>#</th><th>Item &amp; description</th><th>From</th><th>To</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th><th class="num">Tax</th><th class="num">Total</th></tr></thead><tbody>${lines}</tbody></table></div>
             <div class="f-row" style="margin-top:12px;">
                 <div class="bl-card" style="margin:0; flex:1;">
@@ -1103,14 +1784,14 @@
 
     document.getElementById('preview-save').addEventListener('click', () => submitInvoice(false));
     document.getElementById('preview-send').addEventListener('click', () => submitInvoice(true));
-    async function submitInvoice(thenSend) {
+    async function submitInvoice(thenSubmit) {
         const err = document.getElementById('picker-error'); err.style.display = 'none';
         try {
             const body = { patient_id: pickerPatientSel.value, session_ids: selectedIds(), attendance: attendancePayload(), acknowledge_settled: true };
             const r = await api(`${BASE}/invoices`, { method: 'POST', body: JSON.stringify(body) });
             addInvoices([r.invoice]);
             closeModal('picker-modal'); toast(r.message);
-            if (thenSend) openEmail(r.invoice, 'invoice');
+            if (thenSubmit) workflowStep(r.invoice, 'submit');
         } catch (e) {
             if (e.status === 409) { pendingSettledIds = e.settled_ids || []; document.getElementById('warn-text').textContent = e.message + ' Drop them and bill only the rest, or go back and adjust your selection.'; showPickerStep('warn'); }
             else showError('picker-error', e);
@@ -1192,6 +1873,7 @@
         } catch (e) { toast(e.message); }
     });
 
+    renderQuotes();
     renderInvoices(); renderClaims(); renderClaimAging(); renderRevenueByPayer(); renderPreauths(); renderAgingRows();
 })();
 </script>

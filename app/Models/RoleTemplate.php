@@ -61,6 +61,7 @@ class RoleTemplate extends Model
         'assign_multiple_therapists' => 'Assign multiple therapists',
         'view_terminated_history' => 'View terminated history',
         'create_invoice' => 'Create invoice',
+        'approve_invoice' => 'Verify & approve invoice',
         'manage_users_roles' => 'Manage users & roles',
     ];
 
@@ -90,7 +91,7 @@ class RoleTemplate extends Model
             'base_role' => 'FULL_ADMIN',
             'description' => 'Complete access to every module: user management, billing, system settings, all client and financial records',
             'modules' => ['dashboard', 'leads', 'contacts', 'cms_forms', 'whatsapp', 'knowledge_base', 'patients', 'calendar', 'therapists', 'careers', 'vendors', 'users', 'roles_access', 'billing', 'reports', 'packages', 'settings'],
-            'actions' => ['assign_lead_owner', 'reassign_lead_owner', 'terminate_lead', 'add_lead_notes', 'convert_to_client', 'book_modify_session', 'assign_change_schedule', 'assign_multiple_therapists', 'view_terminated_history', 'create_invoice', 'manage_users_roles'],
+            'actions' => ['assign_lead_owner', 'reassign_lead_owner', 'terminate_lead', 'add_lead_notes', 'convert_to_client', 'book_modify_session', 'assign_change_schedule', 'assign_multiple_therapists', 'view_terminated_history', 'create_invoice', 'approve_invoice', 'manage_users_roles'],
         ],
         'staff_admin' => [
             'name' => 'Staff Admin Access',
@@ -118,7 +119,7 @@ class RoleTemplate extends Model
             'base_role' => 'FINANCE_STAFF',
             'description' => 'Invoicing, payments and financial reporting. No clinical records',
             'modules' => ['dashboard', 'calendar', 'billing', 'reports', 'packages'],
-            'actions' => ['view_terminated_history', 'create_invoice'],
+            'actions' => ['view_terminated_history', 'create_invoice', 'approve_invoice'],
         ],
         'clinical_admin' => [
             'name' => 'Clinical Admin Access',

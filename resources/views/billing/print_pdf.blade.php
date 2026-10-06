@@ -31,6 +31,13 @@
         .body { padding: 30px 40px 40px; }
         .notice { border-radius: 10px; padding: 10px 14px; font: 700 12.5px 'Nunito Sans'; margin-bottom: 20px; }
         .notice.live { background: #E4F6EB; color: #1E7A46; }
+        .notice.draft { background: #F7EEDD; color: #8A5A0B; }
+        .stamps { margin: 18px 0 4px; text-align: right; }
+        .stamp { display: inline-block; vertical-align: middle; margin-left: 14px; text-align: center; }
+        .stamp.paid { border: 3px solid #1E7A46; color: #1E7A46; border-radius: 8px; padding: 6px 18px; font: 800 26px 'Nunito Sans', sans-serif; letter-spacing: 4px; }
+        .stamp.company { border: 2px solid #16436E; color: #16436E; border-radius: 8px; padding: 8px 14px; font: 800 11px 'Nunito Sans', sans-serif; line-height: 1.45; max-width: 230px; }
+        .stamp.company .s-title { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; opacity: .75; }
+        .stamp img { max-height: 110px; max-width: 200px; }
 
         .top-table { width: 100%; margin-bottom: 24px; }
         .top-table > tr > td { vertical-align: top; padding-right: 20px; }
@@ -117,6 +124,9 @@
     @endif
 
     <div class="body">
+        @if (! $isVoided && ! $invoice->isFinal())
+            <div class="notice draft">{{ strtoupper($invoice->workflowLabel()) }} — not yet verified by Finance. This is not a final tax invoice and must not be sent to the customer.</div>
+        @endif
         @if (! $isVoided && $balance <= 0.01)
             <div class="notice live">Settled in full — nothing further owed on this invoice.</div>
         @endif
@@ -215,6 +225,22 @@
             </tr></table>
         </td></tr></table>
 
+        @if ($stamps = $invoice->stamps())
+            <div class="stamps">
+                @if (in_array('paid', $stamps, true))
+                    <div class="stamp paid">PAID</div>
+                @endif
+                <div class="stamp company">
+                    @if (! empty($clinic['stamp_image']) && is_file(public_path($clinic['stamp_image'])))
+                        <img src="{{ public_path($clinic['stamp_image']) }}" alt="Company stamp">
+                    @else
+                        <div class="s-title">Company stamp</div>
+                        {{ $clinic['legal_name'] }}<br>TRN {{ $clinic['trn'] }}
+                    @endif
+                </div>
+            </div>
+        @endif
+
         @if (count($invoice->payer_splits ?? []) > 1)
             <div class="split-notes">
                 <div class="title">Payer split</div>
@@ -255,9 +281,9 @@
                 <div class="footer-box notes">
                     <div class="title">Notes</div>
                     Thanks for your business.
-                    @if ($invoice->claim_reference)
-                        <br>Claim {{ $invoice->claim_reference }} for the insured portion was submitted on {{ $invoice->issue_date->format('d M Y') }}.
-                    @endif
+                    @foreach ($invoice->claims->filter->isSubmitted() as $claim)
+                        <br>Claim {{ $claim->payer_reference ?: $claim->reference }} for the insured portion was submitted to {{ $claim->insurer }} on {{ $claim->submitted_on->format('d M Y') }}.
+                    @endforeach
                     <br>Payment is due{{ $invoice->due_date ? ' by ' . $invoice->due_date->format('d M Y') : '' }}. For billing questions, WhatsApp us at {{ $clinic['phone'] }}.
                 </div>
             </td>

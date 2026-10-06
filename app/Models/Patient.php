@@ -49,6 +49,20 @@ class Patient extends Model
      * Ordered by sort_order - the first one is the "primary" shown on the
      * patient list page.
      */
+    public function quotations()
+    {
+        return $this->hasMany(Quotation::class)->latest('id');
+    }
+
+    /**
+     * Payment confirmed (or insurance billing activated) on at least one
+     * quotation - the Finance Flow SOP's trigger for session scheduling.
+     */
+    public function isClearedForScheduling(): bool
+    {
+        return $this->quotations()->where('status', 'cleared')->exists();
+    }
+
     public function authorizations()
     {
         return $this->hasMany(PatientAuthorization::class)->orderBy('sort_order');

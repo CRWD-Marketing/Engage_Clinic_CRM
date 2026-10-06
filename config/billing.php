@@ -7,6 +7,24 @@ return [
     // Invoice due date = issue date + this many days.
     'due_days' => 30,
 
+    // Payment confirmation is the trigger for session scheduling. "warn" lets
+    // a booking through with a warning when the client has no cleared
+    // quotation; "block" refuses it; "off" skips the check. Clients who were
+    // already being seen before quotations existed have none on file, so
+    // switch to "block" only once theirs are entered.
+    'scheduling_gate' => env('BILLING_SCHEDULING_GATE', 'warn'),
+
+    // Card POS fee: this % of the service value, plus VAT on the fee.
+    'pos_fee_pct' => 2,
+
+    // How long each record is kept (years), per the Finance & Billing SOP.
+    'retention_years' => [
+        'quotations' => 2,
+        'receipts' => 5,
+        'rota' => 1,
+        'invoices' => 5,
+    ],
+
     // Hourly rate used when a patient has no package with a rate on file.
     'default_rate' => 300,
 

@@ -369,6 +369,19 @@ class CalendarController extends Controller
         // concern from the package-hours check above.
         $authWarning = $this->authorizationWarning($data, $dates, count($data['therapist_ids']));
 
+        // Payment confirmation is the trigger for scheduling: a client with
+        // no cleared quotation is either refused or let through with a
+        // warning, per config('billing.scheduling_gate').
+        $paymentNotice = $this->paymentGateNotice($data);
+        if ($paymentNotice && config('billing.scheduling_gate') === 'block') {
+            return $request->wantsJson()
+                ? response()->json(['message' => $paymentNotice, 'errors' => ['patient_ids' => [$paymentNotice]]], 422)
+                : back()->withErrors(['patient_ids' => $paymentNotice])->withInput();
+        }
+        if ($paymentNotice) {
+            $authWarning = trim($paymentNotice.' '.($authWarning ?? ''));
+        }
+
         $created = [];
         $skipped = [];
 
@@ -1038,6 +1051,31 @@ class CalendarController extends Controller
      * separate from, and checked in addition to, packageOverbookError()'s
      * hard block on the package-hours balance itself.
      */
+    /**
+     * Names the clients in this booking who have no payment-confirmed
+     * quotation, for client-facing therapy sessions only. Null when the gate
+     * is off or everyone is cleared.
+     */
+    protected function paymentGateNotice(array $data): ?string
+    {
+        if (config('billing.scheduling_gate', 'warn') === 'off') {
+            return null;
+        }
+        $type = trim($data['activity_types'][0] ?? '');
+        if (in_array($type, CalendarSession::NON_THERAPY_TYPES, true)) {
+            return null;
+        }
+
+        $uncleared = Lead::with('patient')->whereIn('id', $data['patient_ids'] ?? [])->get()
+            ->filter(fn ($lead) => $lead->patient && ! $lead->patient->isClearedForScheduling())
+            ->pluck('child_name');
+        if ($uncleared->isEmpty()) {
+            return null;
+        }
+
+        return 'Payment not confirmed for '.$uncleared->implode(', ').' — no cleared quotation is on file. Finance confirms payment under Billing → Quotations before sessions are scheduled.';
+    }
+
     protected function authorizationWarning(array $data, array $dates, int $therapistCount): ?string
     {
         $ids = $data['patient_ids'] ?? [];

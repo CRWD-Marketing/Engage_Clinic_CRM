@@ -6,6 +6,7 @@ use App\Models\CalendarSession;
 use App\Models\InsuranceClaim;
 use App\Models\Invoice;
 use App\Models\Patient;
+use App\Models\Quotation;
 use App\Models\Service;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -129,14 +130,64 @@ class InvoiceBuilder
     }
 
     /**
-     * Persist a composed invoice: number, frozen lines, sessions marked as
-     * invoiced, a claim per payer. One transaction so a failure leaves no
-     * half-issued document or gap in the sequence.
+     * A family that prepaid against a quotation has already paid for these
+     * sessions: draw the family's share out of that prepayment, oldest
+     * quotation first, as a receipt on the invoice - so it reaches Finance
+     * already settled and takes the PAID stamp when finalized.
+     */
+    protected function applyPrepayment(Invoice $invoice, Patient $patient, ?int $userId): void
+    {
+        $due = round((float) $invoice->total - (float) $invoice->insurance_coverage_amount, 2);
+        if ($due <= 0) {
+            return;
+        }
+
+        $quotations = Quotation::where('patient_id', $patient->id)
+            ->where('status', 'cleared')
+            ->where('payment_mode', 'Self pay')
+            ->where('amount_received', '>', 0)
+            ->orderBy('payment_confirmed_at')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($quotations as $quotation) {
+            $use = min($due, $quotation->prepaidBalance());
+            if ($use <= 0) {
+                continue;
+            }
+            $payment = $invoice->payments()->create([
+                'quotation_id' => $quotation->id,
+                'receipt_number' => DocumentNumbers::nextReceipt(),
+                'amount' => $use,
+                'method' => $quotation->payment_method,
+                'received_on' => $quotation->payment_received_on ?? $quotation->payment_confirmed_at,
+                'reference' => 'Prepayment · '.$quotation->quote_number,
+                'recorded_by' => $userId,
+            ]);
+            $invoice->recordEvent('prepayment_applied', "Receipt {$payment->receipt_number} — AED ".number_format($use, 2)." drawn from prepayment on {$quotation->quote_number}", $userId);
+            $due = round($due - $use, 2);
+            if ($due <= 0) {
+                break;
+            }
+        }
+
+        $invoice->unsetRelation('payments')->syncPaymentColumns();
+    }
+
+    /**
+     * Persist a composed invoice as a Draft: number, frozen lines, sessions
+     * marked as invoiced, a to-submit claim per payer. One transaction so a
+     * failure leaves no half-raised document or gap in the sequence. Nothing
+     * leaves the clinic from here - Finance verifies it first.
      */
     public function issue(Patient $patient, array $composed, ?string $batchReference = null, ?int $userId = null): Invoice
     {
         return DB::transaction(function () use ($patient, $composed, $batchReference, $userId) {
-            $issue = now();
+            // Insurance invoice date rule: an invoice going to an insurer's
+            // portal is dated the last session it bills, not the day it
+            // happened to be raised.
+            $insurance = $composed['insurer_share'] > 0;
+            $issue = $insurance ? Carbon::parse($composed['period_to']) : now();
             $serviceIds = Service::pluck('id', 'name');
 
             $invoice = Invoice::create([
@@ -150,7 +201,8 @@ class InvoiceBuilder
                 'period_to' => $composed['period_to'],
                 'issue_date' => $issue->toDateString(),
                 'due_date' => $issue->copy()->addDays((int) config('billing.due_days', 30))->toDateString(),
-                'status' => $composed['insurer_share'] > 0 ? 'submitted' : 'issued',
+                'status' => $insurance ? 'draft' : 'issued',
+                'workflow_status' => 'draft',
                 'subtotal' => $composed['net'],
                 'vat_amount' => $composed['vat'],
                 'total' => $composed['total'],
@@ -199,13 +251,21 @@ class InvoiceBuilder
                     'insurer' => $split['payer'],
                     'amount' => $split['amount'],
                     'period_label' => $composed['period_label'],
-                    'status' => 'submitted',
-                    'submitted_on' => $issue->toDateString(),
+                    'service_date' => $issue->toDateString(),
+                    'status' => 'draft',
                 ]);
                 if (! $invoice->claim_reference) {
                     $invoice->forceFill(['claim_reference' => $claim->reference])->save();
                 }
             }
+
+            $invoice->recordEvent(
+                'created',
+                "Draft raised from {$composed['session_count']} session(s), {$composed['bill_hours']} billable hour(s)".($batchReference ? " — {$batchReference}" : ''),
+                $userId
+            );
+
+            $this->applyPrepayment($invoice, $patient, $userId);
 
             return $invoice->fresh(['lineItems', 'payments', 'claims', 'patient.lead']);
         });

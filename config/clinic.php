@@ -13,5 +13,9 @@ return [
     'account_name' => env('CLINIC_ACCOUNT_NAME', 'Engage Behavioral Learning Abilitation Center Sole'),
     'iban' => env('CLINIC_IBAN', 'AE900030013151276820001'),
     'account_number' => env('CLINIC_ACCOUNT_NUMBER', '13151276820001'),
+    // The Company Stamp applied to every finalized invoice: an image path
+    // under public/ (e.g. uploads/company-stamp.png). Until one is set the
+    // invoice carries a text stamp with the legal name and TRN instead.
+    'stamp_image' => env('CLINIC_STAMP_IMAGE'),
     'license' => env('CLINIC_LICENSE', 'Licensed by the Department of Health — Abu Dhabi'),
 ];

@@ -43,6 +43,18 @@ class DocumentNumbers
         return sprintf('INV-%s-%04d', $year, $max + 1);
     }
 
+    public static function nextQuotation(): string
+    {
+        $year = now()->format('Y');
+        $max = (int) DB::table('quotations')
+            ->where('quote_number', 'like', "QUO-{$year}-%")
+            ->lockForUpdate()
+            ->selectRaw("MAX(CAST(SUBSTRING_INDEX(quote_number, '-', -1) AS UNSIGNED)) AS m")
+            ->value('m');
+
+        return sprintf('QUO-%s-%04d', $year, $max + 1);
+    }
+
     public static function nextReceipt(): string
     {
         $max = (int) DB::table('payments')

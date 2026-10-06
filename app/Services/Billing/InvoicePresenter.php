@@ -13,7 +13,7 @@ class InvoicePresenter
 {
     public static function row(Invoice $i): array
     {
-        $i->loadMissing(['patient.lead', 'payments', 'claims', 'replaces', 'replacedBy']);
+        $i->loadMissing(['patient.lead', 'payments', 'claims', 'replaces', 'replacedBy', 'dispatches']);
         $status = $i->billingStatus();
         $days = $i->daysPastDue();
 
@@ -41,6 +41,22 @@ class InvoicePresenter
             'balance' => max(0, $i->balance()),
             'status' => $status,
             'status_label' => $i->billingStatusLabel(),
+            'workflow' => $i->workflow_status,
+            'workflow_label' => $i->workflowLabel(),
+            'is_final' => $i->isFinal(),
+            'insurance_route' => $i->isInsuranceRoute(),
+            'correction_note' => $i->correction_note,
+            'stamps' => $i->stamps(),
+            'phone' => $i->patient?->lead?->phone,
+            'dispatches' => $i->dispatches->map(fn ($d) => [
+                'id' => $d->id,
+                'channel' => $d->channel,
+                'channel_label' => $d->channelLabel(),
+                'kind' => $d->kind,
+                'sent_to' => $d->sent_to,
+                'sent_at' => $d->sent_at->format('d M Y H:i'),
+                'confirmed_at' => $d->receipt_confirmed_at?->format('d M Y H:i'),
+            ])->values()->all(),
             'claim_status' => $i->status,
             'claim_reference' => $i->claim_reference,
             'voided' => $i->isVoided(),
@@ -63,6 +79,7 @@ class InvoicePresenter
                 'date' => $p->received_on->format('d M Y'),
                 'reference' => $p->reference,
             ])->values()->all(),
+            'retain_until' => $i->issue_date?->copy()->addYears((int) config('billing.retention_years.invoices', 5))->format('d M Y'),
             'print_url' => route('billing.invoices.show', $i),
         ];
     }

@@ -25,9 +25,13 @@ class PatientDocument extends Model
 
     const TYPES = [
         'Assessment report',
+        'Medical report',
         'Progress review',
         'Authorization',
         'Consent',
+        'Prepayment policy',
+        'Card POS fee agreement',
+        'Insurance NOC / liability',
         'Identity',
         'Invoice / receipt',
         'Correspondence',

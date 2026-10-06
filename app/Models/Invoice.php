@@ -10,7 +10,22 @@ class Invoice extends Model
      * Claim-side status (kept for the payer workflow and older dashboards).
      * The invoice's own money status is never stored - see billingStatus().
      */
-    public const STATUSES = ['draft', 'issued', 'submitted', 'pending_info', 'paid', 'rejected'];
+    public const STATUSES = ['draft', 'issued', 'documents_ready', 'submitted', 'pending_info', 'paid', 'rejected'];
+
+    /**
+     * Where the document itself is in the Finance Flow SOP: assembled by
+     * Operations, verified by Finance, finalized (stamped PDF), then sent.
+     * Independent of the money status - a draft can already be paid (prepaid
+     * families), and a dispatched invoice can still be outstanding.
+     */
+    public const WORKFLOW = [
+        'draft' => 'Draft',
+        'pending_verification' => 'Pending Finance verification',
+        'correction_required' => 'Correction required',
+        'approved' => 'Approved',
+        'finalized' => 'Finalized',
+        'dispatched' => 'Dispatched / submitted',
+    ];
 
     protected $fillable = [
         'invoice_number',
@@ -25,6 +40,14 @@ class Invoice extends Model
         'due_date',
         'claim_reference',
         'status',
+        'workflow_status',
+        'submitted_at',
+        'submitted_by',
+        'approved_at',
+        'approved_by',
+        'correction_note',
+        'finalized_at',
+        'finalized_by',
         'subtotal',
         'vat_amount',
         'total',
@@ -67,6 +90,9 @@ class Invoice extends Model
             'amount_paid' => 'decimal:2',
             'credit_amount' => 'decimal:2',
             'voided_at' => 'datetime',
+            'submitted_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'finalized_at' => 'datetime',
             'sent_at' => 'datetime',
             'reminder_sent_at' => 'datetime',
             'reminders_count' => 'integer',
@@ -98,6 +124,16 @@ class Invoice extends Model
         return $this->hasMany(CalendarSession::class);
     }
 
+    public function events()
+    {
+        return $this->hasMany(InvoiceEvent::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    public function dispatches()
+    {
+        return $this->hasMany(InvoiceDispatch::class)->orderBy('sent_at')->orderBy('id');
+    }
+
     public function replaces()
     {
         return $this->belongsTo(self::class, 'replaces_invoice_id');
@@ -121,6 +157,67 @@ class Invoice extends Model
     public function isVoided(): bool
     {
         return $this->voided_at !== null;
+    }
+
+    /**
+     * Billed (in part or whole) through Engage's direct submission to an
+     * insurer's portal, as opposed to a prepaid / self-pay family invoice.
+     */
+    public function isInsuranceRoute(): bool
+    {
+        return (float) $this->insurance_coverage_amount > 0;
+    }
+
+    /**
+     * Finance has approved it and the final PDF exists - only then may it be
+     * sent to a customer or submitted to an insurer.
+     */
+    public function isFinal(): bool
+    {
+        return in_array($this->workflow_status, ['finalized', 'dispatched'], true);
+    }
+
+    public function workflowLabel(): string
+    {
+        return self::WORKFLOW[$this->workflow_status] ?? ucfirst((string) $this->workflow_status);
+    }
+
+    /**
+     * Stamps the final PDF carries. Every finalized invoice gets the Company
+     * Stamp; "PAID" is added only for a settled family invoice - never on one
+     * submitted to an insurance portal, whatever its balance.
+     *
+     * @return list<string>
+     */
+    public function stamps(): array
+    {
+        if (! $this->isFinal() || $this->isVoided()) {
+            return [];
+        }
+
+        return ! $this->isInsuranceRoute() && $this->billingStatus() === 'paid'
+            ? ['paid', 'company']
+            : ['company'];
+    }
+
+    /**
+     * Insurance invoice date rule: the invoice date must be the date of the
+     * last session it bills.
+     */
+    public function meetsInsuranceDateRule(): bool
+    {
+        return ! $this->isInsuranceRoute()
+            || ! $this->period_to
+            || $this->issue_date?->toDateString() === $this->period_to->toDateString();
+    }
+
+    public function recordEvent(string $event, ?string $note = null, ?int $userId = null): InvoiceEvent
+    {
+        return $this->events()->create([
+            'user_id' => $userId ?? auth()->id(),
+            'event' => $event,
+            'note' => $note,
+        ]);
     }
 
     public function paidAmount(): float

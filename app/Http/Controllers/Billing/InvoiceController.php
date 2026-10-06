@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\CalendarSession;
 use App\Models\Invoice;
+use App\Models\InvoiceDispatch;
 use App\Models\Patient;
 use App\Models\PatientAuthorization;
 use App\Models\Payment;
@@ -63,12 +64,15 @@ class InvoiceController extends Controller
         }
 
         $composed = $this->compose($patient, $sessions);
+        // Same insurance date rule the builder applies on save.
+        $issue = $composed['insurer_share'] > 0 ? \Carbon\Carbon::parse($composed['period_to']) : now();
 
         return response()->json($composed + [
             'invoice_number' => DocumentNumbers::peekInvoice(),
-            'issue_date' => now()->format('d M Y'),
-            'due_date' => now()->addDays((int) config('billing.due_days', 30))->format('d M Y'),
+            'issue_date' => $issue->format('d M Y'),
+            'due_date' => $issue->copy()->addDays((int) config('billing.due_days', 30))->format('d M Y'),
             'settled_count' => $sessions->whereNotNull('invoice_id')->count(),
+            'quotation_notice' => $this->quotationNotice($patient, $composed),
             'clinic' => config('clinic'),
         ]);
     }
@@ -92,9 +96,14 @@ class InvoiceController extends Controller
 
         // Attendance corrections made in the picker are written back to the
         // calendar - the invoice is a view over that evidence, not a fork of it.
+        $attendanceEdits = [];
         foreach ((array) $request->input('attendance', []) as $id => $att) {
             $s = $sessions->firstWhere('id', (int) $id);
             if ($s && ! empty($att['state'])) {
+                $before = $this->ledger->billing($s->fresh())['state'];
+                if ($before !== $att['state']) {
+                    $attendanceEdits[] = $s->session_date->format('d M Y')." {$before} → {$att['state']}";
+                }
                 SessionLedger::applyAttendance($s, $att['state'], isset($att['notice_hours']) && $att['notice_hours'] !== '' ? (float) $att['notice_hours'] : null);
             }
         }
@@ -106,9 +115,15 @@ class InvoiceController extends Controller
         }
 
         $invoice = $this->builder->issue($patient, $composed, null, auth()->id());
+        if ($attendanceEdits) {
+            $invoice->recordEvent('attendance_edited', 'Attendance changed while invoicing: '.implode('; ', $attendanceEdits));
+        }
+        if ($settled->isNotEmpty()) {
+            $invoice->recordEvent('rebilled_sessions', $settled->count().' session(s) were already on another invoice and were billed again by acknowledgement');
+        }
 
         return response()->json([
-            'message' => "{$invoice->invoice_number} raised — {$composed['session_count']} session(s), {$composed['bill_hours']} billable hour(s).",
+            'message' => "{$invoice->invoice_number} saved as a draft — {$composed['session_count']} session(s), {$composed['bill_hours']} billable hour(s). Submit it to Finance for verification.",
             'invoice' => InvoicePresenter::row($invoice),
         ], 201);
     }
@@ -152,6 +167,7 @@ class InvoiceController extends Controller
                 'recorded_by' => auth()->id(),
             ]);
             $invoice->unsetRelation('payments')->syncPaymentColumns();
+            $invoice->recordEvent('payment', "Receipt {$p->receipt_number} — AED ".number_format((float) $p->amount, 2)." · {$p->method}".($p->reference ? " · ref {$p->reference}" : ''));
 
             return $p;
         });
@@ -182,6 +198,7 @@ class InvoiceController extends Controller
             'credit_reason' => trim(($invoice->credit_reason ? $invoice->credit_reason."\n" : '').$request->reason),
         ])->save();
         $invoice->syncPaymentColumns();
+        $invoice->recordEvent('credit_note', 'AED '.number_format((float) $request->amount, 2).' — '.$request->reason);
 
         Activity::log(
             'credit_note',
@@ -229,11 +246,16 @@ class InvoiceController extends Controller
                 return null;
             }
 
-            $clone = $invoice->replicate(['invoice_number', 'credit_amount', 'credit_reason', 'voided_at', 'void_reason', 'replaces_invoice_id', 'replaced_by_invoice_id', 'sent_to', 'sent_at', 'reminder_sent_at', 'reminders_count', 'amount_paid', 'payment_method', 'claim_reference', 'batch_reference']);
+            $clone = $invoice->replicate(['invoice_number', 'credit_amount', 'credit_reason', 'voided_at', 'void_reason', 'replaces_invoice_id', 'replaced_by_invoice_id', 'sent_to', 'sent_at', 'reminder_sent_at', 'reminders_count', 'amount_paid', 'payment_method', 'claim_reference', 'batch_reference', 'workflow_status', 'submitted_at', 'submitted_by', 'approved_at', 'approved_by', 'correction_note', 'finalized_at', 'finalized_by']);
+            // The corrected document is a new draft - it goes back through
+            // Finance verification like any other, and an insurance one keeps
+            // the last-session-date rule.
+            $issue = $invoice->isInsuranceRoute() && $invoice->period_to ? $invoice->period_to->copy() : now();
             $clone->invoice_number = DocumentNumbers::nextInvoice();
-            $clone->issue_date = now()->toDateString();
-            $clone->due_date = now()->addDays((int) config('billing.due_days', 30))->toDateString();
-            $clone->status = (float) $invoice->insurance_coverage_amount > 0 ? 'submitted' : 'issued';
+            $clone->issue_date = $issue->toDateString();
+            $clone->due_date = $issue->copy()->addDays((int) config('billing.due_days', 30))->toDateString();
+            $clone->status = $invoice->isInsuranceRoute() ? 'draft' : 'issued';
+            $clone->workflow_status = 'draft';
             $clone->amount_paid = 0;
             $clone->replaces_invoice_id = $invoice->id;
             $clone->created_by = auth()->id();
@@ -254,18 +276,21 @@ class InvoiceController extends Controller
                     'insurer' => $split['payer'],
                     'amount' => $split['amount'],
                     'period_label' => $clone->periodLabel(),
-                    'status' => 'submitted',
-                    'submitted_on' => now()->toDateString(),
+                    'service_date' => $clone->issue_date,
+                    'status' => 'draft',
                 ]);
                 if (! $clone->claim_reference) {
                     $clone->forceFill(['claim_reference' => $claim->reference])->save();
                 }
             }
 
+            $clone->recordEvent('created', "Draft reissued to replace voided {$invoice->invoice_number}");
+
             return $clone;
         });
 
         $invoice->syncPaymentColumns();
+        $invoice->recordEvent('voided', $request->reason.($reissued ? " — reissued as {$reissued->invoice_number}" : ' — sessions released for re-invoicing'));
 
         Activity::log(
             'invoice_voided',
@@ -297,6 +322,10 @@ class InvoiceController extends Controller
         ]);
         if ($validator->fails()) {
             return response()->json(['message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
+        }
+
+        if ($invoice->isVoided() || ! $invoice->isFinal()) {
+            return response()->json(['message' => 'Only a Finance-approved, finalized invoice can be sent to a customer.'], 422);
         }
 
         // A double-click (or any near-simultaneous repeat request) on "Send
@@ -339,18 +368,145 @@ class InvoiceController extends Controller
                 return response()->json(['message' => 'The email could not be sent: '.$e->getMessage()], 500);
             }
 
-            if (($request->kind ?? 'invoice') === 'reminder') {
-                $invoice->forceFill(['reminder_sent_at' => now(), 'reminders_count' => (int) $invoice->reminders_count + 1])->save();
-                $message = "Reminder for {$invoice->invoice_number} sent to {$request->to}.";
-            } else {
-                $invoice->forceFill(['sent_to' => $request->to, 'sent_at' => now()])->save();
-                $message = "{$invoice->invoice_number} emailed to {$request->to}.";
-            }
+            $kind = $request->kind ?? 'invoice';
+            $this->logDispatch($invoice, 'email', $kind, $request->to);
+            $message = $kind === 'reminder'
+                ? "Reminder for {$invoice->invoice_number} sent to {$request->to}."
+                : "{$invoice->invoice_number} emailed to {$request->to}.";
 
             return response()->json(['message' => $message, 'invoice' => InvoicePresenter::row($invoice->fresh())]);
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * Operations hands a draft (or a corrected one) to Finance.
+     */
+    public function submit(Invoice $invoice)
+    {
+        $this->assertCanInvoice();
+        if ($blocked = $this->blockedTransition($invoice, ['draft', 'correction_required'], 'submitted for verification')) {
+            return $blocked;
+        }
+
+        $invoice->forceFill(['workflow_status' => 'pending_verification', 'submitted_at' => now(), 'submitted_by' => auth()->id()])->save();
+        $invoice->recordEvent('submitted', 'Submitted to Finance for verification');
+
+        return response()->json(['message' => "{$invoice->invoice_number} submitted to Finance for verification.", 'invoice' => InvoicePresenter::row($invoice->fresh())]);
+    }
+
+    public function approve(Invoice $invoice)
+    {
+        $this->assertCanApprove();
+        if ($blocked = $this->blockedTransition($invoice, ['pending_verification'], 'approved')) {
+            return $blocked;
+        }
+
+        $invoice->forceFill(['workflow_status' => 'approved', 'approved_at' => now(), 'approved_by' => auth()->id(), 'correction_note' => null])->save();
+        $invoice->recordEvent('approved', 'Verified and approved by Finance');
+
+        return response()->json(['message' => "{$invoice->invoice_number} approved.", 'invoice' => InvoicePresenter::row($invoice->fresh())]);
+    }
+
+    /**
+     * Finance found an error. The invoice itself is never edited - whoever
+     * corrects it either voids and reissues, or resubmits once the underlying
+     * record (a missing receipt, say) is fixed. The reason stays in the
+     * invoice's history either way.
+     */
+    public function returnForCorrection(Request $request, Invoice $invoice)
+    {
+        $this->assertCanApprove();
+        $validator = Validator::make($request->all(), ['reason' => ['required', 'string', 'max:500']]);
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
+        }
+        if ($blocked = $this->blockedTransition($invoice, ['pending_verification'], 'returned for correction')) {
+            return $blocked;
+        }
+
+        $invoice->forceFill(['workflow_status' => 'correction_required', 'correction_note' => $request->reason, 'approved_at' => null, 'approved_by' => null])->save();
+        $invoice->recordEvent('correction_required', $request->reason);
+
+        return response()->json(['message' => "{$invoice->invoice_number} returned for correction.", 'invoice' => InvoicePresenter::row($invoice->fresh())]);
+    }
+
+    /**
+     * The approved invoice becomes the final PDF and takes its stamp: Company
+     * Stamp always, PAID too for a settled family invoice, never PAID on one
+     * going to an insurance portal.
+     */
+    public function finalize(Invoice $invoice)
+    {
+        $this->assertCanInvoice();
+        if ($blocked = $this->blockedTransition($invoice, ['approved'], 'finalized')) {
+            return $blocked;
+        }
+        if (! $invoice->meetsInsuranceDateRule()) {
+            return response()->json(['message' => 'Insurance invoice date rule: the invoice date ('.$invoice->issue_date->format('d M Y').') must match the last session date ('.$invoice->period_to->format('d M Y').'). Void and reissue to correct it.'], 422);
+        }
+
+        $invoice->forceFill(['workflow_status' => 'finalized', 'finalized_at' => now(), 'finalized_by' => auth()->id()])->save();
+        $stamps = implode(' + ', array_map(fn ($s) => $s === 'paid' ? 'PAID stamp' : 'Company Stamp', $invoice->stamps()));
+        $invoice->recordEvent('finalized', "Final PDF issued — {$stamps} applied");
+
+        return response()->json(['message' => "{$invoice->invoice_number} finalized — {$stamps} applied.", 'invoice' => InvoicePresenter::row($invoice->fresh())]);
+    }
+
+    /**
+     * Log an invoice sent outside the CRM - WhatsApp is sent by hand, so the
+     * record of it is made here.
+     */
+    public function storeDispatch(Request $request, Invoice $invoice)
+    {
+        $this->assertCanInvoice();
+        $validator = Validator::make($request->all(), [
+            'channel' => ['required', 'in:'.implode(',', InvoiceDispatch::CHANNELS)],
+            'sent_to' => ['required', 'string', 'max:255'],
+            'sent_at' => ['nullable', 'date', 'before_or_equal:now'],
+            'note' => ['nullable', 'string', 'max:255'],
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first(), 'errors' => $validator->errors()], 422);
+        }
+        if ($invoice->isVoided() || ! $invoice->isFinal()) {
+            return response()->json(['message' => 'Only a Finance-approved, finalized invoice can be sent to a customer.'], 422);
+        }
+
+        $this->logDispatch($invoice, $request->channel, 'invoice', $request->sent_to, $request->sent_at, $request->note);
+
+        return response()->json(['message' => "{$invoice->invoice_number} dispatch logged.", 'invoice' => InvoicePresenter::row($invoice->fresh())], 201);
+    }
+
+    public function confirmReceipt(Invoice $invoice, InvoiceDispatch $dispatch)
+    {
+        $this->assertCanInvoice();
+        abort_unless($dispatch->invoice_id === $invoice->id, 404);
+
+        if (! $dispatch->receipt_confirmed_at) {
+            $dispatch->forceFill(['receipt_confirmed_at' => now(), 'receipt_confirmed_by' => auth()->id()])->save();
+            $invoice->recordEvent('receipt_confirmed', "Customer confirmed receipt ({$dispatch->channelLabel()} to {$dispatch->sent_to})");
+        }
+
+        return response()->json(['message' => 'Receipt confirmation recorded.', 'invoice' => InvoicePresenter::row($invoice->fresh())]);
+    }
+
+    /**
+     * The invoice's own audit trail, oldest first.
+     */
+    public function history(Invoice $invoice)
+    {
+        return response()->json([
+            'number' => $invoice->invoice_number,
+            'events' => $invoice->events()->with('user')->get()->map(fn ($e) => [
+                'event' => $e->event,
+                'label' => ucfirst(str_replace('_', ' ', $e->event)),
+                'note' => $e->note,
+                'by' => $e->user ? trim($e->user->first_name.' '.$e->user->last_name) : 'System',
+                'at' => $e->created_at->format('d M Y H:i'),
+            ])->values(),
+        ]);
     }
 
     /**
@@ -465,6 +621,52 @@ class InvoiceController extends Controller
         abort_unless(auth()->user()->canDo('create_invoice'), 403, 'Invoices are raised by Finance.');
     }
 
+    protected function assertCanApprove(): void
+    {
+        abort_unless(auth()->user()->canDo('approve_invoice'), 403, 'Invoices are verified and approved by Finance.');
+    }
+
+    /**
+     * A 422 if the invoice isn't in one of the states this step starts from.
+     */
+    protected function blockedTransition(Invoice $invoice, array $from, string $verb): ?\Illuminate\Http\JsonResponse
+    {
+        if ($invoice->isVoided()) {
+            return response()->json(['message' => 'A voided invoice can’t be '.$verb.'.'], 422);
+        }
+        if (! in_array($invoice->workflow_status, $from, true)) {
+            return response()->json(['message' => "{$invoice->invoice_number} is {$invoice->workflowLabel()} — it can’t be {$verb} from there."], 422);
+        }
+
+        return null;
+    }
+
+    /**
+     * One dispatch record per send, plus the legacy sent_/reminder_ columns
+     * older screens still read.
+     */
+    protected function logDispatch(Invoice $invoice, string $channel, string $kind, string $to, ?string $at = null, ?string $note = null): InvoiceDispatch
+    {
+        $sentAt = $at ? \Carbon\Carbon::parse($at) : now();
+        $dispatch = $invoice->dispatches()->create([
+            'channel' => $channel,
+            'kind' => $kind,
+            'sent_to' => $to,
+            'sent_at' => $sentAt,
+            'sent_by' => auth()->id(),
+            'note' => $note,
+        ]);
+
+        if ($kind === 'reminder') {
+            $invoice->forceFill(['reminder_sent_at' => $sentAt, 'reminders_count' => (int) $invoice->reminders_count + 1])->save();
+        } else {
+            $invoice->forceFill(['sent_to' => $to, 'sent_at' => $sentAt, 'workflow_status' => 'dispatched'])->save();
+        }
+        $invoice->recordEvent($kind === 'reminder' ? 'reminder_sent' : 'dispatched', "{$dispatch->channelLabel()} to {$to}".($note ? " — {$note}" : ''));
+
+        return $dispatch;
+    }
+
     /**
      * @return array{0: ?Patient, 1: \Illuminate\Support\Collection, 2: ?array}
      */
@@ -521,5 +723,28 @@ class InvoiceController extends Controller
         $rows = $this->ledger->rows($patient, $sessions, $profile);
 
         return $this->builder->compose($patient, $rows, $profile) + ['rows' => $rows->values()];
+    }
+
+    /**
+     * Cross-check against the agreed quotation: flagged for review, never
+     * silently adjusted. Null when the selection sits inside what was quoted.
+     */
+    protected function quotationNotice(Patient $patient, array $composed): ?string
+    {
+        $cleared = $patient->quotations()->where('status', 'cleared')->get();
+        if ($cleared->isEmpty()) {
+            return 'No payment-confirmed quotation is on file for this client — sessions are being billed without agreed terms to check them against.';
+        }
+
+        $quoted = (float) $cleared->where('billing_unit', 'hour')->sum('quantity');
+        if ($quoted <= 0) {
+            return null;
+        }
+        $already = (float) \App\Models\InvoiceLineItem::whereHas('invoice', fn ($q) => $q->where('patient_id', $patient->id)->whereNull('voided_at'))->sum('qty');
+        $after = $already + (float) $composed['bill_hours'];
+
+        return $after > $quoted
+            ? 'This invoice takes the client to '.rtrim(rtrim(number_format($after, 1), '0'), '.').' billed hours against '.rtrim(rtrim(number_format($quoted, 1), '0'), '.').' quoted — '.rtrim(rtrim(number_format($after - $quoted, 1), '0'), '.').' h beyond the agreed quotation.'
+            : null;
     }
 }

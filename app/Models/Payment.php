@@ -8,7 +8,7 @@ class Payment extends Model
 {
     const METHODS = ['Bank transfer', 'Card', 'Cash', 'Cheque', 'Insurance remittance'];
 
-    protected $fillable = ['invoice_id', 'receipt_number', 'amount', 'method', 'received_on', 'reference', 'recorded_by'];
+    protected $fillable = ['invoice_id', 'quotation_id', 'receipt_number', 'amount', 'method', 'received_on', 'reference', 'recorded_by'];
 
     protected $casts = [
         'amount' => 'decimal:2',
