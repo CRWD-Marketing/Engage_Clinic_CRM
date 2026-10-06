@@ -105,11 +105,12 @@ class LeadController extends Controller
     }
 
     /**
-     * Show create lead form.
+     * Show create lead form. Leads are created from the pipeline page's own
+     * modal - there is no standalone form page - so send direct visits there.
      */
     public function create()
     {
-        return view('lead.create');
+        return redirect()->route('leads.index');
     }
 
     /**
@@ -179,15 +180,18 @@ class LeadController extends Controller
                 'agreed_packages' => $lead->packages()->get(),
             ]);
         }
-        return view('lead.show', compact('lead'));
+
+        // A lead's detail lives in the pipeline page's side panel, not on a
+        // page of its own - a plain browser visit goes back to the pipeline.
+        return redirect()->route('leads.index');
     }
 
     /**
-     * Edit lead.
+     * Edit lead. Editing happens in the pipeline page's modal.
      */
     public function edit(Lead $lead)
     {
-        return view('lead.edit', compact('lead'));
+        return redirect()->route('leads.index');
     }
 
     /**
@@ -412,7 +416,7 @@ class LeadController extends Controller
         }
 
         return redirect()
-            ->route('leads.show', $lead)
+            ->route('leads.index')
             ->with('success', 'Lead updated successfully!');
     }
 

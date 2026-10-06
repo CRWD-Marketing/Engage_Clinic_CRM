@@ -143,7 +143,6 @@ class Lead extends Model
     protected $casts = [
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
-        'estimated_value' => 'decimal:2',
         'follow_up_due_at' => 'datetime',
         'terminated_at' => 'datetime',
 
@@ -361,6 +360,17 @@ class Lead extends Model
         // cast throw whenever the lead is read back, which takes the whole
         // pipeline page down with it.
         $this->attributes['estimated_value'] = $cleaned === '' ? null : $cleaned;
+    }
+
+    /**
+     * Read the estimated value as a 2-decimal string, or null when unset.
+     * Rows saved before the mutator above stopped storing '' still hold a
+     * blank (or otherwise non-numeric) string, which a decimal cast throws
+     * on - so the read side has to tolerate them too.
+     */
+    public function getEstimatedValueAttribute($value): ?string
+    {
+        return is_numeric($value) ? number_format((float) $value, 2, '.', '') : null;
     }
 
     /**
