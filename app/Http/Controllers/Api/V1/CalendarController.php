@@ -22,7 +22,7 @@ class CalendarController extends WebCalendarController
     {
         $user = $request->user();
 
-        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        CalendarSession::completePastDue();
 
         $anchor = $request->filled('date') ? Carbon::parse($request->date) : now();
         $monday = $anchor->copy()->startOfWeek(Carbon::MONDAY);
@@ -112,7 +112,7 @@ class CalendarController extends WebCalendarController
             'Only your own sessions.'
         );
 
-        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        CalendarSession::completePastDue();
         $calendarSession->refresh()->load(['therapist', 'child', 'creator', 'coverFor', 'supervisor']);
 
         return response()->json($this->mySessionPayload($calendarSession, $user->id));

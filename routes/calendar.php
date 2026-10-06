@@ -21,6 +21,7 @@ Route::middleware(['auth', 'feature:calendar'])
 
         Route::post('/', [CalendarController::class, 'store'])->name('store');
         Route::get('/{calendarSession}', [CalendarController::class, 'show'])->name('show');
+        Route::get('/{calendarSession}/history', [CalendarController::class, 'history'])->name('history');
         Route::put('/{calendarSession}', [CalendarController::class, 'update'])->name('update');
         Route::delete('/{calendarSession}', [CalendarController::class, 'destroy'])->name('destroy');
 

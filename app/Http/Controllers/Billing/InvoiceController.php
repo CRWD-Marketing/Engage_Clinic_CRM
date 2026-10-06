@@ -36,7 +36,7 @@ class InvoiceController extends Controller
         // A session becomes billable the moment its end time passes, not when
         // the day ends - catch up here as the calendar does, so this
         // morning's session can be invoiced this afternoon.
-        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        CalendarSession::completePastDue();
 
         $patient->load(['lead', 'authorizations']);
         $rows = $this->ledger->forPatient($patient);

@@ -197,7 +197,7 @@ class DashboardController extends Controller
         // counts as attended the moment its end time passes, not at the end
         // of the day. Run here too so this morning's 9 o'clock reads
         // "Completed" by lunchtime even on a host with no cron.
-        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        CalendarSession::completePastDue();
 
         $todaySessionsList = CalendarSession::whereDate('session_date', today())
             ->notCancelled()

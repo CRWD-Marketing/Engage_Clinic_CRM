@@ -242,6 +242,14 @@ class InvoiceBuilder
 
             $sessionIds = collect($composed['lines'])->pluck('calendar_session_id')->unique()->all();
             CalendarSession::whereIn('id', $sessionIds)->update(['invoice_id' => $invoice->id]);
+            foreach ($sessionIds as $sessionId) {
+                \App\Models\CalendarSessionEvent::create([
+                    'calendar_session_id' => $sessionId,
+                    'user_id' => $userId,
+                    'event' => 'invoiced',
+                    'summary' => "Billed on {$invoice->invoice_number}",
+                ]);
+            }
 
             foreach ($composed['splits'] as $split) {
                 $claim = InsuranceClaim::create([

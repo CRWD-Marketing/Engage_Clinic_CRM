@@ -92,8 +92,97 @@ class CalendarSession extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+    /**
+     * Flip every session whose end time has passed untouched to completed,
+     * leaving a line in each one's audit trail - nobody confirmed attendance,
+     * and the trail should say so.
+     */
+    public static function completePastDue(): int
+    {
+        $ids = static::pastDueScheduled()->pluck('id');
+        if ($ids->isEmpty()) {
+            return 0;
+        }
+
+        $count = static::whereIn('id', $ids)->where('status', 'scheduled')->update(['status' => 'completed']);
+        $now = now();
+        CalendarSessionEvent::insert($ids->map(fn ($id) => [
+            'calendar_session_id' => $id,
+            'user_id' => null,
+            'event' => 'auto_completed',
+            'summary' => 'Marked completed automatically — end time passed with no attendance recorded',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ])->all());
+
+        return $count;
+    }
+
+    public function events()
+    {
+        return $this->hasMany(CalendarSessionEvent::class)->orderBy('created_at')->orderBy('id');
+    }
+
+    /**
+     * "ABA · Lina Al Kaabi · 06 Oct 2026 10:00" - how a session is named in
+     * its own audit trail, so a line still reads sensibly after the session
+     * it describes has been edited or deleted.
+     */
+    public function auditLabel(): string
+    {
+        $date = $this->session_date instanceof Carbon ? $this->session_date->format('d M Y') : (string) $this->session_date;
+
+        return trim(($this->activity_type ?: 'Session').' · '.($this->patient_name ?: 'no client').' · '.$date.' '.substr((string) $this->start_time, 0, 5));
+    }
+
     protected static function booted(): void
     {
+        // Audit trail: who booked, changed or removed a session. Bulk query
+        // updates (the automatic scheduled → completed catch-up, sessions
+        // being marked as invoiced) don't fire model events and are recorded
+        // by the code that makes them.
+        static::created(function (CalendarSession $session) {
+            CalendarSessionEvent::create([
+                'calendar_session_id' => $session->id,
+                'user_id' => auth()->id(),
+                'event' => 'created',
+                'summary' => 'Booked — '.$session->auditLabel().' · '.(int) $session->duration_minutes.' min',
+            ]);
+        });
+
+        static::updated(function (CalendarSession $session) {
+            $changes = [];
+            foreach (CalendarSessionEvent::TRACKED as $field => $label) {
+                if (! $session->wasChanged($field)) {
+                    continue;
+                }
+                $from = $session->getOriginal($field);
+                $to = $session->getAttribute($field);
+                $changes[$label] = [
+                    $from instanceof \DateTimeInterface ? $from->format('Y-m-d') : $from,
+                    $to instanceof \DateTimeInterface ? $to->format('Y-m-d') : $to,
+                ];
+            }
+            if (! $changes) {
+                return;
+            }
+            CalendarSessionEvent::create([
+                'calendar_session_id' => $session->id,
+                'user_id' => auth()->id(),
+                'event' => 'updated',
+                'summary' => collect($changes)->map(fn ($v, $label) => $label.': '.($v[0] ?? '—').' → '.($v[1] ?? '—'))->implode(' · '),
+                'changes' => $changes,
+            ]);
+        });
+
+        static::deleted(function (CalendarSession $session) {
+            CalendarSessionEvent::create([
+                'calendar_session_id' => $session->id,
+                'user_id' => auth()->id(),
+                'event' => 'deleted',
+                'summary' => 'Deleted — '.$session->auditLabel().' · was '.$session->status,
+            ]);
+        });
         static::saving(function (CalendarSession $session) {
             // Keep patient_name (denormalized) in sync with the linked Lead's
             // child_name. Group / custom bookings have no single patient_id and

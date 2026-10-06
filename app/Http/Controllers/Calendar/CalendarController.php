@@ -90,7 +90,7 @@ class CalendarController extends Controller
     {
         // Same catch-up feed() does, so a session that ended since the page
         // was last loaded already shows as completed, not still "upcoming".
-        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        CalendarSession::completePastDue();
 
         $anchor = $request->filled('date') ? Carbon::parse($request->date) : now();
         $monday = $anchor->copy()->startOfWeek(Carbon::MONDAY);
@@ -174,7 +174,7 @@ class CalendarController extends Controller
 
         // Same catch-up the scheduled command does, so attendance is right the
         // moment anyone opens the calendar even if the server cron is late.
-        CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        CalendarSession::completePastDue();
 
         // Closed slots (Therapists & schedules -> Close) are discontinued and
         // never appear on the calendar; reopening brings them straight back.
@@ -458,6 +458,22 @@ class CalendarController extends Controller
         $calendarSession->load(['therapist', 'child', 'creator', 'coverFor', 'supervisor']);
 
         return response()->json($this->sessionPayload($calendarSession));
+    }
+
+    /**
+     * The session's audit trail, oldest first: booked, every change to its
+     * time, therapist or attendance, and by whom.
+     */
+    public function history(CalendarSession $calendarSession)
+    {
+        return response()->json([
+            'events' => $calendarSession->events()->with('user')->get()->map(fn ($e) => [
+                'event' => $e->event,
+                'summary' => $e->summary,
+                'by' => $e->user ? $this->staffName($e->user) : 'System',
+                'at' => $e->created_at->format('d M Y H:i'),
+            ])->values(),
+        ]);
     }
 
     /**

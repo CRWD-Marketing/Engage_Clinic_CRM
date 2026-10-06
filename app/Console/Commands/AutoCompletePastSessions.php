@@ -33,7 +33,7 @@ class AutoCompletePastSessions extends Command
      */
     public function handle(): int
     {
-        $count = CalendarSession::pastDueScheduled()->update(['status' => 'completed']);
+        $count = CalendarSession::completePastDue();
 
         $this->info("Marked {$count} past-due session(s) as completed.");
 

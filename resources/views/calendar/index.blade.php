@@ -546,6 +546,10 @@
                     <span class="sup-badge">★ Supervised</span>
                     <div class="sup-note" id="f-supervision-text"></div>
                 </div>
+                <div id="f-history-info" style="display:none; background:#F6F2EA; border-radius:10px; padding:10px 12px;">
+                    <div style="font:800 11px 'Nunito Sans'; letter-spacing:.04em; text-transform:uppercase; color:#8A7D6C; margin-bottom:6px;">Change history</div>
+                    <div id="f-history-list" style="max-height:140px; overflow:auto;"></div>
+                </div>
 
                 <div style="display:flex; gap:10px; margin-top:4px;" id="panel-actions">
                     <button type="submit" class="btn-save" id="save-btn">Save</button>
@@ -1577,6 +1581,19 @@
             occurrencesUserEdited = false;
             document.getElementById('pkg-info').style.display = 'none';
             document.getElementById('f-supervision-info').style.display = 'none';
+            document.getElementById('f-history-info').style.display = 'none';
+            if (session && session.id) {
+                // Audit trail for this session - who booked it and every change since.
+                fetch(`${BASE_URL}/${session.id}/history`, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(r => r.ok ? r.json() : { events: [] })
+                    .then(d => {
+                        if (!d.events.length) return;
+                        document.getElementById('f-history-list').innerHTML = d.events.map(e =>
+                            `<div style="font:700 11.5px 'Nunito Sans'; color:#2B3A4C; padding:4px 0; border-bottom:1px solid #EBE4DA;">${escapeHtml(e.summary)}<div style="font-weight:600; color:#8A7D6C;">${escapeHtml(e.at)} · ${escapeHtml(e.by)}</div></div>`).join('');
+                        document.getElementById('f-history-info').style.display = 'block';
+                    })
+                    .catch(() => {});
+            }
             const wasCompleted = !!session && session.status === 'completed';
             document.getElementById('f-status-completed').hidden = !wasCompleted;
             document.getElementById('f-status-help').style.display = wasCompleted ? 'block' : 'none';
